@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#7a1a3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CANAN NY">
+<link rel="manifest" href="manifest.json">
+<title>CANAN NY · Klasik New York</title>
+<style>
+  :root {
+    --burgundy: #7a1a3a;
+    --burgundy-dark: #4f0e23;
+    --burgundy-bright: #a02850;
+    --gold: #c9a55c;
+    --gold-bright: #e8c574;
+    --gold-pale: #f3dca5;
+    --rose: #d4889c;
+    --ink: #1a0d12;
+    --paper: #f7f0e5;
+    --paper-warm: #ede3d1;
+    --cream: #faf3e7;
+    --line: #8b6f47;
+    --noir: #0a0608;
+    --bg: var(--paper);
+    --fg: var(--ink);
+    --card-bg: white;
+    --card-shadow: 0 2px 12px rgba(122, 26, 58, 0.08);
+    --muted: rgba(26, 13, 18, 0.6);
+    --past-opacity: 0.45;
+  }
+  [data-theme="dark"] {
+    --bg: #0d0710;
+    --fg: #f3dca5;
+    --card-bg: #1c1116;
+    --card-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    --muted: rgba(243, 220, 165, 0.6);
+    --paper: #0d0710;
+    --paper-warm: #1c1116;
+    --past-opacity: 0.35;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.5;
+    font-size: 15px;
+    overflow-x: hidden;
+    padding-bottom: 90px;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  /* === STATUS HEADER === */
+  .status-header {
+    background: linear-gradient(135deg, var(--burgundy) 0%, var(--burgundy-dark) 50%, var(--noir) 100%);
+    color: var(--gold-pale);
+    padding: 14px 16px;
+    padding-top: calc(env(safe-area-inset-top) + 14px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 20px rgba(122, 26, 58, 0.35);
+    border-bottom: 1px solid var(--gold);
+    position: relative;
+    overflow: hidden;
+  }
+  .status-header::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    background: radial-gradient(circle at 90% 30%, rgba(232, 197, 116, 0.15), transparent 50%);
+    pointer-events: none;
+  }
+  .status-header .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; position: relative; }
+  .status-header .left { flex: 1; min-width: 0; }
+  .status-header .title-row {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--gold-bright);
+    font-family: 'Playfair Display', Georgia, serif;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .status-header .route {
+    font-size: 11px;
+    opacity: 0.9;
+    font-style: italic;
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+  }
+  .status-header .countdown { text-align: right; flex-shrink: 0; }
+  .status-header .countdown .num {
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--gold-bright);
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+  .status-header .countdown .lbl {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0.7;
+    margin-top: 2px;
+  }
+  .status-header .action-row { display: flex; gap: 6px; margin-top: 10px; position: relative; }
+  .quick-btn {
+    background: rgba(232, 197, 116, 0.18);
+    color: var(--gold-pale);
+    border: 1px solid rgba(232, 197, 116, 0.3);
+    padding: 6px 11px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+  }
+  .quick-btn:active { transform: scale(0.95); background: rgba(232, 197, 116, 0.3); }
+  .quick-btn.theme-toggle { margin-left: auto; }
+
+  /* === PTR === */
+  .ptr {
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-50px);
+    background: var(--card-bg);
+    color: var(--fg);
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    box-shadow: var(--card-shadow);
+    z-index: 99;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: transform 0.3s;
+    opacity: 0;
+    border: 1px solid var(--gold);
+  }
+  .ptr.active { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .ptr .spinner { width: 14px; height: 14px; border: 2px solid var(--paper-warm); border-top-color: var(--burgundy); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* === SEARCH === */
+  .search-bar {
+    background: var(--card-bg);
+    padding: 0 14px;
+    border-bottom: 1px solid rgba(122, 26, 58, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s, padding 0.3s;
+  }
+  .search-bar.active { max-height: 60px; padding: 10px 14px; }
+  .search-bar input {
+    flex: 1;
+    border: none;
+    background: var(--paper-warm);
+    padding: 10px 14px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--fg);
+  }
+  .search-bar input:focus { outline: 2px solid var(--burgundy); }
+  .search-close { background: none; border: none; color: var(--muted); font-size: 22px; cursor: pointer; padding: 0 6px; }
+
+  /* === HERO === */
+  .today-hero {
+    background: linear-gradient(180deg, var(--noir) 0%, var(--burgundy-dark) 60%, var(--burgundy) 100%);
+    color: var(--gold-pale) !important;
+    padding: 20px 16px 22px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .today-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 85% 15%, rgba(232, 197, 116, 0.25), transparent 55%);
+    pointer-events: none;
+  }
+  .today-hero::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold) 50%, transparent);
+    opacity: 0.6;
+  }
+  .today-hero .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; position: relative; }
+  .today-hero .day-num {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold-bright);
+    font-weight: 700;
+  }
+  .today-hero .day-title, .today-hero .day-sub, .today-hero .day-progress-label span { color: inherit !important; }
+  .now-badge {
+    background: var(--gold-bright);
+    color: var(--noir);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    animation: pulse 2s ease infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.65; } }
+  .today-hero .day-title {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 4px 0 6px;
+    position: relative;
+    font-family: 'Playfair Display', Georgia, serif;
+    letter-spacing: 0.3px;
+  }
+  .today-hero .day-sub {
+    font-size: 13px;
+    opacity: 0.75;
+    font-style: italic;
+    margin-bottom: 12px;
+    position: relative;
+    letter-spacing: 0.3px;
+  }
+  .today-hero .location-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(232, 197, 116, 0.18);
+    color: var(--gold-bright);
+    padding: 5px 12px;
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+    position: relative;
+    cursor: pointer;
+    border: 1px solid rgba(232, 197, 116, 0.3);
+  }
+  .today-hero.midtown-day { background: linear-gradient(135deg, var(--burgundy) 0%, var(--burgundy-dark) 100%); }
+  .today-hero.central-day { background: linear-gradient(135deg, #355e3b 0%, #1f3a23 100%); }
+  .today-hero.downtown-day { background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%); }
+  .today-hero.brooklyn-day { background: linear-gradient(135deg, #8b4513 0%, #3d1f0e 100%); }
+  .today-hero.soho-day { background: linear-gradient(135deg, #5e1734 0%, #3a0f23 50%, var(--noir) 100%); }
+  .today-hero.romantic-day { background: linear-gradient(135deg, var(--rose) 0%, var(--burgundy-bright) 50%, var(--burgundy-dark) 100%); border-bottom: 2px solid var(--gold-bright); }
+  
+  .day-progress { position: relative; margin-top: 4px; height: 5px; background: rgba(255,255,255,0.15); border-radius: 3px; overflow: hidden; }
+  .day-progress .fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-bright)); transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+  .day-progress-label { display: flex; justify-content: space-between; font-size: 10px; opacity: 0.85; margin-top: 4px; position: relative; letter-spacing: 0.5px; }
+
+  /* === DAY SELECTOR === */
+  .day-selector {
+    background: var(--card-bg);
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(122, 26, 58, 0.1);
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .day-selector::-webkit-scrollbar { display: none; }
+  .day-pill {
+    display: inline-block;
+    padding: 7px 12px;
+    margin: 0 3px;
+    border-radius: 18px;
+    background: var(--paper-warm);
+    color: var(--fg);
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+  }
+  .day-pill:first-child { margin-left: 10px; }
+  .day-pill:last-child { margin-right: 10px; }
+  .day-pill .day-pill-num { font-size: 8px; opacity: 0.6; display: block; letter-spacing: 1px; }
+  .day-pill .day-pill-date { margin-top: 1px; }
+  .day-pill.today {
+    background: linear-gradient(135deg, var(--burgundy) 0%, var(--burgundy-dark) 100%);
+    color: var(--gold-bright);
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(122, 26, 58, 0.35);
+  }
+  .day-pill.today .day-pill-num { opacity: 1; }
+  .day-pill.special::after {
+    content: '★';
+    position: absolute;
+    top: -3px;
+    right: -1px;
+    background: var(--gold-bright);
+    color: var(--noir);
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    font-size: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  .day-pill.romantic::after {
+    content: '♥';
+    background: var(--rose);
+    color: white;
+  }
+
+  .day-summary {
+    background: var(--paper-warm);
+    padding: 12px 16px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--fg);
+    border-bottom: 1px solid rgba(122, 26, 58, 0.1);
+    font-style: italic;
+    letter-spacing: 0.2px;
+  }
+
+  /* === DRIVE/TRANSIT BAR === */
+  .drive-bar {
+    background: linear-gradient(90deg, var(--noir) 0%, #2a1820 100%);
+    color: var(--gold-pale);
+    padding: 10px 16px;
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-bottom: 1px solid var(--gold);
+  }
+  .drive-bar:active { background: #3a2530; }
+  .drive-bar::after { content: '↗'; font-size: 14px; opacity: 0.7; color: var(--gold-bright); }
+
+  /* === FILTER CHIPS === */
+  .filter-chips {
+    display: flex;
+    gap: 6px;
+    padding: 10px 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    background: var(--bg);
+  }
+  .filter-chips::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    padding: 5px 12px;
+    background: var(--card-bg);
+    border: 1px solid rgba(122, 26, 58, 0.2);
+    border-radius: 16px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .filter-chip.active {
+    background: linear-gradient(135deg, var(--burgundy) 0%, var(--burgundy-dark) 100%);
+    color: var(--gold-bright);
+    border-color: var(--burgundy);
+  }
+  .filter-chip:active { transform: scale(0.96); }
+
+  /* === ACTIVITIES === */
+  .activities { padding: 8px 14px 16px; }
+  .activity-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+    box-shadow: var(--card-shadow);
+    border-left: 3px solid var(--burgundy);
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+  }
+  .activity-card.now {
+    border-left-color: var(--gold-bright);
+    border-left-width: 5px;
+    box-shadow: 0 4px 22px rgba(232, 197, 116, 0.35);
+    animation: now-glow 3s ease infinite;
+  }
+  @keyframes now-glow {
+    0%, 100% { box-shadow: 0 4px 22px rgba(232, 197, 116, 0.35); }
+    50% { box-shadow: 0 4px 28px rgba(232, 197, 116, 0.5); }
+  }
+  .activity-card.now::before {
+    content: 'ŞU AN';
+    position: absolute;
+    top: 8px;
+    right: 50px;
+    background: var(--gold-bright);
+    color: var(--noir);
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+  }
+  .activity-card.past { opacity: var(--past-opacity); border-left-color: var(--line); }
+  .activity-card.past .activity-title { text-decoration: line-through; }
+  .activity-card.done { opacity: 0.55; border-left-color: var(--gold); }
+  .activity-card.done .activity-title { text-decoration: line-through; }
+  .activity-card.hidden { display: none; }
+  .activity-card .check {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: var(--bg);
+    z-index: 2;
+  }
+  .activity-card.done .check { background: var(--gold); border-color: var(--gold); }
+  .activity-card.done .check::after { content: '✓'; color: var(--noir); font-weight: 700; }
+  .activity-card.romantic { border-left-color: var(--rose); }
+  .activity-card.romantic::after {
+    content: '♥';
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    color: var(--rose);
+    font-size: 14px;
+    opacity: 0.5;
+  }
+  .activity-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; padding-right: 36px; }
+  .activity-time {
+    font-weight: 700;
+    color: var(--burgundy);
+    font-size: 15px;
+    font-family: "SF Mono", monospace;
+  }
+  .activity-tag {
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: var(--paper-warm);
+    color: var(--line);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 700;
+  }
+  .activity-tag.must, .activity-tag.romantik, .activity-tag.zirve { background: var(--gold-bright); color: var(--noir); }
+  .activity-tag.film, .activity-tag.dizi { background: var(--rose); color: white; }
+  .activity-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    padding-right: 36px;
+    line-height: 1.3;
+  }
+  .activity-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.55;
+    margin-bottom: 8px;
+  }
+  .activity-actions { display: flex; gap: 5px; margin-top: 8px; flex-wrap: wrap; }
+  .act-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 9px;
+    background: var(--burgundy);
+    color: white !important;
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .act-btn.maps { background: var(--noir); }
+  .act-btn.gold { background: var(--gold); color: var(--noir) !important; }
+  .act-btn.rose { background: var(--rose); }
+
+  /* === TAB BAR === */
+  .tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--card-bg);
+    border-top: 1px solid rgba(122, 26, 58, 0.2);
+    display: flex;
+    z-index: 200;
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -4px 20px rgba(122, 26, 58, 0.12);
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 10px 4px;
+    text-align: center;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    text-decoration: none;
+    font-family: inherit;
+  }
+  .tab-btn.active { color: var(--burgundy); }
+  .tab-btn .icon { font-size: 18px; line-height: 1; display: block; margin-bottom: 2px; }
+  .tab-btn .lbl { font-size: 9px; letter-spacing: 0.5px; font-weight: 700; }
+
+  /* === FAB === */
+  .fab {
+    position: fixed;
+    right: 14px;
+    bottom: 80px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--burgundy) 0%, var(--burgundy-dark) 100%);
+    color: var(--gold-bright);
+    border: 1px solid var(--gold);
+    box-shadow: 0 6px 22px rgba(122, 26, 58, 0.5);
+    z-index: 150;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .fab.expanded { transform: rotate(45deg); background: var(--noir); }
+  .fab-menu {
+    position: fixed;
+    right: 14px;
+    bottom: 145px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 149;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s;
+    transform: translateY(20px);
+  }
+  .fab-menu.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+  .fab-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--card-bg);
+    color: var(--fg);
+    border: 1px solid rgba(122, 26, 58, 0.2);
+    padding: 10px 14px;
+    border-radius: 24px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .fab-action .ic { font-size: 16px; }
+
+  /* === SECTIONS === */
+  .section-content { display: none; padding: 14px; }
+  .section-content.active { display: block; animation: fadeUp 0.3s; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* === INFO CARDS === */
+  .info-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+    box-shadow: var(--card-shadow);
+  }
+  .info-card h3 {
+    font-size: 12px;
+    color: var(--burgundy);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    font-weight: 700;
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+  .info-card p { font-size: 13px; line-height: 1.5; margin-bottom: 6px; }
+  .info-card p:last-child { margin-bottom: 0; }
+  .info-card strong { color: var(--burgundy); }
+
+  .weather-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .w-tile {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+    box-shadow: var(--card-shadow);
+    border-top: 2px solid var(--gold);
+  }
+  .w-tile.loading { opacity: 0.5; }
+  .w-tile .city { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
+  .w-tile .ic { font-size: 24px; }
+  .w-tile .temp { font-size: 22px; font-weight: 700; line-height: 1; margin: 4px 0; font-family: 'Playfair Display', Georgia, serif; }
+  .w-tile .temp .lo { font-size: 13px; color: var(--muted); font-weight: 400; }
+  .w-tile .desc { font-size: 10px; color: var(--muted); }
+
+  .quick-tiles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+  .tile { background: var(--card-bg); border-radius: 10px; padding: 12px 6px; text-align: center; text-decoration: none; color: var(--fg); box-shadow: var(--card-shadow); }
+  .tile .icon { font-size: 22px; margin-bottom: 4px; }
+  .tile .val { font-size: 13px; font-weight: 700; line-height: 1.2; }
+  .tile .lbl { font-size: 9px; letter-spacing: 0.5px; color: var(--muted); margin-top: 2px; }
+
+  /* === MODAL === */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(5px);
+    z-index: 300;
+    display: none;
+    align-items: flex-end;
+  }
+  .modal-backdrop.show { display: flex; animation: fadeIn 0.2s; }
+  @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+  .modal {
+    background: var(--card-bg);
+    border-radius: 16px 16px 0 0;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 20px 16px 30px;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    border-top: 2px solid var(--gold);
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-handle { width: 36px; height: 4px; background: var(--gold); border-radius: 2px; margin: 0 auto 14px; opacity: 0.6; }
+  .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; font-family: 'Playfair Display', Georgia, serif; }
+  .modal .meta-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; flex-wrap: wrap; }
+  .modal .meta-row .time { font-family: "SF Mono", monospace; color: var(--burgundy); font-weight: 700; }
+  .modal .meta-row .tag { background: var(--paper-warm); padding: 2px 6px; border-radius: 3px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; color: var(--muted); }
+  .modal p { font-size: 14px; line-height: 1.6; margin-bottom: 14px; }
+  .modal .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .modal-action {
+    padding: 12px;
+    background: var(--burgundy);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .modal-action.maps { background: var(--noir); }
+  .modal-action.outline { background: transparent; color: var(--burgundy); border: 1px solid var(--burgundy); }
+  .modal .note-area { margin-top: 16px; }
+  .modal .note-area label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 4px; font-weight: 700; }
+  .modal .note-area textarea {
+    width: 100%;
+    background: var(--paper-warm);
+    border: 1px solid rgba(122, 26, 58, 0.2);
+    border-radius: 8px;
+    padding: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 60px;
+    color: var(--fg);
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--noir);
+    color: var(--gold-bright);
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 400;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    border: 1px solid var(--gold);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .no-results { text-align: center; padding: 40px 20px; color: var(--muted); }
+  .no-results .ic { font-size: 40px; margin-bottom: 10px; opacity: 0.5; }
+</style>
+</head>
+<body>
+
+<div class="ptr" id="ptr"><div class="spinner"></div> Yenileniyor...</div>
+
+<div class="status-header" id="statusHeader">
+  <div class="row">
+    <div class="left">
+      <div class="title-row">♥ CANAN NY</div>
+      <div class="route">Klasik New York · Manhattan & Brooklyn</div>
+    </div>
+    <div class="countdown">
+      <div class="num" id="hdrCountdown">—</div>
+      <div class="lbl">Yola Kalan</div>
+    </div>
+  </div>
+  <div class="action-row">
+    <button class="quick-btn" onclick="toggleSearch()">🔍 Ara</button>
+    <button class="quick-btn" onclick="goToToday()">📍 Bugün</button>
+    <button class="quick-btn theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙</button>
+  </div>
+</div>
+
+<div class="search-bar" id="searchBar">
+  <input type="search" id="searchInput" placeholder="Mekan, yemek, müze ara..." autocomplete="off">
+  <button class="search-close" onclick="toggleSearch()">✕</button>
+</div>
+
+<div class="section-content active" id="section-today">
+  <div class="today-hero" id="todayHero">
+    <div class="header-row">
+      <div class="day-num" id="todayDayNum">Day · Date</div>
+      <div class="now-badge" id="nowBadge" style="display:none;">CANLI</div>
+    </div>
+    <div class="day-title" id="todayTitle">Loading...</div>
+    <div class="day-sub" id="todaySub"></div>
+    <button class="location-pill" id="locationPill" onclick="openLocationMap()">📍 LOKASYON</button>
+    <div class="day-progress"><div class="fill" id="dayProgressBar" style="width: 0%"></div></div>
+    <div class="day-progress-label">
+      <span id="dayProgressText">İlerleme</span>
+      <span id="dayProgressPct">0%</span>
+    </div>
+  </div>
+
+  <div class="day-selector" id="daySelector"></div>
+  <div class="day-summary" id="daySummary"></div>
+  <div class="drive-bar" id="driveBar" style="display:none;" onclick="openDriveRoute()"></div>
+
+  <div class="filter-chips">
+    <button class="filter-chip active" data-filter="all" onclick="setFilter('all')">Tümü</button>
+    <button class="filter-chip" data-filter="now" onclick="setFilter('now')">Şimdi</button>
+    <button class="filter-chip" data-filter="must" onclick="setFilter('must')">★ Önemli</button>
+    <button class="filter-chip" data-filter="food" onclick="setFilter('food')">🍽 Yemek</button>
+    <button class="filter-chip" data-filter="romantic" onclick="setFilter('romantic')">♥ Romantik</button>
+    <button class="filter-chip" data-filter="undone" onclick="setFilter('undone')">⬜ Yapılmamış</button>
+  </div>
+
+  <div class="activities" id="activities"></div>
+</div>
+
+<div class="section-content" id="section-info">
+  <h3 style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--burgundy);margin:6px 0 8px;font-weight:700;font-family:Playfair Display,Georgia,serif;">🌡 Canlı Hava Durumu</h3>
+  <div class="weather-grid" id="weatherGrid">
+    <div class="w-tile loading"><div class="city">Yükleniyor</div><div class="ic">⏳</div><div class="temp">—</div></div>
+    <div class="w-tile loading"><div class="city">Yükleniyor</div><div class="ic">⏳</div><div class="temp">—</div></div>
+    <div class="w-tile loading"><div class="city">Yükleniyor</div><div class="ic">⏳</div><div class="temp">—</div></div>
+    <div class="w-tile loading"><div class="city">Yükleniyor</div><div class="ic">⏳</div><div class="temp">—</div></div>
+  </div>
+
+  <div class="info-card">
+    <h3>💵 Anlık Döviz</h3>
+    <p><strong>USD/TRY:</strong> <span id="usdTry">Yükleniyor...</span></p>
+    <p style="font-size:11px;color:var(--muted);margin-top:4px;" id="rateUpdated">—</p>
+  </div>
+
+  <div class="info-card">
+    <h3>⏰ Saat Farkları</h3>
+    <p><strong>Şu an New York:</strong> <span id="nyTime">—</span></p>
+    <p><strong>Şu an Türkiye:</strong> <span id="trTime">—</span></p>
+    <p style="margin-top:6px;font-size:11px;color:var(--muted);">NY ile TR farkı: -7 saat (yaz saati)</p>
+  </div>
+
+  <div class="info-card">
+    <h3>🚇 NYC Metro Rehberi</h3>
+    <p><strong>OMNY:</strong> Apple Pay / Google Pay temas - $2.90/yolculuk, haftalık $34 cap.</p>
+    <p><strong>Saatler:</strong> 24/7 ama gece servis azalır.</p>
+    <p><strong>Express vs Local:</strong> Express trenler her durağı atlar — yön kontrol et.</p>
+    <p><strong>Tipler:</strong> Otele döner trene kalkış noktasını ezberle.</p>
+  </div>
+
+  <div class="info-card">
+    <h3>💰 Bahşiş Rehberi</h3>
+    <p><strong>Restoran:</strong> %18-22 · <strong>Bar:</strong> $1-2/içecek</p>
+    <p><strong>Taksi/Uber:</strong> %15-18 · <strong>Otel:</strong> $3-5/gece</p>
+    <p><strong>Concierge:</strong> Özel rezervasyon yaptıysa $10-20</p>
+  </div>
+
+  <div class="info-card">
+    <h3>♥ Romantik İpuçları</h3>
+    <p><strong>En iyi gün batımları:</strong> Top of the Rock (Empire State karşıda görünür)</p>
+    <p><strong>Çift fotoğrafı:</strong> Bow Bridge (Central Park), Brooklyn Bridge DUMBO, Empire State gece</p>
+    <p><strong>Akşam yürüyüşü:</strong> Brooklyn Heights Promenade</p>
+    <p><strong>Sürpriz akşam yemeği:</strong> One If by Land Two If by Sea (NYC'nin en romantik restoranı)</p>
+  </div>
+
+  <div class="info-card">
+    <h3>📱 İletişim & Wi-Fi</h3>
+    <p><strong>eSIM:</strong> Airalo NY 7 gün $10. THY için inişte aktive et.</p>
+    <p><strong>Ücretsiz Wi-Fi:</strong> Tüm metro istasyonları, Bryant Park, Central Park, NYPL.</p>
+    <p><strong>LinkNYC:</strong> Sokak kioskları ücretsiz Wi-Fi + USB şarj.</p>
+  </div>
+
+  <div class="info-card">
+    <h3>🎫 Bilet İpuçları</h3>
+    <p><strong>Sunset slot biletleri:</strong> Top of the Rock, Edge, Empire State — 2-3 hafta önceden timed entry al.</p>
+    <p><strong>9/11 Memorial:</strong> Memorial ücretsiz, Museum $29.</p>
+    <p><strong>Statue of Liberty:</strong> Crown 3 ay önceden, General 1-2 hafta yeter.</p>
+    <p><strong>Broadway:</strong> TKTS booth (Times Square) son dakika %30-50 indirim.</p>
+  </div>
+</div>
+
+<div class="section-content" id="section-emergency">
+  <div class="quick-tiles">
+    <a href="tel:911" class="tile" style="background: var(--burgundy); color: white;">
+      <div class="icon">🚨</div>
+      <div class="val" style="color:white;">911</div>
+      <div class="lbl" style="color:rgba(255,255,255,0.85);">ACİL</div>
+    </a>
+    <a href="tel:+12129490160" class="tile">
+      <div class="icon">🇹🇷</div>
+      <div class="val">Konsolos</div>
+      <div class="lbl">+1 212 949 0160</div>
+    </a>
+    <a href="tel:311" class="tile">
+      <div class="icon">ℹ️</div>
+      <div class="val">311</div>
+      <div class="lbl">NYC Bilgi</div>
+    </a>
+  </div>
+
+  <div class="info-card">
+    <h3>★ Kart Kaybı</h3>
+    <p><strong>Visa:</strong> <a href="tel:+18008472911" style="color:var(--burgundy)">+1 800 847 2911</a></p>
+    <p><strong>Mastercard:</strong> <a href="tel:+18003077309" style="color:var(--burgundy)">+1 800 307 7309</a></p>
+    <p>Türk: Garanti 444 0 333, Yapı Kredi 444 0 444, Akbank 444 25 25</p>
+  </div>
+
+  <div class="info-card">
+    <h3>★ Acil Durumlar</h3>
+    <p><strong>NYPD non-emergency:</strong> 311</p>
+    <p><strong>Mt. Sinai Hospital:</strong> 1 Gustave L Levy Pl (Manhattan)</p>
+    <p><strong>NYU Langone:</strong> 550 1st Ave (East Side)</p>
+  </div>
+
+  <div class="info-card">
+    <h3>★ Bavul / Eşya Kaybı</h3>
+    <p><strong>JFK Lost & Found:</strong> +1 718 244 4225</p>
+    <p><strong>NYC Metro Lost:</strong> 311 ile bağlanır</p>
+    <p><strong>Uber/Lyft kaybı:</strong> app içi "Lost item"</p>
+  </div>
+</div>
+
+<div class="fab-menu" id="fabMenu">
+  <button class="fab-action" onclick="quickAction('today')"><span class="ic">📅</span> Bugün</button>
+  <button class="fab-action" onclick="quickAction('weather')"><span class="ic">🌤</span> Hava</button>
+  <button class="fab-action" onclick="quickAction('maps')"><span class="ic">🗺</span> Harita</button>
+  <button class="fab-action" onclick="quickAction('share')"><span class="ic">📤</span> Paylaş</button>
+</div>
+
+<button class="fab" id="fab" onclick="toggleFab()">♥</button>
+
+<nav class="tab-bar">
+  <button class="tab-btn active" onclick="showSection('today')" id="tab-today"><span class="icon">📅</span><span class="lbl">Bugün</span></button>
+  <button class="tab-btn" onclick="showSection('info')" id="tab-info"><span class="icon">ℹ️</span><span class="lbl">Bilgi</span></button>
+  <button class="tab-btn" onclick="showSection('emergency')" id="tab-emergency"><span class="icon">🆘</span><span class="lbl">Acil</span></button>
+  <a href="checklist.html" class="tab-btn"><span class="icon">✓</span><span class="lbl">Liste</span></a>
+</nav>
+
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TRIP_DATA = {
+  startDate: '2026-05-23',
+  endDate: '2026-05-30',
+  days: [
+    {
+      num: 1, date: '2026-05-23', day: 'Cumartesi',
+      title: 'İstanbul → New York',
+      sub: 'The Journey Begins',
+      location: 'Uçuş',
+      summary: 'IST 18:40 TSİ kalkış, JFK 22:30 (yerel saat) varış. Manhattan otele transfer.',
+      activities: [
+        { time: '15:00', tag: 'HAZ', title: "İstanbul Havalimanı'na varış", desc: 'En geç 3 saat önce. Check-in, pasaport, security. THY iç hat değil dış hat. Boarding pass çıkar.', actions: [['THY', 'https://www.turkishairlines.com']] },
+        { time: '18:40', tag: 'UÇUŞ', title: 'TK 1 · İstanbul → JFK', desc: '11sa 50dk Atlantik. Helal yemek özelinden iste. Powerbank el bagajında. Saat ayarla -7sa.', actions: [['THY', 'https://www.turkishairlines.com']] },
+        { time: '22:30', tag: 'VARIŞ', title: 'JFK pasaport kontrolü', romantic: true, desc: '30-60 dk. B1/B2 vize hazır. ESTA değil — Türk vatandaşı için VİZE GEREKLİ. Çıkışta SIM/eSIM aktive et.' },
+        { time: '23:30', tag: 'TRANSFER', title: 'Manhattan otele transfer', desc: 'Uber/Lyft ~$70-90 (gece, 45-60 dk JFK→Manhattan). Veya AirTrain+Metro ($11) — bavul ağırsa Uber önerilir.', actions: [['UBER', 'https://m.uber.com']] },
+        { time: '00:30', tag: 'OTEL', title: 'Otele check-in', desc: 'Erken check-in mümkünse al, değilse bavul depola. Manhattan otelleri 24h front desk. Hilton Honors üye ol (puan).', actions: [['BOOKING', 'https://www.booking.com/searchresults.html?ss=Manhattan+New+York&group_adults=2&no_rooms=1']] }
+      ]
+    },
+    {
+      num: 2, date: '2026-05-24', day: 'Pazar',
+      title: 'Klasik Midtown · Times Square',
+      sub: 'The Heart of New York',
+      location: 'Midtown',
+      summary: 'Times Square gündüz + Bryant Park + NYPL + Grand Central + Rockefeller + St. Patrick\'s + Top of the Rock sunset.',
+      activities: [
+        { time: '09:00', tag: 'KAHV', title: "Russ & Daughters Café", desc: "Lower East Side ikon. Bagel + lox + cream cheese + capers. $15-20/kişi. Bekleme olabilir, Saturday-Sunday gel.", actions: [['SİTE', 'https://www.russanddaughterscafe.com/'], ['HARİTA', 'https://www.google.com/maps/search/Russ+and+Daughters+Cafe+NYC']] },
+        { time: '10:30', tag: 'İKONİK', title: 'Times Square — gündüz', desc: 'Dijital billboard cehennemi. TKTS kırmızı merdivenler. Disney Store, M&M\'s World. Gündüz daha az kalabalık, fotoğraf daha kolay.' },
+        { time: '11:30', tag: '★ MUST', title: 'Bryant Park', romantic: true, desc: 'Şehrin sakin köşelerinden biri. Yeşil katlanır sandalye, kafeler, café. NYPL\'nin arka bahçesi.' },
+        { time: '12:00', tag: 'KÜLTÜR', title: 'New York Public Library (NYPL)', desc: 'Beaux-Arts ana şube. Rose Reading Room muhteşem. Aslanlar Patience & Fortitude girişte. Ücretsiz.', actions: [['SİTE', 'https://www.nypl.org/locations/schwarzman']] },
+        { time: '13:30', tag: 'YEMEK', title: 'Junior\'s Restaurant', desc: "Brooklyn doğumlu cheesecake efsanesi. Original Junior's @ 1515 Broadway (Times Square). Cheesecake $10/dilim, ana yemek $20-30. Diner atmosferi.", actions: [['SİTE', 'https://www.juniorscheesecake.com/']] },
+        { time: '15:00', tag: '★ MUST', title: 'Grand Central Terminal', desc: '1913\'ten beri. Tavandaki astronomik resim, opal merkez saat, Whispering Gallery. 4 dakikalık konuşma değerinde.' },
+        { time: '16:00', tag: 'KÜLTÜR', title: "St. Patrick's Cathedral", desc: '5th Avenue üzeri. Neogotik. Rockefeller karşısı. Ücretsiz, sessiz girilir. 15 dk yeterli.' },
+        { time: '17:00', tag: 'İKONİK', title: 'Rockefeller Center', desc: '30 Rock binası. Lobby Art Deco. Atlas heykeli. Prometheus altın heykeli. NBC Studios.', actions: [['HARİTA', 'https://maps.google.com/?q=Rockefeller+Center']] },
+        { time: '18:30', tag: '★★★ ZIRVE', title: 'Top of the Rock — Sunset', romantic: true, desc: 'NYC\'nin en iyi gün batımı manzarası. Empire State BAKARSIN (Empire State\'ten Empire State göremezsin). $42-50 timed entry. 2-3 hafta önce al!', actions: [['BİLET', 'https://www.rockefellercenter.com/attractions/top-of-the-rock-observation-deck/']] },
+        { time: '20:00', tag: 'YEMEK', title: 'Akşam yemeği — Theater District', desc: 'Carmine\'s (aile-stil İtalyan), Ellen\'s Stardust Diner (singing waiters), veya Becco. Önceden rezerve et.', actions: [['OPENTABLE', 'https://www.opentable.com/']] },
+        { time: '22:00', tag: '★ MUST', title: 'Times Square — gece', romantic: true, desc: 'Neon manzarası gündüzden bambaşka. Empire State Building Lobby gece izle. TKTS merdivenleri otur, izle.' }
+      ]
+    },
+    {
+      num: 3, date: '2026-05-25', day: 'Pazartesi',
+      title: 'Central Park & Müzeler',
+      sub: 'Green Heart & Masterpieces',
+      location: 'Central Park / UES',
+      summary: 'Central Park yürüyüş + MoMA + Met Museum. Akşam Levain Bakery.',
+      activities: [
+        { time: '08:30', tag: 'KAHV', title: 'Sarabeth\'s veya Maman', desc: 'Central Park yakını. Sarabeth\'s @ 40 Central Park S — pancake klasiği. $20-30/kişi.', actions: [['HARİTA', 'https://maps.google.com/?q=Sarabeths+Central+Park+South']] },
+        { time: '10:00', tag: '★ MUST', title: 'Central Park - The Mall', romantic: true, desc: 'Park\'ın resmi yürüyüş yolu. Anıtsal akçaağaçlar tüneli. 72nd-66th sokak arası. Romantik fotoğraf noktası.' },
+        { time: '10:30', tag: '★★★ ZIRVE', title: 'Bethesda Terrace & Fountain', romantic: true, desc: 'Park\'ın "kalbi". 1864 melekli fıskiye. Üst teras tavanı altın yıldız mozaikleri (recently restored).', actions: [['HARİTA', 'https://maps.google.com/?q=Bethesda+Terrace+Central+Park']] },
+        { time: '11:00', tag: '★★★ ROMANTIK', title: 'Bow Bridge', romantic: true, desc: 'Park\'ın en romantik noktası. Manhattan Bridge ve karşı kıyı manzarası. Film/dizi setlerinde sürekli kullanılır. Çift fotoğraf MUST.', actions: [['HARİTA', 'https://maps.google.com/?q=Bow+Bridge+Central+Park']] },
+        { time: '12:00', tag: 'KÜLTÜR', title: 'Strawberry Fields', desc: 'John Lennon anısına. Dakota Building (Lennon\'un öldüğü yer) hemen yanda.' },
+        { time: '13:00', tag: 'YEMEK', title: "Tavern on the Green veya kafe", desc: 'Park içinde efsanevi restoran. Daha ekonomik: park kafeleri ($15-25) veya Le Pain Quotidien.', actions: [['SİTE', 'https://www.tavernonthegreen.com/']] },
+        { time: '14:30', tag: '★ MUST', title: 'Museum of Modern Art (MoMA)', desc: 'Van Gogh Starry Night, Picasso Demoiselles, Monet Water Lilies. $30. 11 W 53rd St. 2-3 saat yeter.', actions: [['BİLET', 'https://www.moma.org/visit/']] },
+        { time: '17:00', tag: '★ MUST', title: 'Metropolitan Museum (Met)', desc: 'Dünyanın en büyük müzelerinden. Egyptian Wing, European Paintings (Vermeer, Rembrandt), American Wing. $30 yetişkin. 5th Ave 82nd. 2-3 saat.', actions: [['BİLET', 'https://www.metmuseum.org/visit']] },
+        { time: '19:30', tag: '★ MUST', title: 'Levain Bakery — Cookie', desc: 'Dünyanın en iyi cookie\'si iddialı. 6 oz dev chocolate chip walnut. $5/cookie. Sıra olur ama hızlı akar. 167 W 74th veya UES şubesi.', actions: [['SİTE', 'https://levainbakery.com/']] },
+        { time: '20:30', tag: 'YEMEK', title: 'Akşam yemeği — UES', romantic: true, desc: 'Café Boulud, Daniel (Michelin), veya Quality Italian. Çift için romantik UES.', actions: [['OPENTABLE', 'https://www.opentable.com/']] }
+      ]
+    },
+    {
+      num: 4, date: '2026-05-26', day: 'Salı',
+      title: 'Downtown & Liberty',
+      sub: 'Where History Lives',
+      location: 'Lower Manhattan',
+      summary: 'Wall Street + 9/11 + Staten Island Ferry (Statue of Liberty bedava görünür!) + Ellis Island.',
+      activities: [
+        { time: '08:30', tag: 'KAHV', title: "Joe's Pizza (Downtown şube)", desc: 'NY pizza klasiği. $4/dilim. 7 Carmine St veya Times Square şubesi. Hızlı yer, paket al.', actions: [['SİTE', 'https://www.joespizzanyc.com/']] },
+        { time: '09:30', tag: 'İKONİK', title: 'Wall Street & NYSE', desc: '11 Wall Street, NY Stock Exchange. Federal Hall (Washington heykeli). Trinity Church.' },
+        { time: '10:00', tag: '★ MUST', title: 'Charging Bull', desc: '1989 Arturo Di Modica heykeli. Boğa için sıra, Fearless Girl heykeli karşıda. Foto klasiği.', actions: [['HARİTA', 'https://maps.google.com/?q=Charging+Bull+NYC']] },
+        { time: '11:00', tag: '★★★ ZIRVE', title: '9/11 Memorial Plaza', desc: '2,983 kurbanın isimleri Ground Zero üzerinde. North Pool, South Pool. Memorial ücretsiz, Museum $29. Belki en duygusal an.', actions: [['BİLET', 'https://www.911memorial.org/visit']] },
+        { time: '12:30', tag: 'KÜLTÜR', title: 'Oculus & WTC Transportation Hub', desc: 'Santiago Calatrava\'nın "Ground Zero\'da uçan kuş" tasarımı. Mimari mucize. Westfield AVM alt katta.', actions: [['HARİTA', 'https://maps.google.com/?q=Oculus+WTC+NYC']] },
+        { time: '13:30', tag: 'YEMEK', title: "Eataly Downtown veya Stone Street", desc: 'Eataly 4 World Trade Center 3. kat — İtalyan food hall. Stone Street tarihi taş döşeli sokak, açık hava restoranlar.', actions: [['HARİTA', 'https://maps.google.com/?q=Stone+Street+NYC']] },
+        { time: '15:00', tag: '★★★ MUST', title: 'Staten Island Ferry — ÜCRETSİZ', romantic: true, desc: 'Whitehall Terminal → St. George (Staten Island) ÜCRETSİZ! Statue of Liberty görüntüsü ile yan yana 5-7 dk. Manhattan skyline manzarası. Karşı tarafta inip aynı ferry ile geri. Boyle 2 saat sürer toplam.', actions: [['SİTE', 'https://www.siferry.com/']] },
+        { time: '17:30', tag: 'KÜLTÜR', title: 'Battery Park', desc: 'Manhattan\'ın en güney ucu. Castle Clinton, Statue of Liberty\'ye en yakın kıyı.' },
+        { time: '19:00', tag: 'YEMEK', title: "Los Tacos No. 1 (Chelsea Market şube)", desc: 'NY\'nin en iyi taco\'su iddialı. Carne Asada veya Adobada. $5-7/taco. Cash only şubeleri var.', actions: [['SİTE', 'https://lostacos1.com/']] },
+        { time: '21:00', tag: 'GECE', title: 'Brooklyn Bridge — gece manzarası', romantic: true, desc: 'Pier 17 veya South Street Seaport\'tan Brooklyn Bridge ışıkları izle. Yarın yürüyeceksin, bu akşam uzaktan keşfet.' }
+      ]
+    },
+    {
+      num: 5, date: '2026-05-27', day: 'Çarşamba',
+      title: 'Brooklyn · Bridge & DUMBO',
+      sub: 'Across the East River',
+      location: 'Brooklyn',
+      summary: 'Brooklyn Bridge yürüyüş + DUMBO + Brooklyn Heights Promenade + Williamsburg + L\'Industrie Pizzeria.',
+      activities: [
+        { time: '09:00', tag: 'KAHV', title: 'Otel kahvaltısı veya yolda', desc: 'Hafif kahvaltı. Brooklyn Bridge yürüyüşü 30-40 dk, terlersin. Su şişesi getir.' },
+        { time: '10:00', tag: '★★★ MUST', title: 'Brooklyn Bridge yürüyüş', romantic: true, desc: 'Manhattan tarafı (City Hall Park) → Brooklyn (1.6 km, 30-40 dk). Pedestrian yol üst katta. Manhattan skyline tam karşıda. 100 fotoğraf çek!', actions: [['HARİTA', 'https://maps.google.com/?q=Brooklyn+Bridge+pedestrian']] },
+        { time: '11:00', tag: '★★★ ZIRVE', title: 'DUMBO — Washington Street View', romantic: true, desc: 'Down Under Manhattan Bridge Overpass. WASHINGTON STREET ile Empire Stores arası — köprü çerçeveli Empire State manzarası. NY\'nin en çok paylaşılan foto noktası.', actions: [['HARİTA', 'https://maps.google.com/?q=Washington+Street+DUMBO']] },
+        { time: '12:00', tag: 'KEŞ', title: 'DUMBO sokak keşfi', desc: 'Brooklyn Bridge Park, Jane\'s Carousel (1922), Time Out Market, Brooklyn Roasting Company.' },
+        { time: '13:30', tag: '★ MUST', title: "L'Industrie Pizzeria", desc: 'Williamsburg ikon. Burrata pizza dünya çapında. $8-12/dilim. 254 S 2nd St. Sıra olur ama dilim hızlı çıkar.', actions: [['SİTE', 'https://lindustriebk.com/']] },
+        { time: '15:00', tag: '★ MUST', title: 'Brooklyn Heights Promenade', romantic: true, desc: 'East River boyunca yürüyüş. Manhattan skyline tam karşıda. Brooklyn Bridge ve Statue of Liberty aynı kadrajda. 1.6 km.', actions: [['HARİTA', 'https://maps.google.com/?q=Brooklyn+Heights+Promenade']] },
+        { time: '17:00', tag: 'KEŞ', title: 'Williamsburg sokakları', desc: 'Bedford Avenue ana cadde. Hipster boutique, vintage, coffee shop. Domino Park (eski şeker fabrikası) güzel.' },
+        { time: '19:00', tag: 'YEMEK', title: 'Peter Luger Steak House (efsane)', desc: 'Williamsburg\'da 1887\'den beri. NY\'nin en eski steakhouse. Porterhouse for two $130. Cash only! Rezervasyon ŞART (3-4 hafta önce).', actions: [['SİTE', 'https://peterluger.com/']] },
+        { time: '21:30', tag: 'GECE', title: 'Williamsburg gece atmosferi', romantic: true, desc: 'Westlight (William Vale otel çatı bar) — Manhattan skyline manzarası içecek. Veya Output, House of Yes (kulüpler).' }
+      ]
+    },
+    {
+      num: 6, date: '2026-05-28', day: 'Perşembe',
+      title: 'SoHo · Village · Chelsea · Film',
+      sub: 'Where Movies Come Alive',
+      location: 'SoHo / West Village',
+      summary: 'SoHo + Greenwich Village + Washington Square + Friends Apt + Carrie Bradshaw Apt + High Line + Chelsea Market + Joe\'s Pizza + Katz\'s.',
+      activities: [
+        { time: '09:00', tag: 'KAHV', title: "Russ & Daughters veya bagel cafe", desc: '2. ziyaret bayılırsan. Veya Murray\'s Bagels Chelsea\'de.' },
+        { time: '10:00', tag: 'KEŞ', title: 'SoHo sokakları', desc: 'Cast iron mimari, Cobblestone sokaklar (Mercer, Greene). Boutique mağazalar. Apple SoHo. 11:00\'da mağazalar açılır.', actions: [['HARİTA', 'https://maps.google.com/?q=SoHo+Manhattan']] },
+        { time: '11:30', tag: 'KEŞ', title: 'Greenwich Village yürüyüş', desc: 'NYU çevresi, sanatçı mahallesi. Bohemian tarih. Cafe Reggio, Cafe Wha?, Stonewall Inn.' },
+        { time: '12:00', tag: '★ MUST', title: 'Washington Square Park', romantic: true, desc: 'Marble Arch (Paris\'in Arc de Triomphe\'a benzer). Sokak müzisyenleri, chess oyuncuları, NYU öğrencileri. Park atmosferi unutulmaz.' },
+        { time: '13:00', tag: '★★★ FILM', title: 'Friends Apartment Building', romantic: true, desc: '90 Bedford Street (Grove Street köşesi). Friends dizisinin dış çekimleri burada. Foto klasiği. Yakındaki Magnolia Bakery Sex and the City\'den.', actions: [['HARİTA', 'https://maps.google.com/?q=90+Bedford+Street+NYC']] },
+        { time: '13:30', tag: '★★★ FILM', title: 'Carrie Bradshaw Apartment', romantic: true, desc: '64 Perry Street (Bleecker Street\'ten Perry\'ye gir). Sex and the City Carrie\'nin ünlü brownstone. Çift fotoğraf MUST.', actions: [['HARİTA', 'https://maps.google.com/?q=66+Perry+Street+NYC']] },
+        { time: '14:30', tag: 'YEMEK', title: "Joe's Pizza — Bleecker St orijinal", desc: '7 Carmine St (1975\'ten beri). NY\'nin en ikonik pizza dilim. Cheese slice $4. Hızlı, ayakta yenir.', actions: [['SİTE', 'https://www.joespizzanyc.com/']] },
+        { time: '15:30', tag: '★★ MUST', title: 'The High Line', romantic: true, desc: 'Eski demiryolu üzerine kurulu havadan park. 2.3 km, Gansevoort St (Meatpacking) → 34th St. Yürüyerek 45-60 dk. Whitney Museum başlangıçta.', actions: [['SİTE', 'https://www.thehighline.org/']] },
+        { time: '17:00', tag: '★ MUST', title: 'Chelsea Market', desc: 'High Line\'ın altında. Eski Nabisco bisküvi fabrikası. 35+ stand: Lobster Place (lobster roll), Los Tacos No. 1, Doughnuttery.', actions: [['SİTE', 'https://www.chelseamarket.com/']] },
+        { time: '19:00', tag: '★★★ MUST', title: "Katz's Delicatessen", desc: '205 E Houston St (1888\'den beri). When Harry Met Sally meşhur sahnenin yeri. Pastrami on rye sandwich efsanesi ($28). CASH veya kart hepsi olur.', actions: [['SİTE', 'https://www.katzsdelicatessen.com/']] },
+        { time: '21:00', tag: 'GECE', title: 'Lower East Side bar turu', romantic: true, desc: 'Speakeasy: Attaboy, Please Don\'t Tell (PDT), Apothéke. Sokak yok girişler, telefonla rezervasyon.' }
+      ]
+    },
+    {
+      num: 7, date: '2026-05-29', day: 'Cuma',
+      title: 'Ellis Island & Empire State',
+      sub: 'History & Heights',
+      location: 'Lower Manhattan',
+      summary: 'Statue Cruises + Liberty + Ellis Island Müzesi. Akşam Empire State Building (gece) — NYC\'nin son romantik anı.',
+      activities: [
+        { time: '08:30', tag: 'KAHV', title: 'Ess-a-Bagel veya Russ & Daughters', desc: 'Lox + cream cheese bagel klasiği. $12-18.', actions: [['SİTE', 'https://www.ess-a-bagel.com/']] },
+        { time: '09:30', tag: '★ MUST', title: 'Statue Cruises (Battery Park)', desc: 'Statue of Liberty + Ellis Island feribot. Önceden online ŞART (3+ hafta önce, özellikle Crown için). General $24, Crown $34.', actions: [['BİLET', 'https://www.statuecruises.com/']] },
+        { time: '11:00', tag: '★★★ İKONİK', title: 'Statue of Liberty', romantic: true, desc: '1886 Fransa hediyesi. Pedestal\'a çık (içeri girilebilir). Crown\'a çıkış 354 basamak — Crown bileti önceden gerekli. Adada 1-2 saat.', actions: [['SİTE', 'https://www.nps.gov/stli/']] },
+        { time: '13:00', tag: '★ MUST', title: 'Ellis Island Immigration Museum', desc: '12 milyon göçmenin Amerika\'ya geliş kapısı (1892-1954). Wall of Honor, Registry Room. 2 saat yeterli.', actions: [['SİTE', 'https://www.nps.gov/elis/']] },
+        { time: '15:00', tag: 'YEMEK', title: "Fraunces Tavern veya Stone Street", desc: 'Fraunces Tavern (1719) — Washington\'un veda yaptığı yer. Tarihi atmosfer. Veya Stone Street\'te bar/restoran.' },
+        { time: '17:00', tag: 'KEŞ', title: 'Madison Square Park / Eataly Flatiron', desc: 'Flatiron Building (1902) — şehrin en eski gökdelenlerinden. Eataly Flatiron orijinal şube. Shake Shack burada doğdu (orijinal stand).' },
+        { time: '19:00', tag: 'YEMEK', title: 'Akşam yemeği — özel mekan', romantic: true, desc: 'One If by Land, Two If by Sea (NYC\'nin en romantik restoranı, Greenwich Village). Veya The View (Marriott Marquis çatı dönüyor). 1-2 hafta önce rezerve!', actions: [['ONE IF', 'https://www.oneifbyland.com/']] },
+        { time: '21:30', tag: '★★★ ZIRVE', title: 'Empire State Building — gece', romantic: true, desc: 'NY\'nin en ikonik gökdeleni. 86. kat outdoor deck + 102. kat indoor. GECE git — şehir altında milyonlarca ışık. $44-79. Sleepless in Seattle havası.', actions: [['BİLET', 'https://www.esbnyc.com/buy-tickets']] },
+        { time: '23:30', tag: 'GECE', title: 'Times Square son gece', romantic: true, desc: 'Yarın dönüş. Times Square gece son kez. TKTS merdivenleri otur, ışıkları izle. NYC final anı.' }
+      ]
+    },
+    {
+      num: 8, date: '2026-05-30', day: 'Cumartesi',
+      title: 'Brunch & JFK Dönüş',
+      sub: 'Farewell, New York',
+      location: 'NY → IST',
+      summary: 'Son brunch + son alışveriş. Öğleden sonra JFK transferi, akşam İstanbul uçuşu.',
+      activities: [
+        { time: '09:00', tag: 'CHECKOUT', title: 'Otelden checkout', desc: 'Late checkout (12:00) sor — genelde ücretsiz. Bavul bell desk\'e bırak gerekirse.' },
+        { time: '10:00', tag: 'YEMEK', title: 'Son brunch — Balthazar veya Jacks Wife Freda', desc: "Balthazar (SoHo Brasserie) klasik NY brunch. Jacks Wife Freda Akdeniz tarzı. $25-45/kişi.", actions: [['BALTHAZAR', 'https://balthazarny.com/']] },
+        { time: '12:00', tag: 'ALIŞ', title: 'Son alışveriş — 5th Avenue', desc: 'Apple Store Fifth Ave (24/7 açık), Saks, Bergdorf Goodman, Tiffany & Co. Veya SoHo butikleri.' },
+        { time: '14:30', tag: 'CHECK', title: 'Otele dön — bavullar', desc: 'Otelden bavul al, JFK transferine hazır. 2 hafta öncesi gibi hatıralar topla.' },
+        { time: '15:30', tag: 'TRANSFER', title: "JFK'a Uber", desc: 'Manhattan → JFK 45-90 dk (Cumartesi öğleden sonra trafiği). ~$60-80. AirTrain alternatif ($11).', actions: [['UBER', 'https://m.uber.com']] },
+        { time: '17:30', tag: 'CHECK-IN', title: 'JFK Terminal 1 · TK Check-in', desc: 'THY için 3 saat öncesi. Bagaj drop, security, passport check. Duty free son alışveriş şansı.' },
+        { time: '20:30', tag: '★ KALKIŞ', title: 'TK 2 · JFK → İstanbul', desc: '9sa 50dk dönüş. Saat ileri ayar +7sa. Türkiye varış 31 Mayıs sabah 14:30 yerel.' }
+      ]
+    }
+  ]
+};
+
+const LOCATION_COORDS = {
+  'Manhattan': { lat: 40.7831, lon: -73.9712, name: 'Manhattan' },
+  'Midtown': { lat: 40.7549, lon: -73.9840, name: 'Midtown Manhattan' },
+  'Central Park / UES': { lat: 40.7812, lon: -73.9665, name: 'Central Park' },
+  'Lower Manhattan': { lat: 40.7074, lon: -74.0113, name: 'Lower Manhattan' },
+  'Brooklyn': { lat: 40.6892, lon: -73.9903, name: 'Brooklyn' },
+  'SoHo / West Village': { lat: 40.7233, lon: -74.0030, name: 'SoHo NYC' },
+  'Uçuş': { lat: 40.6413, lon: -73.7781, name: 'JFK Airport' },
+  'NY → IST': { lat: 40.6413, lon: -73.7781, name: 'JFK Airport' },
+};
+
+const DRIVE_ROUTES = {
+  1: { from: 'JFK', to: 'Manhattan', km: 25, time: '~45-60dk gece' },
+  8: { from: 'Manhattan', to: 'JFK', km: 25, time: '~60-90dk Cmt' },
+};
+
+let state = {
+  selectedDay: null,
+  completed: JSON.parse(localStorage.getItem('cananCompletedActivities') || '{}'),
+  notes: JSON.parse(localStorage.getItem('cananActivityNotes') || '{}'),
+  currentSection: 'today',
+  filter: 'all',
+  searchQuery: '',
+  theme: localStorage.getItem('cananTheme') || 'light',
+  weather: JSON.parse(localStorage.getItem('cananWeather') || 'null'),
+  rate: JSON.parse(localStorage.getItem('cananRate') || 'null'),
+};
+
+function getTodayIndex() {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const start = new Date('2026-05-23');
+  const diff = Math.floor((today - start) / (1000*60*60*24));
+  if (diff < 0) return 0;
+  if (diff >= 8) return 7;
+  return diff;
+}
+
+function getRealTodayIndex() {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const start = new Date('2026-05-23');
+  const diff = Math.floor((today - start) / (1000*60*60*24));
+  if (diff < 0 || diff >= 8) return -1;
+  return diff;
+}
+
+function isTrafficDay(dayIdx) { return dayIdx === getRealTodayIndex(); }
+
+function getCurrentActivityIdx(day, dayIdx) {
+  if (!isTrafficDay(dayIdx)) return -1;
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  let cur = -1;
+  for (let i = 0; i < day.activities.length; i++) {
+    const [h, m] = day.activities[i].time.split(':').map(Number);
+    if (h * 60 + m <= nowMin) cur = i;
+    else break;
+  }
+  return cur;
+}
+
+function isPastActivity(day, actIdx, dayIdx) {
+  if (dayIdx < getRealTodayIndex()) return true;
+  if (dayIdx > getRealTodayIndex()) return false;
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  if (actIdx + 1 < day.activities.length) {
+    const [nh, nm] = day.activities[actIdx + 1].time.split(':').map(Number);
+    return (nh * 60 + nm) <= nowMin;
+  }
+  return false;
+}
+
+function formatDate(dateStr) {
+  return new Date(dateStr).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+}
+
+function getDayThemeClass(day) {
+  // Önce gün numarasına göre özel temalar
+  if (day.num === 7) return 'romantic-day';
+  if (day.num === 1 || day.num === 8) return ''; // Uçuş günleri default
+  
+  // Sonra lokasyona göre
+  const l = day.location.toLowerCase();
+  if (l.includes('midtown')) return 'midtown-day';
+  if (l.includes('central')) return 'central-day';
+  if (l.includes('lower')) return 'downtown-day';
+  if (l.includes('brooklyn')) return 'brooklyn-day';
+  if (l.includes('soho') || l.includes('village')) return 'soho-day';
+  return '';
+}
+
+function getMapsSearchUrl(query) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+function isFood(act) {
+  const t = (act.title + ' ' + act.desc + ' ' + (act.tag||'')).toLowerCase();
+  return /kahvalt|öğle|akşam|yemek|restoran|restaurant|cafe|café|pizza|bagel|brunch|buffet|deli|cookie|bakery/.test(t);
+}
+
+function isMust(act) {
+  const t = (act.tag || '').toLowerCase();
+  return t.includes('must') || t.includes('zirve') || t.includes('★') || t.includes('film') || t.includes('ikonik');
+}
+
+function isRomantic(act) {
+  return act.romantic === true;
+}
+
+function haptic(ms = 10) { if ('vibrate' in navigator) navigator.vibrate(ms); }
+
+function renderDaySelector() {
+  const container = document.getElementById('daySelector');
+  container.innerHTML = TRIP_DATA.days.map((d, i) => {
+    let cls = 'day-pill';
+    if (i === state.selectedDay) cls += ' today';
+    if (d.num === 3 || d.num === 7) cls += ' special romantic';
+    return `<button class="${cls}" onclick="selectDay(${i})">
+      <span class="day-pill-num">DAY ${d.num}</span>
+      <span class="day-pill-date">${formatDate(d.date)}</span>
+    </button>`;
+  }).join('');
+}
+
+function renderDay(idx) {
+  const day = TRIP_DATA.days[idx];
+  state.selectedDay = idx;
+  const hero = document.getElementById('todayHero');
+  hero.className = 'today-hero ' + getDayThemeClass(day);
+  document.getElementById('todayDayNum').textContent = `DAY ${day.num} · ${formatDate(day.date)} · ${day.day.toUpperCase()}`;
+  document.getElementById('todayTitle').textContent = day.title;
+  document.getElementById('todaySub').textContent = day.sub;
+  document.getElementById('daySummary').textContent = day.summary;
+  document.getElementById('locationPill').innerHTML = '📍 ' + day.location.toUpperCase();
+  document.getElementById('nowBadge').style.display = isTrafficDay(idx) ? 'inline-block' : 'none';
+
+  const driveBar = document.getElementById('driveBar');
+  if (DRIVE_ROUTES[day.num]) {
+    const r = DRIVE_ROUTES[day.num];
+    driveBar.style.display = 'flex';
+    driveBar.innerHTML = `✈ ${r.from} → ${r.to} · ${r.km}km · ${r.time}`;
+  } else {
+    driveBar.style.display = 'none';
+  }
+
+  const realToday = getRealTodayIndex();
+  let progressPct = 0, progressText = '';
+  if (idx < realToday) {
+    progressPct = 100;
+    progressText = 'Tamamlandı';
+  } else if (idx > realToday) {
+    progressPct = 0;
+    progressText = 'Henüz başlamadı';
+  } else {
+    let done = 0;
+    day.activities.forEach((a, ai) => {
+      if (state.completed[`d${idx}a${ai}`]) done++;
+    });
+    progressPct = day.activities.length > 0 ? (done / day.activities.length) * 100 : 0;
+    progressText = `${done} / ${day.activities.length} tamamlandı`;
+  }
+  document.getElementById('dayProgressBar').style.width = progressPct + '%';
+  document.getElementById('dayProgressText').textContent = progressText;
+  document.getElementById('dayProgressPct').textContent = Math.round(progressPct) + '%';
+
+  renderActivities();
+  renderDaySelector();
+
+  setTimeout(() => {
+    const active = document.querySelector('.day-pill.today');
+    const sel = document.getElementById('daySelector');
+    if (active && sel) {
+      sel.scrollTo({ left: active.offsetLeft - sel.clientWidth/2 + active.offsetWidth/2, behavior: 'smooth' });
+    }
+  }, 50);
+}
+
+function renderActivities() {
+  const idx = state.selectedDay;
+  const day = TRIP_DATA.days[idx];
+  const curIdx = getCurrentActivityIdx(day, idx);
+  const acts = document.getElementById('activities');
+  const q = state.searchQuery.toLowerCase().trim();
+
+  let visibleCount = 0;
+  let html = day.activities.map((a, ai) => {
+    const key = `d${idx}a${ai}`;
+    const done = !!state.completed[key];
+    const past = isPastActivity(day, ai, idx);
+    const isCur = ai === curIdx;
+
+    let visible = true;
+    if (state.filter === 'now' && !isCur) visible = false;
+    if (state.filter === 'must' && !isMust(a)) visible = false;
+    if (state.filter === 'food' && !isFood(a)) visible = false;
+    if (state.filter === 'romantic' && !isRomantic(a)) visible = false;
+    if (state.filter === 'undone' && done) visible = false;
+    if (q) {
+      const s = (a.title + ' ' + a.desc + ' ' + (a.tag||'')).toLowerCase();
+      if (!s.includes(q)) visible = false;
+    }
+    if (visible) visibleCount++;
+
+    const cls = ['activity-card', done ? 'done' : '', past && !done ? 'past' : '', isCur ? 'now' : '', isRomantic(a) ? 'romantic' : '', !visible ? 'hidden' : ''].filter(Boolean).join(' ');
+    const tag = (a.tag || '').toLowerCase();
+    const baseActions = (a.actions || []).map(([label, url]) => 
+      `<a href="${url}" target="_blank" class="act-btn" onclick="event.stopPropagation()">${label}</a>`
+    ).join('');
+    const mapsBtn = `<a href="${getMapsSearchUrl(a.title + ' ' + day.location)}" target="_blank" class="act-btn maps" onclick="event.stopPropagation()">🗺 Yol</a>`;
+    const shortDesc = a.desc.length > 140 ? a.desc.substring(0, 140) + '...' : a.desc;
+
+    return `<div class="${cls}" data-key="${key}" onclick="openActivityDetail(${idx}, ${ai})">
+      <div class="check" onclick="toggleDone('${key}', event)"></div>
+      <div class="activity-header">
+        <span class="activity-time">${a.time}</span>
+        <span class="activity-tag ${tag.replace(/\s/g,'')}">${a.tag}</span>
+      </div>
+      <div class="activity-title">${a.title}</div>
+      <div class="activity-desc">${shortDesc}</div>
+      <div class="activity-actions">${mapsBtn}${baseActions}</div>
+    </div>`;
+  }).join('');
+
+  if (visibleCount === 0) {
+    html = `<div class="no-results"><div class="ic">🔍</div><p>Eşleşen aktivite yok.</p></div>`;
+  }
+  acts.innerHTML = html;
+}
+
+function selectDay(idx) { haptic(8); renderDay(idx); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+function toggleDone(key, e) {
+  e.stopPropagation();
+  haptic(10);
+  state.completed[key] = !state.completed[key];
+  localStorage.setItem('cananCompletedActivities', JSON.stringify(state.completed));
+  renderDay(state.selectedDay);
+}
+function showSection(section) {
+  haptic(8);
+  state.currentSection = section;
+  document.querySelectorAll('.section-content').forEach(s => s.classList.remove('active'));
+  document.getElementById(`section-${section}`).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+  const tab = document.getElementById(`tab-${section}`);
+  if (tab) tab.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (section === 'info' && !state.weather) {
+    loadWeather();
+    loadRate();
+  }
+}
+function setFilter(filter) {
+  haptic(8);
+  state.filter = filter;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === filter));
+  renderActivities();
+}
+function toggleSearch() {
+  const bar = document.getElementById('searchBar');
+  bar.classList.toggle('active');
+  if (bar.classList.contains('active')) {
+    setTimeout(() => document.getElementById('searchInput').focus(), 100);
+  } else {
+    state.searchQuery = '';
+    document.getElementById('searchInput').value = '';
+    renderActivities();
+  }
+}
+document.getElementById('searchInput').addEventListener('input', e => {
+  state.searchQuery = e.target.value;
+  const q = state.searchQuery.toLowerCase().trim();
+  
+  // Akıllı arama: mevcut günde sonuç yoksa, sonucun olduğu ilk güne otomatik geç
+  if (q.length >= 2) {
+    const day = TRIP_DATA.days[state.selectedDay];
+    const hasMatchInCurrent = day.activities.some(a => 
+      (a.title + ' ' + a.desc + ' ' + (a.tag||'')).toLowerCase().includes(q)
+    );
+    
+    if (!hasMatchInCurrent) {
+      // Diğer günlerde bul
+      for (let i = 0; i < TRIP_DATA.days.length; i++) {
+        if (i === state.selectedDay) continue;
+        const d = TRIP_DATA.days[i];
+        const has = d.activities.some(a => 
+          (a.title + ' ' + a.desc + ' ' + (a.tag||'')).toLowerCase().includes(q)
+        );
+        if (has) {
+          state.selectedDay = i;
+          renderDay(i);
+          showToast(`🔍 Day ${d.num}'de bulundu`);
+          return;
+        }
+      }
+    }
+  }
+  renderActivities();
+});
+function goToToday() {
+  haptic(12);
+  const realToday = getRealTodayIndex();
+  if (realToday >= 0) { selectDay(realToday); showToast('📅 Bugüne döndün'); }
+  else { selectDay(0); showToast('🗓 Seyahat henüz başlamadı'); }
+}
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', state.theme);
+  document.getElementById('themeBtn').textContent = state.theme === 'dark' ? '☀️' : '🌙';
+}
+function toggleTheme() {
+  haptic(12);
+  state.theme = state.theme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('cananTheme', state.theme);
+  applyTheme();
+  showToast(state.theme === 'dark' ? '🌙 Karanlık mod' : '☀️ Aydınlık mod');
+}
+function toggleFab() {
+  haptic(12);
+  document.getElementById('fab').classList.toggle('expanded');
+  document.getElementById('fabMenu').classList.toggle('show');
+}
+function quickAction(action) {
+  toggleFab();
+  if (action === 'today') goToToday();
+  else if (action === 'weather') showSection('info');
+  else if (action === 'maps') openLocationMap();
+  else if (action === 'share') shareTrip();
+}
+function openLocationMap() {
+  const day = TRIP_DATA.days[state.selectedDay];
+  const coords = LOCATION_COORDS[day.location];
+  window.open(getMapsSearchUrl(coords ? coords.name : day.location), '_blank');
+}
+function openDriveRoute() {
+  haptic(10);
+  const day = TRIP_DATA.days[state.selectedDay];
+  const route = DRIVE_ROUTES[day.num];
+  if (!route) return;
+  window.open(`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(route.from)}&destination=${encodeURIComponent(route.to)}`, '_blank');
+}
+function shareTrip() {
+  if (navigator.share) {
+    navigator.share({
+      title: 'CANAN NY · Klasik New York',
+      text: '♥ 8 günlük New York seyahat programımız: Klasik Manhattan + Brooklyn',
+      url: window.location.href
+    }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(window.location.href);
+    showToast('🔗 Link kopyalandı');
+  }
+}
+function openActivityDetail(dayIdx, actIdx) {
+  haptic(8);
+  const day = TRIP_DATA.days[dayIdx];
+  const act = day.activities[actIdx];
+  const key = `d${dayIdx}a${actIdx}`;
+  const actionBtns = (act.actions || []).map(([label, url]) =>
+    `<a href="${url}" target="_blank" class="modal-action outline">${label}</a>`
+  ).join('');
+  const note = state.notes[key] || '';
+  const romanticBadge = act.romantic ? '<span style="background:var(--rose);color:white;padding:2px 6px;border-radius:3px;font-size:10px;letter-spacing:1px;font-weight:700;margin-left:6px;">♥ ROMANTİK</span>' : '';
+
+  document.getElementById('modalBody').innerHTML = `
+    <h2>${act.title}${romanticBadge}</h2>
+    <div class="meta-row">
+      <span class="time">${act.time}</span>
+      <span class="tag">${act.tag}</span>
+      <span style="font-size:11px;color:var(--muted);">📍 ${day.location}</span>
+    </div>
+    <p>${act.desc}</p>
+    <div class="actions">
+      <a href="${getMapsSearchUrl(act.title + ' ' + day.location)}" target="_blank" class="modal-action maps">🗺 Haritada Aç</a>
+      <button class="modal-action" onclick="toggleDoneFromModal('${key}')">${state.completed[key] ? '↺ İptal' : '✓ Tamamlandı'}</button>
+    </div>
+    ${actionBtns ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">' + actionBtns + '</div>' : ''}
+    <div class="note-area">
+      <label>♥ Notum / Anım</label>
+      <textarea id="modalNote" placeholder="Bu an için not yaz... fotoğraf ipucu, hatıra, harcanan tutar...">${note}</textarea>
+    </div>
+  `;
+  document.getElementById('modalBackdrop').classList.add('show');
+  document.getElementById('modalNote').addEventListener('input', e => {
+    state.notes[key] = e.target.value;
+    localStorage.setItem('cananActivityNotes', JSON.stringify(state.notes));
+  });
+}
+function toggleDoneFromModal(key) {
+  haptic(10);
+  state.completed[key] = !state.completed[key];
+  localStorage.setItem('cananCompletedActivities', JSON.stringify(state.completed));
+  renderDay(state.selectedDay);
+  closeModal();
+  showToast(state.completed[key] ? '✓ Tamamlandı' : '↺ Geri alındı');
+}
+function closeModal(event) {
+  if (event && event.target.id !== 'modalBackdrop') return;
+  document.getElementById('modalBackdrop').classList.remove('show');
+}
+
+async function loadWeather() {
+  const cities = [
+    { name: 'Manhattan', lat: 40.7831, lon: -73.9712, ic: '🏙' },
+    { name: 'Brooklyn', lat: 40.6892, lon: -73.9903, ic: '🌉' },
+    { name: 'Central Park', lat: 40.7812, lon: -73.9665, ic: '🌳' },
+    { name: 'Türkiye', lat: 39.92, lon: 32.85, ic: '🇹🇷' },
+  ];
+  try {
+    const results = await Promise.all(cities.map(c =>
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1`)
+        .then(r => r.json())
+        .then(d => ({ city: c, data: d }))
+        .catch(() => ({ city: c, data: null }))
+    ));
+    state.weather = {
+      ts: Date.now(),
+      items: results.map(r => ({
+        city: r.city.name,
+        ic: r.city.ic,
+        current: r.data?.current?.temperature_2m,
+        max: r.data?.daily?.temperature_2m_max?.[0],
+        min: r.data?.daily?.temperature_2m_min?.[0],
+        code: r.data?.current?.weather_code,
+      }))
+    };
+    localStorage.setItem('cananWeather', JSON.stringify(state.weather));
+    renderWeather();
+  } catch(e) {}
+}
+function weatherDesc(code) {
+  if (code === undefined || code === null) return '';
+  if (code === 0) return 'Açık';
+  if (code <= 3) return 'Parçalı';
+  if (code <= 48) return 'Sisli';
+  if (code <= 67) return 'Yağmurlu';
+  if (code <= 82) return 'Sağanak';
+  return 'Fırtınalı';
+}
+function renderWeather() {
+  if (!state.weather || !state.weather.items) return;
+  const grid = document.getElementById('weatherGrid');
+  grid.innerHTML = state.weather.items.map(w => `
+    <div class="w-tile">
+      <div class="city">${w.city}</div>
+      <div class="ic">${w.ic}</div>
+      <div class="temp">${w.current != null ? Math.round(w.current) + '°' : '—'}<span class="lo"> / ${w.min != null ? Math.round(w.min) : '—'}°</span></div>
+      <div class="desc">${weatherDesc(w.code)}</div>
+    </div>
+  `).join('');
+}
+async function loadRate() {
+  try {
+    const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+    const data = await res.json();
+    state.rate = { try: data.rates.TRY, ts: Date.now() };
+    localStorage.setItem('cananRate', JSON.stringify(state.rate));
+    renderRate();
+  } catch(e) {
+    document.getElementById('usdTry').textContent = '~33.50 (offline)';
+  }
+}
+function renderRate() {
+  if (!state.rate) return;
+  document.getElementById('usdTry').textContent = '₺' + state.rate.try.toFixed(2);
+  const mins = Math.floor((Date.now() - state.rate.ts) / 60000);
+  document.getElementById('rateUpdated').textContent = mins < 1 ? 'Az önce güncellendi' : `${mins} dakika önce`;
+}
+function updateTimes() {
+  const opts = { hour: '2-digit', minute: '2-digit', hour12: false };
+  const nyT = new Date().toLocaleTimeString('tr-TR', { ...opts, timeZone: 'America/New_York' });
+  const trT = new Date().toLocaleTimeString('tr-TR', { ...opts, timeZone: 'Europe/Istanbul' });
+  const e = id => document.getElementById(id);
+  if (e('nyTime')) e('nyTime').textContent = nyT;
+  if (e('trTime')) e('trTime').textContent = trT;
+}
+function updateCountdown() {
+  const dep = new Date('2026-05-23T18:40:00+03:00');
+  const now = new Date();
+  const diff = dep - now;
+  const el = document.getElementById('hdrCountdown');
+  if (diff <= 0) { el.textContent = '♥'; return; }
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  el.textContent = `${days}G ${hours}sa`;
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+let touchStartY = 0, pulling = false;
+const ptr = document.getElementById('ptr');
+document.addEventListener('touchstart', e => {
+  if (window.scrollY === 0) { touchStartY = e.touches[0].clientY; pulling = true; }
+}, { passive: true });
+document.addEventListener('touchmove', e => {
+  if (!pulling) return;
+  const diff = e.touches[0].clientY - touchStartY;
+  if (diff > 50 && window.scrollY === 0) ptr.classList.add('active');
+}, { passive: true });
+document.addEventListener('touchend', () => {
+  if (ptr.classList.contains('active')) {
+    haptic(20);
+    loadWeather();
+    loadRate();
+    updateTimes();
+    setTimeout(() => ptr.classList.remove('active'), 1200);
+  }
+  pulling = false;
+});
+document.addEventListener('click', e => {
+  const fab = document.getElementById('fab');
+  if (!e.target.closest('#fab') && !e.target.closest('#fabMenu') && fab.classList.contains('expanded')) {
+    fab.classList.remove('expanded');
+    document.getElementById('fabMenu').classList.remove('show');
+  }
+});
+
+applyTheme();
+state.selectedDay = getTodayIndex();
+renderDay(state.selectedDay);
+updateCountdown();
+updateTimes();
+setInterval(updateCountdown, 60000);
+setInterval(updateTimes, 30000);
+setInterval(() => { if (isTrafficDay(state.selectedDay)) renderActivities(); }, 60000);
+
+if (!state.weather || (Date.now() - (state.weather.ts || 0)) > 3600000) loadWeather();
+else renderWeather();
+if (!state.rate || (Date.now() - state.rate.ts) > 3600000) loadRate();
+else renderRate();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js').catch(() => {});
+}
+</script>
+</body>
+</html>
