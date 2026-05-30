@@ -4,34 +4,38 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#4f46e5">
-<title>Ortak Program · Projeler & Görevler</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ortak Program">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Ortak Program · Proje & Görev Yönetimi</title>
 <style>
   :root {
     --bg: #f4f5fb; --fg: #1c2030; --muted: #6b7280; --card: #ffffff; --line: #e6e8f0;
     --brand: #4f46e5; --brand-soft: #eef0ff; --accent: #10b981; --accent-soft: #e7f8f1;
-    --warn: #f59e0b; --danger: #ef4444; --purple: #8b5cf6; --purple-soft: #f1ecfe;
+    --warn: #f59e0b; --warn-soft: #fef3da; --danger: #ef4444; --danger-soft: #fde8e8;
+    --purple: #8b5cf6; --purple-soft: #f1ecfe; --info: #0ea5e9; --info-soft: #e3f4fd;
     --shadow: 0 4px 18px rgba(40, 44, 90, 0.08); --radius: 16px;
   }
   [data-theme="dark"] {
     --bg: #0e1018; --fg: #e8eaf2; --muted: #9aa0b4; --card: #181b27; --line: #262a3a;
     --brand: #7c83ff; --brand-soft: #20233a; --accent: #2dd4a7; --accent-soft: #16291f;
-    --purple: #a78bfa; --purple-soft: #241f3a; --shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+    --warn: #fbbf24; --warn-soft: #34280f; --danger: #f87171; --danger-soft: #3a1d1d;
+    --purple: #a78bfa; --purple-soft: #241f3a; --info: #38bdf8; --info-soft: #102733;
+    --shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html { -webkit-text-size-adjust: 100%; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg); color: var(--fg); line-height: 1.45; font-size: 15px;
-    padding-bottom: 96px; transition: background .25s, color .25s;
-  }
-  .wrap { max-width: 680px; margin: 0 auto; padding: 0 14px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--fg); line-height: 1.45; font-size: 15px; padding-bottom: 96px; transition: background .25s, color .25s; }
+  .wrap { max-width: 700px; margin: 0 auto; padding: 0 14px; }
 
-  header { background: linear-gradient(135deg, var(--brand), #6d28d9); color: #fff; padding: 18px 0 22px; border-radius: 0 0 24px 24px; }
+  header { background: linear-gradient(135deg, var(--brand), #6d28d9); color: #fff; padding: max(14px, env(safe-area-inset-top)) 0 22px; border-radius: 0 0 24px 24px; }
   header .wrap { display: flex; flex-direction: column; gap: 14px; }
-  .top-row { display: flex; align-items: center; gap: 12px; }
-  .prog-title { font-size: 19px; font-weight: 700; flex: 1; background: transparent; border: none; color: #fff; outline: none; border-bottom: 1px dashed rgba(255,255,255,.35); padding: 2px 0; }
+  .top-row { display: flex; align-items: center; gap: 8px; }
+  .prog-title { font-size: 19px; font-weight: 700; flex: 1; background: transparent; border: none; color: #fff; outline: none; border-bottom: 1px dashed rgba(255,255,255,.35); padding: 2px 0; min-width: 0; }
   .prog-title::placeholder { color: rgba(255,255,255,.6); }
-  .icon-btn { width: 38px; height: 38px; border-radius: 12px; border: none; cursor: pointer; background: rgba(255,255,255,.16); color: #fff; font-size: 17px; display: grid; place-items: center; }
+  .icon-btn { width: 38px; height: 38px; border-radius: 12px; border: none; cursor: pointer; background: rgba(255,255,255,.16); color: #fff; font-size: 17px; display: grid; place-items: center; flex-shrink: 0; }
   .icon-btn:active { transform: scale(.93); }
   .header-stats { display: flex; align-items: center; gap: 16px; }
   .ring { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
@@ -44,12 +48,17 @@
   .members::-webkit-scrollbar { display: none; }
   .member-chip { flex-shrink: 0; display: flex; align-items: center; gap: 7px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px 6px 6px; cursor: pointer; box-shadow: var(--shadow); white-space: nowrap; }
   .member-chip.me { border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-soft); }
-  .avatar { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 12px; }
+  .avatar { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 12px; flex-shrink: 0; }
   .member-chip .mname { font-weight: 600; font-size: 13px; }
   .member-chip .mcount { font-size: 11px; color: var(--muted); }
   .add-member { flex-shrink: 0; border: 1px dashed var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: 7px 14px; cursor: pointer; font-size: 13px; font-weight: 600; }
 
-  .filters { display: flex; gap: 8px; overflow-x: auto; padding: 12px 0 4px; scrollbar-width: none; }
+  .toolbar { display: flex; gap: 8px; align-items: center; padding: 12px 0 4px; }
+  .search { flex: 1; display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; }
+  .search input { border: none; outline: none; background: transparent; color: var(--fg); font-size: 14px; width: 100%; font-family: inherit; }
+  .filter-toggle { position: relative; border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 9px 12px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--fg); white-space: nowrap; }
+  .filter-toggle .dot { position: absolute; top: -5px; right: -5px; background: var(--brand); color: #fff; border-radius: 999px; font-size: 10px; padding: 1px 6px; font-weight: 700; }
+  .filters { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0 4px; scrollbar-width: none; }
   .filters::-webkit-scrollbar { display: none; }
   .filter-btn { flex-shrink: 0; border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 999px; padding: 7px 14px; cursor: pointer; font-size: 13px; font-weight: 600; }
   .filter-btn.active { background: var(--brand); color: #fff; border-color: var(--brand); }
@@ -58,7 +67,6 @@
   .sec-head h3 { font-size: 16px; flex: 1; }
   .sec-head .add-btn { border: 1px solid var(--brand); background: var(--brand-soft); color: var(--brand); border-radius: 999px; padding: 6px 13px; cursor: pointer; font-size: 13px; font-weight: 700; }
 
-  /* Project cards */
   .proj-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 12px; overflow: hidden; }
   .proj-head { display: flex; align-items: center; gap: 10px; padding: 13px 14px; cursor: pointer; }
   .caret { transition: transform .2s; font-size: 13px; color: var(--muted); flex-shrink: 0; }
@@ -68,60 +76,65 @@
   .proj-name { font-weight: 700; word-break: break-word; }
   .proj-sub { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
   .mini-bar { flex: 1; height: 5px; background: var(--line); border-radius: 99px; overflow: hidden; max-width: 120px; }
-  .mini-bar > span { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+  .mini-bar > span { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s; }
   .proj-count { font-size: 11px; color: var(--muted); white-space: nowrap; }
-  .badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .4px; }
+  .badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
   .badge.new { background: var(--brand-soft); color: var(--brand); }
   .badge.exist { background: var(--accent-soft); color: var(--accent); }
   .proj-body { border-top: 1px solid var(--line); padding: 6px 12px 12px; }
   .add-task-row { width: 100%; border: 1px dashed var(--line); background: transparent; color: var(--muted); border-radius: 12px; padding: 10px; cursor: pointer; font-size: 13px; font-weight: 600; margin-top: 8px; }
 
-  /* Task rows */
   .tasks { display: flex; flex-direction: column; gap: 9px; }
   .proj-body .tasks { gap: 8px; }
   .task { background: var(--card); border: 1px solid var(--line); border-radius: 13px; padding: 11px 13px; display: flex; gap: 11px; align-items: flex-start; }
   .proj-body .task { background: var(--bg); }
   .task.done { opacity: .6; }
+  .task.blocked { border-left: 3px solid var(--danger); }
+  .task.progress { border-left: 3px solid var(--info); }
   .check { width: 24px; height: 24px; border-radius: 8px; border: 2px solid var(--line); flex-shrink: 0; cursor: pointer; display: grid; place-items: center; margin-top: 1px; transition: .15s; background: transparent; color: #fff; font-size: 13px; }
   .check.on { background: var(--accent); border-color: var(--accent); }
   .check.recur { border-radius: 50%; }
   .task-body { flex: 1; min-width: 0; }
   .task-title { font-weight: 600; word-break: break-word; }
   .task.done .task-title { text-decoration: line-through; }
-  .task-note { font-size: 13px; color: var(--muted); margin-top: 2px; word-break: break-word; }
+  .task-note { font-size: 13px; color: var(--muted); margin-top: 2px; word-break: break-word; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .task-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
   .tag { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; }
   .tag.assignee { background: var(--brand-soft); color: var(--brand); }
   .tag.due { background: var(--accent-soft); color: var(--accent); }
-  .tag.due.overdue { background: #fde8e8; color: var(--danger); }
-  [data-theme="dark"] .tag.due.overdue { background: #3a1d1d; }
-  .tag.prio-high { background: #fde8e8; color: var(--danger); }
-  .tag.prio-med { background: #fef3da; color: var(--warn); }
-  [data-theme="dark"] .tag.prio-high { background: #3a1d1d; }
-  [data-theme="dark"] .tag.prio-med { background: #34280f; }
+  .tag.due.overdue { background: var(--danger-soft); color: var(--danger); }
+  .tag.prio-high { background: var(--danger-soft); color: var(--danger); }
+  .tag.prio-med { background: var(--warn-soft); color: var(--warn); }
   .tag.freq { background: var(--purple-soft); color: var(--purple); }
   .tag.done-by { background: var(--accent-soft); color: var(--accent); }
+  .tag.st-progress { background: var(--info-soft); color: var(--info); }
+  .tag.st-blocked { background: var(--danger-soft); color: var(--danger); }
+  .tag.sub { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+  .tag.cmt { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
   .empty { text-align: center; color: var(--muted); padding: 38px 20px; }
   .empty .big { font-size: 36px; margin-bottom: 8px; }
   .empty-sm { color: var(--muted); font-size: 13px; padding: 10px 4px; }
 
-  .fab { position: fixed; bottom: 22px; right: max(16px, calc((100vw - 680px)/2 + 16px)); width: 58px; height: 58px; border-radius: 18px; border: none; cursor: pointer; background: var(--brand); color: #fff; font-size: 28px; box-shadow: 0 8px 24px rgba(79,70,229,.4); display: grid; place-items: center; z-index: 40; }
+  .fab { position: fixed; bottom: 22px; right: max(16px, calc((100vw - 700px)/2 + 16px)); width: 58px; height: 58px; border-radius: 18px; border: none; cursor: pointer; background: var(--brand); color: #fff; font-size: 28px; box-shadow: 0 8px 24px rgba(79,70,229,.4); display: grid; place-items: center; z-index: 40; }
   .fab:active { transform: scale(.92); }
 
   .backdrop { position: fixed; inset: 0; background: rgba(10,12,22,.5); backdrop-filter: blur(3px); display: none; align-items: flex-end; justify-content: center; z-index: 60; }
   .backdrop.open { display: flex; }
-  .sheet { background: var(--card); width: 100%; max-width: 680px; border-radius: 22px 22px 0 0; padding: 20px 18px calc(20px + env(safe-area-inset-bottom)); max-height: 92vh; overflow-y: auto; animation: up .25s ease; }
+  .sheet { background: var(--card); width: 100%; max-width: 700px; border-radius: 22px 22px 0 0; padding: 20px 18px calc(20px + env(safe-area-inset-bottom)); max-height: 92vh; overflow-y: auto; animation: up .25s ease; }
   @keyframes up { from { transform: translateY(40px); opacity: 0; } }
-  .sheet h2 { font-size: 17px; margin-bottom: 6px; }
+  .sheet h2 { font-size: 17px; margin-bottom: 6px; word-break: break-word; }
   .sheet .hint { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
   .field { margin-bottom: 14px; }
   .field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
   .field input, .field textarea, .field select { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--fg); font-size: 15px; font-family: inherit; outline: none; }
   .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--brand); }
   .field textarea { resize: vertical; min-height: 60px; }
-  .seg { display: flex; gap: 8px; }
-  .seg button { flex: 1; padding: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 12px; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .seg { display: flex; gap: 8px; flex-wrap: wrap; }
+  .seg button { flex: 1; min-width: 70px; padding: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 12px; cursor: pointer; font-size: 13px; font-weight: 600; }
   .seg button.sel { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .seg.status button.sel[data-s="progress"] { background: var(--info); border-color: var(--info); }
+  .seg.status button.sel[data-s="blocked"] { background: var(--danger); border-color: var(--danger); }
+  .seg.status button.sel[data-s="done"] { background: var(--accent); border-color: var(--accent); }
   .btn-row { display: flex; gap: 10px; margin-top: 18px; }
   .btn { flex: 1; padding: 13px; border: none; border-radius: 13px; cursor: pointer; font-size: 15px; font-weight: 700; }
   .btn-primary { background: var(--brand); color: #fff; }
@@ -141,6 +154,27 @@
   .swatch { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
   .swatch.sel { border-color: var(--fg); }
 
+  /* Detail */
+  .detail-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
+  .sub-block { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
+  .sub-block h4 { font-size: 13px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .4px; }
+  .subtask { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+  .subtask .sc { width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--line); flex-shrink: 0; cursor: pointer; display: grid; place-items: center; color: #fff; font-size: 11px; }
+  .subtask .sc.on { background: var(--accent); border-color: var(--accent); }
+  .subtask span { flex: 1; word-break: break-word; }
+  .subtask.done span { text-decoration: line-through; color: var(--muted); }
+  .subtask .del { color: var(--muted); cursor: pointer; padding: 2px 6px; }
+  .inline-add { display: flex; gap: 8px; margin-top: 8px; }
+  .inline-add input { flex: 1; padding: 9px 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--fg); font-size: 14px; outline: none; }
+  .inline-add button { border: none; background: var(--brand); color: #fff; border-radius: 10px; padding: 0 16px; font-weight: 700; cursor: pointer; }
+  .comment { display: flex; gap: 9px; padding: 8px 0; }
+  .comment .body { flex: 1; min-width: 0; }
+  .comment .who { font-size: 12px; font-weight: 700; }
+  .comment .when { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 6px; }
+  .comment .txt { font-size: 14px; word-break: break-word; margin-top: 1px; }
+  .activity { font-size: 12px; color: var(--muted); padding: 4px 0; display: flex; gap: 6px; }
+  .activity .dot2 { color: var(--brand); }
+
   .ai-box { background: linear-gradient(135deg, var(--brand-soft), var(--accent-soft)); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin: 14px 0 4px; font-size: 13.5px; line-height: 1.55; }
   .ai-box .ai-head { font-weight: 700; color: var(--brand); display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 
@@ -154,7 +188,7 @@
   <div class="wrap">
     <div class="top-row">
       <input class="prog-title" id="progTitle" placeholder="Program adı..." maxlength="60">
-      <button class="icon-btn" onclick="openShare()" title="Paylaş">🔗</button>
+      <button class="icon-btn" onclick="openShare()" title="Paylaş & Yedek">🔗</button>
       <button class="icon-btn" onclick="toggleTheme()" id="themeBtn" title="Tema">🌙</button>
     </div>
     <div class="header-stats">
@@ -179,6 +213,10 @@
     <div class="ai-head">🤖 Analiz</div>
     <div id="aiText"></div>
   </div>
+  <div class="toolbar">
+    <div class="search">🔍<input id="searchInput" placeholder="Görev ara..." autocomplete="off"></div>
+    <button class="filter-toggle" onclick="openFilterSheet()" id="filterToggle">Filtre</button>
+  </div>
   <div class="filters" id="filters"></div>
 
   <div class="sec-head">
@@ -187,9 +225,9 @@
   </div>
   <div id="projects"></div>
 
-  <div class="sec-head">
+  <div class="sec-head" id="customHead">
     <h3>📝 Özel Görevler</h3>
-    <button class="add-btn" onclick="openTask(null,'custom')">＋ Görev</button>
+    <button class="add-btn" onclick="openTaskEdit(null,'custom')">＋ Görev</button>
   </div>
   <div class="tasks" id="customTasks"></div>
 </div>
@@ -206,34 +244,40 @@
 /* ============ CONFIG ============ */
 const COLORS = ['#4f46e5','#10b981','#f59e0b','#ef4444','#8b5cf6','#0ea5e9','#ec4899','#14b8a6'];
 const FILTERS = [
-  { id: 'all', label: 'Tümü' },
-  { id: 'mine', label: 'Bana atanan' },
-  { id: 'open', label: 'Açık' },
-  { id: 'done', label: 'Tamamlanan' },
+  { id: 'all', label: 'Tümü' }, { id: 'mine', label: 'Bana atanan' },
+  { id: 'open', label: 'Açık' }, { id: 'progress', label: 'Devam eden' },
+  { id: 'blocked', label: 'Engelli' }, { id: 'done', label: 'Tamamlanan' },
 ];
 const FREQ_LABEL = { daily: 'Günlük', weekly: 'Haftalık', monthly: 'Aylık' };
+const STATUS_LABEL = { todo: 'Açık', progress: 'Devam ediyor', blocked: 'Engellendi', done: 'Tamamlandı' };
 const DAY = 864e5;
 function periodMs(f) { return f === 'daily' ? DAY : f === 'weekly' ? 7 * DAY : 30 * DAY; }
 
 let state = loadState();
 let activeFilter = 'all';
+let adv = { project: '', assignee: '', priority: '', search: '' };
 
 /* ============ STATE ============ */
-function defaultState() { return { v: 2, title: '', members: [], me: null, projects: [], tasks: [] }; }
+function defaultState() { return { v: 3, title: '', members: [], me: null, projects: [], tasks: [] }; }
 function migrate(s) {
   if (!s) return defaultState();
   if (!Array.isArray(s.projects)) s.projects = [];
-  s.tasks = (s.tasks || []).map(t => ({ kind: t.kind || 'custom', recurring: !!t.recurring, ...t }));
-  s.v = 2;
+  s.tasks = (s.tasks || []).map(t => ({
+    kind: t.kind || 'custom', recurring: !!t.recurring,
+    status: t.status || (t.done ? 'done' : 'todo'),
+    subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+    comments: Array.isArray(t.comments) ? t.comments : [],
+    activity: Array.isArray(t.activity) ? t.activity : [],
+    createdAt: t.createdAt || Date.now(), ...t,
+  }));
+  s.v = 3;
   return s;
 }
 function loadState() {
   const fromUrl = readShareFromUrl();
   if (fromUrl) {
     const local = safeParse(localStorage.getItem('ortakProgram'));
-    if (!local || JSON.stringify(local.tasks) !== JSON.stringify(fromUrl.tasks) || local.title !== fromUrl.title) {
-      pendingImport = migrate(fromUrl);
-    }
+    if (!local || JSON.stringify(local.tasks) !== JSON.stringify(fromUrl.tasks) || local.title !== fromUrl.title) pendingImport = migrate(fromUrl);
     history.replaceState(null, '', location.pathname + location.search);
     return migrate(local || fromUrl);
   }
@@ -243,7 +287,7 @@ function safeParse(s) { try { return s ? JSON.parse(s) : null; } catch { return 
 function save() { localStorage.setItem('ortakProgram', JSON.stringify(state)); }
 function uid() { return Math.random().toString(36).slice(2, 9); }
 
-/* ============ UTF-8 SAFE BASE64 ============ */
+/* ============ BASE64 (UTF-8 safe) ============ */
 function encodeData(obj) { return btoa(unescape(encodeURIComponent(JSON.stringify(obj)))); }
 function decodeData(str) { return JSON.parse(decodeURIComponent(escape(atob(str)))); }
 let pendingImport = null;
@@ -253,29 +297,26 @@ function readShareFromUrl() {
   try { return decodeData(decodeURIComponent(m[1])); } catch { return null; }
 }
 
-/* ============ TASK STATUS ============ */
+/* ============ STATUS HELPERS ============ */
 function projectById(id) { return state.projects.find(p => p.id === id); }
 function memberById(id) { return state.members.find(m => m.id === id); }
+function taskById(id) { return state.tasks.find(t => t.id === id); }
 function nextDue(t) { return t.lastDone ? t.lastDone + periodMs(t.freq) : 0; }
 function checkSatisfied(t) { return t.lastDone && Date.now() < nextDue(t); }
-function isComplete(t) { return t.recurring ? checkSatisfied(t) : !!t.done; }
+function isComplete(t) { return t.recurring ? checkSatisfied(t) : t.status === 'done'; }
 function isOpenNow(t) { return !isComplete(t); }
+function meName() { const m = memberById(state.me); return m ? m.name : 'Biri'; }
+function logActivity(t, text) { t.activity = t.activity || []; t.activity.push({ at: Date.now(), by: meName(), text }); }
 
 /* ============ RENDER ============ */
 function render() {
   document.getElementById('progTitle').value = state.title;
-  renderMembers();
-  renderFilters();
-  renderProjects();
-  renderCustom();
-  renderStats();
-  renderAI();
+  renderMembers(); renderFilters(); renderProjects(); renderCustom();
+  renderStats(); renderAI(); updateFilterBadge();
   save();
 }
-
 function renderStats() {
-  const total = state.tasks.length;
-  const done = state.tasks.filter(isComplete).length;
+  const total = state.tasks.length, done = state.tasks.filter(isComplete).length;
   const pct = total ? Math.round(done / total * 100) : 0;
   document.getElementById('statDone').textContent = done;
   document.getElementById('statTotal').textContent = total;
@@ -284,44 +325,49 @@ function renderStats() {
   const C = 2 * Math.PI * 27;
   document.getElementById('ringFill').style.strokeDashoffset = C - (C * pct / 100);
 }
-
 function renderMembers() {
-  const el = document.getElementById('members');
-  el.innerHTML = '';
+  const el = document.getElementById('members'); el.innerHTML = '';
   state.members.forEach(m => {
-    const mine = state.tasks.filter(t => t.assignee === m.id);
-    const doneC = mine.filter(isComplete).length;
+    const mine = state.tasks.filter(t => t.assignee === m.id), doneC = mine.filter(isComplete).length;
     const chip = document.createElement('div');
     chip.className = 'member-chip' + (state.me === m.id ? ' me' : '');
     chip.innerHTML = `<div class="avatar" style="background:${m.color}">${initials(m.name)}</div>
       <div><div class="mname">${esc(m.name)}${state.me===m.id?' (ben)':''}</div>
       <div class="mcount">${doneC}/${mine.length} görev</div></div>`;
-    chip.onclick = () => openMember(m.id);
-    el.appendChild(chip);
+    chip.onclick = () => openMember(m.id); el.appendChild(chip);
   });
   const add = document.createElement('button');
   add.className = 'add-member'; add.textContent = '＋ Kişi ekle';
-  add.onclick = () => openMember(null);
-  el.appendChild(add);
+  add.onclick = () => openMember(null); el.appendChild(add);
 }
-
 function renderFilters() {
-  const el = document.getElementById('filters');
-  el.innerHTML = '';
+  const el = document.getElementById('filters'); el.innerHTML = '';
   FILTERS.forEach(f => {
     const b = document.createElement('button');
     b.className = 'filter-btn' + (activeFilter === f.id ? ' active' : '');
-    b.textContent = f.label;
-    b.onclick = () => { activeFilter = f.id; render(); };
+    b.textContent = f.label; b.onclick = () => { activeFilter = f.id; render(); };
     el.appendChild(b);
   });
 }
-
+function updateFilterBadge() {
+  const n = (adv.project ? 1 : 0) + (adv.assignee ? 1 : 0) + (adv.priority ? 1 : 0);
+  const t = document.getElementById('filterToggle');
+  t.innerHTML = 'Filtre' + (n ? `<span class="dot">${n}</span>` : '');
+}
+function matchesSearch(t) {
+  if (!adv.search) return true;
+  const q = adv.search.toLowerCase();
+  return (t.title || '').toLowerCase().includes(q) || (t.note || '').toLowerCase().includes(q);
+}
 function passFilter(t) {
-  if (activeFilter === 'mine') return t.assignee === state.me;
-  if (activeFilter === 'open') return isOpenNow(t);
-  if (activeFilter === 'done') return isComplete(t);
-  return true;
+  if (activeFilter === 'mine' && t.assignee !== state.me) return false;
+  if (activeFilter === 'open' && !isOpenNow(t)) return false;
+  if (activeFilter === 'done' && !isComplete(t)) return false;
+  if (activeFilter === 'progress' && !(t.status === 'progress' && !t.recurring)) return false;
+  if (activeFilter === 'blocked' && !(t.status === 'blocked' && !t.recurring)) return false;
+  if (adv.assignee && t.assignee !== adv.assignee) return false;
+  if (adv.priority && t.priority !== adv.priority) return false;
+  return matchesSearch(t);
 }
 function sortTasks(ts) {
   const pr = { high: 0, med: 1, low: 2 };
@@ -332,39 +378,29 @@ function sortTasks(ts) {
     return (a.due || '9999').localeCompare(b.due || '9999');
   });
 }
-
 function renderProjects() {
-  const wrap = document.getElementById('projects');
-  wrap.innerHTML = '';
-  if (!state.projects.length) {
-    wrap.innerHTML = `<div class="empty-sm">Henüz proje yok. “＋ Proje” ile yeni/mevcut bir proje ekleyin.</div>`;
-    return;
-  }
-  state.projects.forEach(p => {
+  const wrap = document.getElementById('projects'); wrap.innerHTML = '';
+  let projs = state.projects;
+  if (adv.project && adv.project !== 'custom') projs = projs.filter(p => p.id === adv.project);
+  else if (adv.project === 'custom') projs = [];
+  if (!state.projects.length) { wrap.innerHTML = `<div class="empty-sm">Henüz proje yok. “＋ Proje” ile yeni/mevcut bir proje ekleyin.</div>`; return; }
+  if (!projs.length && adv.project) { wrap.innerHTML = ''; return; }
+  projs.forEach(p => {
     const all = state.tasks.filter(t => t.kind === 'project' && t.projectId === p.id);
     const shown = sortTasks(all.filter(passFilter));
-    const done = all.filter(isComplete).length;
-    const pct = all.length ? Math.round(done / all.length * 100) : 0;
+    const done = all.filter(isComplete).length, pct = all.length ? Math.round(done / all.length * 100) : 0;
     const card = document.createElement('div');
     card.className = 'proj-card' + (p.collapsed ? ' collapsed' : '');
-    const badge = p.type === 'existing'
-      ? `<span class="badge exist">Mevcut · kontrol</span>`
-      : `<span class="badge new">Yeni · kurulum</span>`;
+    const badge = p.type === 'existing' ? `<span class="badge exist">Mevcut · kontrol</span>` : `<span class="badge new">Yeni · kurulum</span>`;
     card.innerHTML = `
       <div class="proj-head">
         <span class="caret">▼</span>
-        <div class="proj-info">
-          <div class="proj-name">${esc(p.name)}</div>
-          <div class="proj-sub">${badge}
-            <div class="mini-bar"><span style="width:${pct}%"></span></div>
-            <span class="proj-count">${done}/${all.length}</span>
-          </div>
-        </div>
+        <div class="proj-info"><div class="proj-name">${esc(p.name)}</div>
+          <div class="proj-sub">${badge}<div class="mini-bar"><span style="width:${pct}%"></span></div><span class="proj-count">${done}/${all.length}</span></div></div>
         <button class="icon-btn" style="background:var(--bg);color:var(--muted)" data-edit>✎</button>
       </div>
       <div class="proj-body"><div class="tasks"></div></div>`;
-    const head = card.querySelector('.proj-head');
-    head.onclick = (e) => { if (e.target.closest('[data-edit]')) return; p.collapsed = !p.collapsed; save(); card.classList.toggle('collapsed'); };
+    card.querySelector('.proj-head').onclick = (e) => { if (e.target.closest('[data-edit]')) return; p.collapsed = !p.collapsed; save(); card.classList.toggle('collapsed'); };
     card.querySelector('[data-edit]').onclick = (e) => { e.stopPropagation(); openProject(p.id); };
     const tl = card.querySelector('.tasks');
     if (!all.length) tl.innerHTML = `<div class="empty-sm">Bu projede görev yok.</div>`;
@@ -373,51 +409,44 @@ function renderProjects() {
     const addBtn = document.createElement('button');
     addBtn.className = 'add-task-row';
     addBtn.textContent = p.type === 'existing' ? '＋ kontrol ekle' : '＋ görev ekle';
-    addBtn.onclick = () => openTask(null, p.id);
+    addBtn.onclick = () => openTaskEdit(null, p.id);
     card.querySelector('.proj-body').appendChild(addBtn);
     wrap.appendChild(card);
   });
 }
-
 function renderCustom() {
-  const el = document.getElementById('customTasks');
+  const head = document.getElementById('customHead'), el = document.getElementById('customTasks');
+  if (adv.project && adv.project !== 'custom') { head.style.display = 'none'; el.style.display = 'none'; return; }
+  head.style.display = ''; el.style.display = '';
   const all = state.tasks.filter(t => t.kind === 'custom');
   const shown = sortTasks(all.filter(passFilter));
   if (!all.length) { el.innerHTML = `<div class="empty-sm">Özel görev yok. Herhangi bir konuda görev ekleyebilirsiniz.</div>`; return; }
   if (!shown.length) { el.innerHTML = `<div class="empty-sm">Bu filtrede görev yok.</div>`; return; }
-  el.innerHTML = '';
-  shown.forEach(t => el.appendChild(taskEl(t)));
+  el.innerHTML = ''; shown.forEach(t => el.appendChild(taskEl(t)));
 }
-
 function taskEl(t) {
-  const a = memberById(t.assignee);
-  const complete = isComplete(t);
+  const a = memberById(t.assignee), complete = isComplete(t);
   const div = document.createElement('div');
-  div.className = 'task' + (complete ? ' done' : '');
+  div.className = 'task' + (complete ? ' done' : '') + (!complete && !t.recurring && t.status === 'blocked' ? ' blocked' : '') + (!complete && !t.recurring && t.status === 'progress' ? ' progress' : '');
   let meta = '';
   if (a) meta += `<span class="tag assignee"><span class="avatar" style="width:16px;height:16px;font-size:9px;background:${a.color}">${initials(a.name)}</span>${esc(a.name)}</span>`;
+  if (!complete && !t.recurring && t.status === 'progress') meta += `<span class="tag st-progress">▶ Devam ediyor</span>`;
+  if (!complete && !t.recurring && t.status === 'blocked') meta += `<span class="tag st-blocked">⛔ Engellendi</span>`;
   if (t.priority === 'high') meta += `<span class="tag prio-high">● Yüksek</span>`;
   else if (t.priority === 'med') meta += `<span class="tag prio-med">● Orta</span>`;
-
   if (t.recurring) {
     meta += `<span class="tag freq">🔁 ${FREQ_LABEL[t.freq] || 'Tekrar'}</span>`;
-    if (complete) {
-      const due = new Date(nextDue(t));
-      meta += `<span class="tag done-by">✓ kontrol edildi · sonraki ${due.toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}</span>`;
-    } else if (t.lastDone) {
-      const od = Math.max(0, Math.floor((Date.now() - nextDue(t)) / DAY));
-      meta += `<span class="tag due overdue">⏰ kontrol zamanı${od?` · ${od} gün gecikti`:''}</span>`;
-    } else {
-      meta += `<span class="tag due">⏰ henüz kontrol edilmedi</span>`;
-    }
+    if (complete) { const d = new Date(nextDue(t)); meta += `<span class="tag done-by">✓ kontrol edildi · sonraki ${d.toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}</span>`; }
+    else if (t.lastDone) { const od = Math.max(0, Math.floor((Date.now() - nextDue(t)) / DAY)); meta += `<span class="tag due overdue">⏰ kontrol zamanı${od?` · ${od} gün gecikti`:''}</span>`; }
+    else meta += `<span class="tag due">⏰ henüz kontrol edilmedi</span>`;
   } else {
     const overdue = t.due && !complete && t.due < todayStr();
     if (t.due) meta += `<span class="tag due${overdue?' overdue':''}">📅 ${fmtDate(t.due)}${overdue?' • gecikti':''}</span>`;
-    if (complete && t.completedBy) {
-      const cb = memberById(t.completedBy);
-      meta += `<span class="tag done-by">✓ ${cb ? esc(cb.name) : 'biri'} tamamladı</span>`;
-    }
+    if (complete && t.completedBy) { const cb = memberById(t.completedBy); meta += `<span class="tag done-by">✓ ${cb ? esc(cb.name) : 'biri'}</span>`; }
   }
+  const subDone = (t.subtasks || []).filter(s => s.done).length;
+  if (t.subtasks && t.subtasks.length) meta += `<span class="tag sub">☑ ${subDone}/${t.subtasks.length}</span>`;
+  if (t.comments && t.comments.length) meta += `<span class="tag cmt">💬 ${t.comments.length}</span>`;
   div.innerHTML = `
     <button class="check${complete?' on':''}${t.recurring?' recur':''}">${complete?'✓':''}</button>
     <div class="task-body">
@@ -426,7 +455,7 @@ function taskEl(t) {
       ${meta ? `<div class="task-meta">${meta}</div>` : ''}
     </div>`;
   div.querySelector('.check').onclick = (e) => { e.stopPropagation(); toggleDone(t.id); };
-  div.querySelector('.task-body').onclick = () => openTask(t.id);
+  div.querySelector('.task-body').onclick = () => openTaskDetail(t.id);
   return div;
 }
 
@@ -438,98 +467,100 @@ function renderAI() {
   document.getElementById('aiText').innerHTML = buildAnalysis();
 }
 function buildAnalysis() {
-  const total = state.tasks.length;
-  const done = state.tasks.filter(isComplete).length;
-  const pct = Math.round(done / total * 100);
-  const open = total - done;
-  const oneoffOverdue = state.tasks.filter(t => !t.recurring && t.due && !t.done && t.due < todayStr()).length;
+  const total = state.tasks.length, done = state.tasks.filter(isComplete).length;
+  const pct = Math.round(done / total * 100), open = total - done;
+  const oneoffOverdue = state.tasks.filter(t => !t.recurring && t.due && t.status !== 'done' && t.due < todayStr()).length;
   const checksDue = state.tasks.filter(t => t.recurring && !checkSatisfied(t)).length;
+  const blocked = state.tasks.filter(t => !t.recurring && t.status === 'blocked').length;
   const unassigned = state.tasks.filter(t => !t.assignee && isOpenNow(t)).length;
   const parts = [];
   if (pct === 100) parts.push('🎉 Her şey tamam — tüm görevler ve kontroller güncel!');
   else if (pct >= 70) parts.push(`Güçlü gidiyorsunuz: <b>%${pct}</b> tamam, <b>${open}</b> görev açık.`);
   else if (pct >= 30) parts.push(`İyi yoldasınız: <b>%${pct}</b> tamamlandı, <b>${open}</b> görev açık.`);
   else parts.push(`Yeni başlıyorsunuz: <b>${open}</b> açık görev. Küçük bir adımla ivme kazanın.`);
+  if (blocked) parts.push(`⛔ <b>${blocked}</b> görev engellenmiş — önce bu tıkanıklıkları açın.`);
   if (checksDue) parts.push(`🔁 <b>${checksDue}</b> tekrarlayan kontrolün zamanı geldi.`);
-  if (oneoffOverdue) parts.push(`⚠️ <b>${oneoffOverdue}</b> görev tarihi geçti — önce bunlara bakın.`);
+  if (oneoffOverdue) parts.push(`⚠️ <b>${oneoffOverdue}</b> görev tarihi geçti.`);
   if (unassigned) parts.push(`👥 <b>${unassigned}</b> açık görev kimseye atanmamış.`);
-  const finished = state.projects.filter(p => { const a = state.tasks.filter(t => t.projectId === p.id); return a.length && a.every(isComplete); });
-  if (finished.length) parts.push(`✅ Tamamlanan proje: <b>${finished.map(p => esc(p.name)).join(', ')}</b>.`);
-  const load = {};
-  state.members.forEach(m => load[m.id] = state.tasks.filter(t => t.assignee === m.id && isOpenNow(t)).length);
+  const fin = state.projects.filter(p => { const a = state.tasks.filter(t => t.projectId === p.id); return a.length && a.every(isComplete); });
+  if (fin.length) parts.push(`✅ Tamamlanan proje: <b>${fin.map(p => esc(p.name)).join(', ')}</b>.`);
+  const load = {}; state.members.forEach(m => load[m.id] = state.tasks.filter(t => t.assignee === m.id && isOpenNow(t)).length);
   const e = Object.entries(load).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
-  if (e.length >= 2 && e[0][1] - e[e.length - 1][1] >= 3)
-    parts.push(`⚖️ İş yükü dengesiz: <b>${esc(memberById(e[0][0]).name)}</b> üzerinde ${e[0][1]} açık görev var.`);
+  if (e.length >= 2 && e[0][1] - e[e.length - 1][1] >= 3) parts.push(`⚖️ İş yükü dengesiz: <b>${esc(memberById(e[0][0]).name)}</b> üzerinde ${e[0][1]} açık görev var.`);
   return parts.join('<br>');
 }
 
 /* ============ ADD MENU ============ */
 function openAddMenu() {
   const sheet = document.getElementById('sheet');
-  sheet.innerHTML = `
-    <h2>Ne eklemek istersiniz?</h2>
+  sheet.innerHTML = `<h2>Ne eklemek istersiniz?</h2>
     <p class="hint">Proje görevleri bir projeye bağlıdır; özel görevler herhangi bir konuda olabilir.</p>
     <div class="big-choice">
       <button onclick="openProject(null)"><span class="ico">📁</span>Proje<small>yeni veya mevcut</small></button>
-      <button onclick="openTask(null,'custom')"><span class="ico">📝</span>Özel görev<small>serbest konu</small></button>
+      <button onclick="openTaskEdit(null,'custom')"><span class="ico">📝</span>Özel görev<small>serbest konu</small></button>
     </div>`;
   openSheet();
 }
 
+/* ============ FILTER SHEET ============ */
+function openFilterSheet() {
+  const sheet = document.getElementById('sheet');
+  const projOpts = state.projects.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  const memOpts = state.members.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
+  sheet.innerHTML = `<h2>Gelişmiş filtre</h2>
+    <div class="field"><label>Proje</label><select id="fProject">
+      <option value="">Tümü</option><option value="custom">Sadece özel görevler</option>${projOpts}</select></div>
+    <div class="field"><label>Atanan kişi</label><select id="fAssignee">
+      <option value="">Herkes</option>${memOpts}</select></div>
+    <div class="field"><label>Öncelik</label><select id="fPriority">
+      <option value="">Tümü</option><option value="high">Yüksek</option><option value="med">Orta</option><option value="low">Düşük</option></select></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="clearAdv()">Temizle</button>
+      <button class="btn btn-primary" onclick="applyAdv()">Uygula</button>
+    </div>`;
+  document.getElementById('fProject').value = adv.project;
+  document.getElementById('fAssignee').value = adv.assignee;
+  document.getElementById('fPriority').value = adv.priority;
+  openSheet();
+}
+function applyAdv() {
+  adv.project = document.getElementById('fProject').value;
+  adv.assignee = document.getElementById('fAssignee').value;
+  adv.priority = document.getElementById('fPriority').value;
+  closeSheet(); render();
+}
+function clearAdv() { adv.project = adv.assignee = adv.priority = ''; closeSheet(); render(); }
+
 /* ============ PROJECT CRUD ============ */
 let pEditId = null, pType = 'new', pColor = COLORS[0];
 function openProject(id) {
-  pEditId = id;
-  const p = id ? projectById(id) : null;
-  pType = p ? p.type : 'new';
-  pColor = p ? (p.color || COLORS[0]) : COLORS[state.projects.length % COLORS.length];
+  pEditId = id; const p = id ? projectById(id) : null;
+  pType = p ? p.type : 'new'; pColor = p ? (p.color || COLORS[0]) : COLORS[state.projects.length % COLORS.length];
   const sheet = document.getElementById('sheet');
-  sheet.innerHTML = `
-    <h2>${p ? 'Projeyi düzenle' : 'Yeni proje'}</h2>
-    <div class="field"><label>Proje adı</label>
-      <input id="pName" placeholder="Proje adı" value="${p?escAttr(p.name):''}"></div>
-    <div class="field"><label>Proje durumu</label>
-      <div class="seg" id="pTypeSeg">
-        <button data-t="new">🆕 Yeni proje<br><small style="font-weight:400;color:var(--muted)">kurulum görevleri</small></button>
-        <button data-t="existing">📈 Mevcut proje<br><small style="font-weight:400;color:var(--muted)">tekrarlayan kontroller</small></button>
-      </div></div>
+  sheet.innerHTML = `<h2>${p ? 'Projeyi düzenle' : 'Yeni proje'}</h2>
+    <div class="field"><label>Proje adı</label><input id="pName" placeholder="Proje adı" value="${p?escAttr(p.name):''}"></div>
+    <div class="field"><label>Proje durumu</label><div class="seg" id="pTypeSeg">
+      <button data-t="new">🆕 Yeni proje<br><small style="font-weight:400;color:var(--muted)">kurulum görevleri</small></button>
+      <button data-t="existing">📈 Mevcut proje<br><small style="font-weight:400;color:var(--muted)">tekrarlayan kontroller</small></button>
+    </div></div>
     <div class="field"><label>Renk</label><div class="swatch-row" id="pSwatches"></div></div>
-    <div class="btn-row">
-      ${p ? '<button class="btn btn-danger" onclick="deleteProject()">Sil</button>' : ''}
+    <div class="btn-row">${p ? '<button class="btn btn-danger" onclick="deleteProject()">Sil</button>' : ''}
       <button class="btn btn-ghost" onclick="closeSheet()">İptal</button>
-      <button class="btn btn-primary" onclick="saveProject()">${p ? 'Kaydet' : 'Ekle'}</button>
-    </div>`;
+      <button class="btn btn-primary" onclick="saveProject()">${p ? 'Kaydet' : 'Ekle'}</button></div>`;
   const seg = document.getElementById('pTypeSeg');
-  [...seg.children].forEach(b => {
-    b.classList.toggle('sel', b.dataset.t === pType);
-    b.onclick = () => { pType = b.dataset.t; [...seg.children].forEach(x => x.classList.toggle('sel', x === b)); };
-  });
-  const sw = document.getElementById('pSwatches');
-  COLORS.forEach(c => {
-    const d = document.createElement('div');
-    d.className = 'swatch' + (c === pColor ? ' sel' : ''); d.style.background = c;
-    d.onclick = () => { pColor = c; [...sw.children].forEach(x => x.classList.toggle('sel', x === d)); };
-    sw.appendChild(d);
-  });
-  openSheet();
-  setTimeout(() => document.getElementById('pName').focus(), 100);
+  [...seg.children].forEach(b => { b.classList.toggle('sel', b.dataset.t === pType); b.onclick = () => { pType = b.dataset.t; [...seg.children].forEach(x => x.classList.toggle('sel', x === b)); }; });
+  buildSwatches('pSwatches', () => pColor, c => pColor = c);
+  openSheet(); setTimeout(() => document.getElementById('pName').focus(), 100);
 }
 function saveProject() {
   const name = document.getElementById('pName').value.trim();
   if (!name) { toast('Proje adı gerekli'); return; }
-  if (pEditId) {
-    const p = projectById(pEditId);
-    const was = p.type; p.name = name; p.type = pType; p.color = pColor;
-    // tür değişti: bağlı görevlerin tekrar durumunu eşitle
-    if (was !== pType) state.tasks.filter(t => t.projectId === p.id).forEach(t => syncTaskToProject(t, p));
-  } else {
-    const id = uid();
-    state.projects.push({ id, name, type: pType, color: pColor, collapsed: false });
-  }
+  if (pEditId) { const p = projectById(pEditId); const was = p.type; p.name = name; p.type = pType; p.color = pColor; if (was !== pType) state.tasks.filter(t => t.projectId === p.id).forEach(t => syncTaskToProject(t, p)); }
+  else state.projects.push({ id: uid(), name, type: pType, color: pColor, collapsed: false });
   closeSheet(); render(); toast('Kaydedildi');
 }
 function syncTaskToProject(t, p) {
-  if (p.type === 'existing') { t.recurring = true; t.freq = t.freq || 'weekly'; t.done = false; }
+  if (p.type === 'existing') { t.recurring = true; t.freq = t.freq || 'weekly'; t.status = 'todo'; }
   else { t.recurring = false; t.lastDone = null; }
 }
 function deleteProject() {
@@ -539,63 +570,33 @@ function deleteProject() {
   closeSheet(); render(); toast('Proje silindi');
 }
 
-/* ============ TASK CRUD ============ */
+/* ============ TASK EDIT ============ */
 let editId = null, draft = {};
-function openTask(id, target) {
-  editId = id || null;
-  const t = id ? state.tasks.find(x => x.id === id) : null;
+function openTaskEdit(id, target) {
+  editId = id || null; const t = id ? taskById(id) : null;
   if (t) draft = { ...t };
-  else {
-    const projectId = (target && target !== 'custom') ? target : null;
-    draft = { title: '', note: '', assignee: state.me || null, priority: 'low', due: '', freq: 'weekly', projectId, lastDone: null };
-  }
+  else { const projectId = (target && target !== 'custom') ? target : null; draft = { title: '', note: '', assignee: state.me || null, priority: 'low', due: '', freq: 'weekly', projectId }; }
   const sheet = document.getElementById('sheet');
-  const projOpts = state.projects.map(p =>
-    `<div class="chip${draft.projectId===p.id?' sel':''}" data-pid="${p.id}">📁 ${esc(p.name)}</div>`).join('');
-  sheet.innerHTML = `
-    <h2>${t ? 'Görevi düzenle' : 'Yeni görev'}</h2>
-    <div class="field"><label>Tür / proje</label>
-      <div class="chips" id="targetChips">
-        <div class="chip${!draft.projectId?' sel':''}" data-pid="">📝 Özel görev</div>
-        ${projOpts}
-      </div></div>
-    <div class="field"><label>Başlık</label>
-      <input id="fTitle" placeholder="Ne yapılacak?" value="${escAttr(draft.title)}"></div>
-    <div class="field"><label>Not (opsiyonel)</label>
-      <textarea id="fNote" placeholder="Detay, link, açıklama...">${esc(draft.note||'')}</textarea></div>
-    <div class="field"><label>Kime atansın?</label>
-      <div class="chips" id="assigneePicker"></div></div>
-    <div class="field"><label>Öncelik</label>
-      <div class="seg" id="prioSeg">
-        <button data-p="low">Düşük</button><button data-p="med">Orta</button><button data-p="high">Yüksek</button>
-      </div></div>
-    <div class="field" id="dueField"><label>Bitiş tarihi (opsiyonel)</label>
-      <input type="date" id="fDue" value="${draft.due||''}"></div>
-    <div class="field" id="freqField"><label>Kontrol sıklığı</label>
-      <div class="seg" id="freqSeg">
-        <button data-f="daily">Günlük</button><button data-f="weekly">Haftalık</button><button data-f="monthly">Aylık</button>
-      </div></div>
-    <div class="btn-row">
-      ${t ? '<button class="btn btn-danger" onclick="deleteTask()">Sil</button>' : ''}
+  const projOpts = state.projects.map(p => `<div class="chip${draft.projectId===p.id?' sel':''}" data-pid="${p.id}">📁 ${esc(p.name)}</div>`).join('');
+  sheet.innerHTML = `<h2>${t ? 'Görevi düzenle' : 'Yeni görev'}</h2>
+    <div class="field"><label>Tür / proje</label><div class="chips" id="targetChips">
+      <div class="chip${!draft.projectId?' sel':''}" data-pid="">📝 Özel görev</div>${projOpts}</div></div>
+    <div class="field"><label>Başlık</label><input id="fTitle" placeholder="Ne yapılacak?" value="${escAttr(draft.title)}"></div>
+    <div class="field"><label>Not (opsiyonel)</label><textarea id="fNote" placeholder="Detay, link, açıklama...">${esc(draft.note||'')}</textarea></div>
+    <div class="field"><label>Kime atansın?</label><div class="chips" id="assigneePicker"></div></div>
+    <div class="field"><label>Öncelik</label><div class="seg" id="prioSeg">
+      <button data-p="low">Düşük</button><button data-p="med">Orta</button><button data-p="high">Yüksek</button></div></div>
+    <div class="field" id="dueField"><label>Bitiş tarihi (opsiyonel)</label><input type="date" id="fDue" value="${draft.due||''}"></div>
+    <div class="field" id="freqField"><label>Kontrol sıklığı</label><div class="seg" id="freqSeg">
+      <button data-f="daily">Günlük</button><button data-f="weekly">Haftalık</button><button data-f="monthly">Aylık</button></div></div>
+    <div class="btn-row">${t ? '<button class="btn btn-danger" onclick="deleteTask()">Sil</button>' : ''}
       <button class="btn btn-ghost" onclick="closeSheet()">İptal</button>
-      <button class="btn btn-primary" onclick="saveTask()">${t ? 'Kaydet' : 'Ekle'}</button>
-    </div>`;
-  // target chips
-  [...sheet.querySelectorAll('#targetChips .chip')].forEach(c => {
-    c.onclick = () => { draft.projectId = c.dataset.pid || null; [...c.parentNode.children].forEach(x => x.classList.toggle('sel', x === c)); syncEditorMode(); };
-  });
+      <button class="btn btn-primary" onclick="saveTask()">${t ? 'Kaydet' : 'Ekle'}</button></div>`;
+  [...sheet.querySelectorAll('#targetChips .chip')].forEach(c => { c.onclick = () => { draft.projectId = c.dataset.pid || null; [...c.parentNode.children].forEach(x => x.classList.toggle('sel', x === c)); syncEditorMode(); }; });
   renderAssigneePicker();
-  [...sheet.querySelectorAll('#prioSeg button')].forEach(b => {
-    b.classList.toggle('sel', b.dataset.p === draft.priority);
-    b.onclick = () => { draft.priority = b.dataset.p; [...b.parentNode.children].forEach(x => x.classList.toggle('sel', x === b)); };
-  });
-  [...sheet.querySelectorAll('#freqSeg button')].forEach(b => {
-    b.classList.toggle('sel', b.dataset.f === draft.freq);
-    b.onclick = () => { draft.freq = b.dataset.f; [...b.parentNode.children].forEach(x => x.classList.toggle('sel', x === b)); };
-  });
-  syncEditorMode();
-  openSheet();
-  setTimeout(() => document.getElementById('fTitle').focus(), 100);
+  [...sheet.querySelectorAll('#prioSeg button')].forEach(b => { b.classList.toggle('sel', b.dataset.p === (draft.priority||'low')); b.onclick = () => { draft.priority = b.dataset.p; [...b.parentNode.children].forEach(x => x.classList.toggle('sel', x === b)); }; });
+  [...sheet.querySelectorAll('#freqSeg button')].forEach(b => { b.classList.toggle('sel', b.dataset.f === (draft.freq||'weekly')); b.onclick = () => { draft.freq = b.dataset.f; [...b.parentNode.children].forEach(x => x.classList.toggle('sel', x === b)); }; });
+  syncEditorMode(); openSheet(); setTimeout(() => document.getElementById('fTitle').focus(), 100);
 }
 function syncEditorMode() {
   const p = draft.projectId ? projectById(draft.projectId) : null;
@@ -604,36 +605,24 @@ function syncEditorMode() {
   document.getElementById('dueField').style.display = recurring ? 'none' : '';
 }
 function renderAssigneePicker() {
-  const el = document.getElementById('assigneePicker');
-  el.innerHTML = '';
-  const none = document.createElement('div');
-  none.className = 'chip' + (!draft.assignee ? ' sel' : ''); none.textContent = '— Kimse —';
-  none.onclick = () => { draft.assignee = null; renderAssigneePicker(); };
-  el.appendChild(none);
+  const el = document.getElementById('assigneePicker'); el.innerHTML = '';
+  const none = document.createElement('div'); none.className = 'chip' + (!draft.assignee ? ' sel' : ''); none.textContent = '— Kimse —';
+  none.onclick = () => { draft.assignee = null; renderAssigneePicker(); }; el.appendChild(none);
   state.members.forEach(m => {
-    const o = document.createElement('div');
-    o.className = 'chip' + (draft.assignee === m.id ? ' sel' : '');
+    const o = document.createElement('div'); o.className = 'chip' + (draft.assignee === m.id ? ' sel' : '');
     o.innerHTML = `<span class="avatar" style="background:${m.color}">${initials(m.name)}</span>${esc(m.name)}`;
-    o.onclick = () => { draft.assignee = m.id; renderAssigneePicker(); };
-    el.appendChild(o);
+    o.onclick = () => { draft.assignee = m.id; renderAssigneePicker(); }; el.appendChild(o);
   });
   if (!state.members.length) el.innerHTML += `<span style="color:var(--muted);font-size:13px;align-self:center;">Önce kişi ekleyin</span>`;
 }
 function saveTask() {
   const title = document.getElementById('fTitle').value.trim();
   if (!title) { toast('Başlık gerekli'); return; }
-  draft.title = title;
-  draft.note = document.getElementById('fNote').value.trim();
-  draft.due = document.getElementById('fDue').value;
+  draft.title = title; draft.note = document.getElementById('fNote').value.trim(); draft.due = document.getElementById('fDue').value;
   const p = draft.projectId ? projectById(draft.projectId) : null;
-  draft.kind = p ? 'project' : 'custom';
-  draft.recurring = !!(p && p.type === 'existing');
-  if (editId) {
-    const i = state.tasks.findIndex(x => x.id === editId);
-    state.tasks[i] = { ...state.tasks[i], ...draft };
-  } else {
-    state.tasks.push({ id: uid(), done: false, completedBy: null, completedAt: null, lastDone: null, ...draft });
-  }
+  draft.kind = p ? 'project' : 'custom'; draft.recurring = !!(p && p.type === 'existing');
+  if (editId) { const i = state.tasks.findIndex(x => x.id === editId); state.tasks[i] = { ...state.tasks[i], ...draft }; }
+  else state.tasks.push({ id: uid(), status: 'todo', completedBy: null, completedAt: null, lastDone: null, subtasks: [], comments: [], activity: [{ at: Date.now(), by: meName(), text: 'görevi oluşturdu' }], createdAt: Date.now(), ...draft });
   closeSheet(); render(); toast(editId ? 'Güncellendi' : 'Eklendi');
 }
 function deleteTask() {
@@ -642,47 +631,114 @@ function deleteTask() {
   closeSheet(); render(); toast('Silindi');
 }
 function toggleDone(id) {
-  const t = state.tasks.find(x => x.id === id);
+  const t = taskById(id);
   if (t.recurring) {
-    if (checkSatisfied(t)) { t.lastDone = null; t.completedBy = null; }
-    else { t.lastDone = Date.now(); t.completedBy = state.me || t.assignee || null; }
+    if (checkSatisfied(t)) { t.lastDone = null; t.completedBy = null; logActivity(t, 'kontrolü geri aldı'); }
+    else { t.lastDone = Date.now(); t.completedBy = state.me || t.assignee || null; logActivity(t, 'kontrol etti'); }
   } else {
-    t.done = !t.done;
-    if (t.done) { t.completedBy = state.me || t.assignee || null; t.completedAt = Date.now(); }
-    else { t.completedBy = null; t.completedAt = null; }
+    if (t.status === 'done') { t.status = 'todo'; t.completedBy = null; t.completedAt = null; logActivity(t, 'yeniden açtı'); }
+    else { t.status = 'done'; t.completedBy = state.me || t.assignee || null; t.completedAt = Date.now(); logActivity(t, 'tamamladı'); }
   }
   if (navigator.vibrate) navigator.vibrate(8);
   render();
 }
 
+/* ============ TASK DETAIL ============ */
+let detailId = null;
+function openTaskDetail(id) {
+  detailId = id; renderDetail(); openSheet();
+}
+function renderDetail() {
+  const t = taskById(detailId); if (!t) { closeSheet(); return; }
+  const p = t.projectId ? projectById(t.projectId) : null;
+  const a = memberById(t.assignee);
+  let meta = '';
+  if (p) meta += `<span class="tag freq">📁 ${esc(p.name)}</span>`;
+  if (a) meta += `<span class="tag assignee"><span class="avatar" style="width:16px;height:16px;font-size:9px;background:${a.color}">${initials(a.name)}</span>${esc(a.name)}</span>`;
+  if (t.priority === 'high') meta += `<span class="tag prio-high">● Yüksek</span>`;
+  else if (t.priority === 'med') meta += `<span class="tag prio-med">● Orta</span>`;
+  if (t.recurring) { meta += `<span class="tag freq">🔁 ${FREQ_LABEL[t.freq]}</span>`; if (t.lastDone) meta += `<span class="tag due">son: ${fmtAgo(t.lastDone)}</span>`; }
+  else if (t.due) { const ov = t.due < todayStr() && t.status !== 'done'; meta += `<span class="tag due${ov?' overdue':''}">📅 ${fmtDate(t.due)}</span>`; }
+
+  const statusBlock = t.recurring ? `
+    <div class="field"><label>Durum</label>
+      <button class="btn ${isComplete(t)?'btn-primary':'btn-ghost'}" style="width:100%" onclick="toggleDone('${t.id}');renderDetail()">${isComplete(t)?'✓ Bu periyot kontrol edildi (geri al)':'⏰ Şimdi kontrol ettim'}</button></div>`
+    : `<div class="field"><label>Durum</label><div class="seg status" id="dStatus">
+        <button data-s="todo">Açık</button><button data-s="progress">Devam</button><button data-s="blocked">Engelli</button><button data-s="done">Tamam</button></div></div>`;
+
+  const subs = (t.subtasks || []).map(s => `
+    <div class="subtask ${s.done?'done':''}">
+      <div class="sc ${s.done?'on':''}" data-sub="${s.id}">${s.done?'✓':''}</div>
+      <span>${esc(s.title)}</span><span class="del" data-delsub="${s.id}">✕</span></div>`).join('');
+  const subDone = (t.subtasks||[]).filter(s => s.done).length;
+
+  const comments = (t.comments || []).slice().reverse().map(c => `
+    <div class="comment"><div class="avatar" style="width:28px;height:28px;font-size:11px;background:${colorFor(c.by)}">${initials(c.by)}</div>
+      <div class="body"><div class="who">${esc(c.by)}<span class="when">${fmtAgo(c.at)}</span></div><div class="txt">${esc(c.text)}</div></div></div>`).join('') || `<div class="empty-sm">Henüz yorum yok.</div>`;
+
+  const acts = (t.activity || []).slice(-8).reverse().map(x => `<div class="activity"><span class="dot2">•</span> <b>${esc(x.by)}</b> ${esc(x.text)} · ${fmtAgo(x.at)}</div>`).join('') || `<div class="empty-sm">—</div>`;
+
+  document.getElementById('sheet').innerHTML = `
+    <h2>${esc(t.title)}</h2>
+    ${t.note ? `<p class="hint" style="white-space:pre-wrap">${esc(t.note)}</p>` : ''}
+    <div class="detail-meta">${meta}</div>
+    ${statusBlock}
+    <div class="sub-block"><h4>Alt görevler ${(t.subtasks||[]).length?`(${subDone}/${t.subtasks.length})`:''}</h4>
+      ${subs}<div class="inline-add"><input id="newSub" placeholder="Alt görev ekle..."><button onclick="addSubtask()">Ekle</button></div></div>
+    <div class="sub-block"><h4>💬 Yorumlar</h4>${comments}
+      <div class="inline-add"><input id="newCmt" placeholder="Yorum yaz..."><button onclick="addComment()">Gönder</button></div></div>
+    <div class="sub-block"><h4>📜 Aktivite</h4>${acts}</div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="openTaskEdit('${t.id}')">✎ Düzenle</button>
+      <button class="btn btn-primary" onclick="closeSheet()">Kapat</button></div>`;
+
+  if (!t.recurring) {
+    const seg = document.getElementById('dStatus');
+    [...seg.children].forEach(b => { b.classList.toggle('sel', b.dataset.s === t.status); b.onclick = () => setStatus(t.id, b.dataset.s); });
+  }
+  [...document.querySelectorAll('[data-sub]')].forEach(e => e.onclick = () => toggleSub(t.id, e.dataset.sub));
+  [...document.querySelectorAll('[data-delsub]')].forEach(e => e.onclick = () => delSub(t.id, e.dataset.delsub));
+  const ns = document.getElementById('newSub'); if (ns) ns.onkeydown = e => { if (e.key === 'Enter') addSubtask(); };
+  const nc = document.getElementById('newCmt'); if (nc) nc.onkeydown = e => { if (e.key === 'Enter') addComment(); };
+}
+function setStatus(id, s) {
+  const t = taskById(id);
+  if (t.status === s) return;
+  t.status = s;
+  if (s === 'done') { t.completedBy = state.me || t.assignee || null; t.completedAt = Date.now(); }
+  else { t.completedBy = null; t.completedAt = null; }
+  logActivity(t, 'durumu “' + STATUS_LABEL[s] + '” yaptı');
+  save(); renderDetail(); renderStats(); renderProjects(); renderCustom(); renderMembers(); renderAI();
+}
+function addSubtask() {
+  const inp = document.getElementById('newSub'); const v = inp.value.trim(); if (!v) return;
+  const t = taskById(detailId); t.subtasks = t.subtasks || []; t.subtasks.push({ id: uid(), title: v, done: false });
+  save(); renderDetail(); document.getElementById('newSub').focus();
+}
+function toggleSub(id, sid) { const t = taskById(id); const s = t.subtasks.find(x => x.id === sid); s.done = !s.done; save(); renderDetail(); renderProjects(); renderCustom(); }
+function delSub(id, sid) { const t = taskById(id); t.subtasks = t.subtasks.filter(x => x.id !== sid); save(); renderDetail(); renderProjects(); renderCustom(); }
+function addComment() {
+  const inp = document.getElementById('newCmt'); const v = inp.value.trim(); if (!v) return;
+  if (!state.me) { toast('Önce kişi kartından “ben”i seçin'); return; }
+  const t = taskById(detailId); t.comments = t.comments || []; t.comments.push({ id: uid(), by: meName(), at: Date.now(), text: v });
+  logActivity(t, 'yorum yaptı'); save(); renderDetail(); renderProjects(); renderCustom();
+}
+
 /* ============ MEMBERS ============ */
 let mEditId = null, mColor = COLORS[0];
 function openMember(id) {
-  mEditId = id;
-  const m = id ? memberById(id) : null;
+  mEditId = id; const m = id ? memberById(id) : null;
   mColor = m ? m.color : COLORS[state.members.length % COLORS.length];
   const sheet = document.getElementById('sheet');
-  sheet.innerHTML = `
-    <h2>${m ? 'Kişiyi düzenle' : 'Kişi ekle'}</h2>
-    <div class="field"><label>İsim</label>
-      <input id="mName" placeholder="Ad" value="${m?escAttr(m.name):''}"></div>
+  sheet.innerHTML = `<h2>${m ? 'Kişiyi düzenle' : 'Kişi ekle'}</h2>
+    <div class="field"><label>İsim</label><input id="mName" placeholder="Ad" value="${m?escAttr(m.name):''}"></div>
     <div class="field"><label>Renk</label><div class="swatch-row" id="swatches"></div></div>
-    ${m ? `<div class="field"><label>"Ben buyum" olarak işaretle</label>
-      <button class="btn btn-ghost" onclick="setMe('${m.id}')">${state.me===m.id?'✓ Bu kişi benim':'Beni bu kişi yap'}</button></div>` : ''}
-    <div class="btn-row">
-      ${m ? '<button class="btn btn-danger" onclick="deleteMember()">Sil</button>' : ''}
+    ${m ? `<div class="field"><label>"Ben buyum" olarak işaretle</label><button class="btn btn-ghost" onclick="setMe('${m.id}')">${state.me===m.id?'✓ Bu kişi benim':'Beni bu kişi yap'}</button></div>` : ''}
+    <div class="btn-row">${m ? '<button class="btn btn-danger" onclick="deleteMember()">Sil</button>' : ''}
       <button class="btn btn-ghost" onclick="closeSheet()">İptal</button>
-      <button class="btn btn-primary" onclick="saveMember()">${m ? 'Kaydet' : 'Ekle'}</button>
-    </div>`;
-  const sw = document.getElementById('swatches');
-  COLORS.forEach(c => {
-    const d = document.createElement('div');
-    d.className = 'swatch' + (c === mColor ? ' sel' : ''); d.style.background = c;
-    d.onclick = () => { mColor = c; [...sw.children].forEach(x => x.classList.toggle('sel', x === d)); };
-    sw.appendChild(d);
-  });
-  openSheet();
-  setTimeout(() => document.getElementById('mName').focus(), 100);
+      <button class="btn btn-primary" onclick="saveMember()">${m ? 'Kaydet' : 'Ekle'}</button></div>`;
+  buildSwatches('swatches', () => mColor, c => mColor = c);
+  openSheet(); setTimeout(() => document.getElementById('mName').focus(), 100);
 }
 function saveMember() {
   const name = document.getElementById('mName').value.trim();
@@ -700,91 +756,89 @@ function deleteMember() {
   closeSheet(); render(); toast('Silindi');
 }
 
-/* ============ SHARE ============ */
+/* ============ SHARE / BACKUP ============ */
 function buildShareUrl() { return location.origin + location.pathname + '#p=' + encodeURIComponent(encodeData(state)); }
 function openShare() {
   const url = buildShareUrl();
-  const sheet = document.getElementById('sheet');
-  sheet.innerHTML = `
-    <h2>🔗 Programı paylaş</h2>
-    <p class="hint">Bağlantıyı gönderdiğinde tüm program (kişiler, projeler, görevler) karşı tarafta açılır. Sunucu yok — veri linkin içinde taşınır.</p>
-    <div class="field"><label>Paylaşım bağlantısı</label>
-      <textarea class="share-code" id="shareUrl" rows="3" readonly>${url}</textarea></div>
-    <div class="btn-row">
-      <button class="btn btn-ghost" onclick="openImport()">İçe aktar</button>
-      <button class="btn btn-primary" onclick="copyShare()">Bağlantıyı kopyala</button>
-    </div>
-    <div class="btn-row" style="margin-top:10px;">
-      <button class="btn btn-ghost" onclick="nativeShare()" style="flex:none;width:100%;">📤 Paylaş menüsü</button>
-    </div>`;
+  document.getElementById('sheet').innerHTML = `<h2>🔗 Paylaş & Yedek</h2>
+    <p class="hint">Bağlantıyı gönderince tüm program (kişiler, projeler, görevler) karşı tarafta açılır. Sunucu yok — veri linkin içinde taşınır.</p>
+    <div class="field"><label>Paylaşım bağlantısı</label><textarea class="share-code" id="shareUrl" rows="3" readonly>${url}</textarea></div>
+    <div class="btn-row"><button class="btn btn-ghost" onclick="nativeShare()">📤 Paylaş</button>
+      <button class="btn btn-primary" onclick="copyShare()">Bağlantıyı kopyala</button></div>
+    <div class="sub-block"><h4>Yedek (veri güvenliği)</h4>
+      <div class="btn-row" style="margin-top:0"><button class="btn btn-ghost" onclick="exportJson()">⬇ Yedek indir (.json)</button>
+        <button class="btn btn-ghost" onclick="openImport()">⬆ Geri yükle / içe aktar</button></div></div>`;
   openSheet();
 }
 function copyShare() {
   const v = document.getElementById('shareUrl').value;
-  navigator.clipboard?.writeText(v).then(() => toast('Bağlantı kopyalandı ✓'),
-    () => { document.getElementById('shareUrl').select(); document.execCommand('copy'); toast('Kopyalandı ✓'); });
+  navigator.clipboard?.writeText(v).then(() => toast('Bağlantı kopyalandı ✓'), () => { document.getElementById('shareUrl').select(); document.execCommand('copy'); toast('Kopyalandı ✓'); });
 }
-function nativeShare() {
-  const url = document.getElementById('shareUrl').value;
-  if (navigator.share) navigator.share({ title: state.title || 'Ortak Program', url }).catch(() => {});
-  else copyShare();
+function nativeShare() { const url = document.getElementById('shareUrl').value; if (navigator.share) navigator.share({ title: state.title || 'Ortak Program', url }).catch(() => {}); else copyShare(); }
+function exportJson() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = (state.title || 'ortak-program').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-yedek.json';
+  a.click(); URL.revokeObjectURL(a.href); toast('Yedek indirildi ✓');
 }
 function openImport() {
-  const sheet = document.getElementById('sheet');
-  sheet.innerHTML = `
-    <h2>İçe aktar</h2>
-    <p class="hint">Aldığın paylaşım bağlantısını veya kodu yapıştır.</p>
-    <div class="field"><label>Bağlantı / kod</label>
-      <textarea class="share-code" id="importVal" rows="4" placeholder="https://...#p=..."></textarea></div>
-    <div class="btn-row">
-      <button class="btn btn-ghost" onclick="closeSheet()">İptal</button>
-      <button class="btn btn-primary" onclick="doImport()">Yükle</button>
-    </div>`;
+  document.getElementById('sheet').innerHTML = `<h2>Geri yükle / içe aktar</h2>
+    <p class="hint">Paylaşım bağlantısı/kodu yapıştırın ya da .json yedek dosyası seçin.</p>
+    <div class="field"><label>Bağlantı / kod</label><textarea class="share-code" id="importVal" rows="4" placeholder="https://...#p=..."></textarea></div>
+    <div class="field"><label>veya yedek dosyası</label><input type="file" id="importFile" accept="application/json,.json"></div>
+    <div class="btn-row"><button class="btn btn-ghost" onclick="closeSheet()">İptal</button>
+      <button class="btn btn-primary" onclick="doImportText()">Yükle</button></div>`;
+  document.getElementById('importFile').onchange = (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader(); r.onload = () => { try { loadImported(JSON.parse(r.result)); } catch { toast('Dosya okunamadı'); } }; r.readAsText(f);
+  };
   openSheet();
 }
-function doImport() {
+function doImportText() {
   let v = document.getElementById('importVal').value.trim();
-  const m = v.match(/[#&]p=([^&]+)/);
-  if (m) v = m[1];
-  try {
-    const data = decodeData(decodeURIComponent(v));
-    if (!data || !Array.isArray(data.tasks)) throw 0;
-    if (!confirm('Mevcut programın yerine bu program yüklensin mi?')) return;
-    state = migrate(data); activeFilter = 'all';
-    closeSheet(); render(); toast('Program yüklendi ✓');
-  } catch { toast('Geçersiz bağlantı/kod'); }
+  const m = v.match(/[#&]p=([^&]+)/); if (m) v = m[1];
+  try { loadImported(decodeData(decodeURIComponent(v))); } catch { toast('Geçersiz bağlantı/kod'); }
+}
+function loadImported(data) {
+  if (!data || !Array.isArray(data.tasks)) { toast('Geçersiz veri'); return; }
+  if (!confirm('Mevcut programın yerine bu veri yüklensin mi?')) return;
+  state = migrate(data); activeFilter = 'all'; adv = { project: '', assignee: '', priority: '', search: '' };
+  closeSheet(); render(); toast('Yüklendi ✓');
 }
 
 /* ============ HELPERS ============ */
+function buildSwatches(elId, get, set) {
+  const sw = document.getElementById(elId);
+  COLORS.forEach(c => { const d = document.createElement('div'); d.className = 'swatch' + (c === get() ? ' sel' : ''); d.style.background = c; d.onclick = () => { set(c); [...sw.children].forEach(x => x.classList.toggle('sel', x === d)); }; sw.appendChild(d); });
+}
+function colorFor(name) { let h = 0; for (const ch of (name||'')) h = (h * 31 + ch.charCodeAt(0)) % COLORS.length; return COLORS[h]; }
 function initials(n) { return (n || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase(); }
 function esc(s) { return (s || '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
 function escAttr(s) { return esc(s).replace(/"/g, '&quot;'); }
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function fmtDate(d) { return new Date(d + 'T00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }); }
+function fmtAgo(ts) {
+  const s = (Date.now() - ts) / 1000;
+  if (s < 60) return 'az önce'; if (s < 3600) return Math.floor(s / 60) + ' dk önce';
+  if (s < 86400) return Math.floor(s / 3600) + ' sa önce'; if (s < 7 * 86400) return Math.floor(s / 86400) + ' gün önce';
+  return new Date(ts).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+}
 function openSheet() { document.getElementById('backdrop').classList.add('open'); }
 function closeSheet() { document.getElementById('backdrop').classList.remove('open'); }
 let toastTimer;
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
-}
-function toggleTheme() {
-  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
-  document.getElementById('themeBtn').textContent = dark ? '🌙' : '☀️';
-  localStorage.setItem('ortakTheme', dark ? 'light' : 'dark');
-}
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2000); }
+function toggleTheme() { const dark = document.documentElement.getAttribute('data-theme') === 'dark'; document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark'); document.getElementById('themeBtn').textContent = dark ? '🌙' : '☀️'; localStorage.setItem('ortakTheme', dark ? 'light' : 'dark'); }
 
 /* ============ INIT ============ */
 document.getElementById('progTitle').addEventListener('input', e => { state.title = e.target.value; save(); });
+let searchTimer;
+document.getElementById('searchInput').addEventListener('input', e => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { adv.search = e.target.value.trim(); renderProjects(); renderCustom(); }, 150); });
 if (localStorage.getItem('ortakTheme') === 'dark') toggleTheme();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 function init() {
   render();
   if (pendingImport) {
-    if (confirm('Bir paylaşım bağlantısı açtınız. Bu program yüklensin mi? (Mevcut veriniz değişebilir)')) {
-      state = pendingImport; activeFilter = 'all';
-    }
+    if (confirm('Bir paylaşım bağlantısı açtınız. Bu program yüklensin mi? (Mevcut veriniz değişebilir)')) { state = pendingImport; activeFilter = 'all'; }
     pendingImport = null; render();
   }
 }
