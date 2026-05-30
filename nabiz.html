@@ -24,6 +24,7 @@
     --red: #dc2626;
     --red-soft: #fbe9e9;
     --amber: #d97706;
+    --amber-soft: #fdf0dd;
     --fg: var(--ink);
     --card-shadow: 0 4px 20px rgba(49, 46, 129, 0.07);
     --muted: rgba(21, 23, 43, 0.55);
@@ -39,6 +40,7 @@
     --muted: rgba(232, 234, 246, 0.55);
     --green-soft: #122a1c;
     --red-soft: #2c1416;
+    --amber-soft: #2c2310;
     --line: rgba(129, 140, 248, 0.2);
     --bar-bg: rgba(129, 140, 248, 0.16);
   }
@@ -137,6 +139,16 @@
   .btn-row { display: flex; gap: 10px; margin-top: 14px; }
   .btn-row .btn { width: auto; flex: 1; padding: 12px; font-size: 14px; }
 
+  /* SEGMENT TOGGLE */
+  .segment { display: flex; gap: 6px; background: var(--bar-bg); padding: 4px; border-radius: 14px; margin-top: 14px; }
+  .segment button {
+    flex: 1; border: none; background: transparent; color: var(--muted); font-family: inherit;
+    font-weight: 700; font-size: 13.5px; padding: 9px; border-radius: 10px; cursor: pointer;
+  }
+  .segment button.active { background: var(--card-bg); color: var(--indigo-bright); box-shadow: var(--card-shadow); }
+  .subpanel { display: none; }
+  .subpanel.active { display: block; }
+
   /* CHART */
   .chart-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin: 4px 0 6px; scrollbar-width: none; }
   .chart-tabs::-webkit-scrollbar { display: none; }
@@ -147,6 +159,12 @@
   .chip.active { background: var(--indigo); color: #fff; border-color: var(--indigo); }
   svg.chart { width: 100%; height: auto; display: block; }
   .chart-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 4px; flex-wrap: wrap; gap: 6px; }
+
+  /* HEATMAP */
+  .heat { width: 100%; border-collapse: separate; border-spacing: 3px; }
+  .heat th { font-size: 9.5px; color: var(--muted); font-weight: 600; padding: 2px; white-space: nowrap; }
+  .heat td.day { font-size: 11px; font-weight: 700; color: var(--muted); text-align: right; padding-right: 4px; white-space: nowrap; }
+  .heat td.cell { border-radius: 5px; height: 30px; text-align: center; font-size: 10px; font-weight: 700; color: #fff; }
 
   /* STRATEGY */
   .insight {
@@ -162,17 +180,35 @@
   .insight.bad { border-left: 4px solid var(--red); }
   .insight.tip { border-left: 4px solid var(--indigo-bright); }
 
-  .empty { text-align: center; padding: 50px 20px; color: var(--muted); }
+  .empty { text-align: center; padding: 44px 20px; color: var(--muted); }
   .empty .big { font-size: 44px; margin-bottom: 12px; }
 
   .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .pill { font-size: 11.5px; padding: 4px 10px; border-radius: 999px; background: var(--bar-bg); color: var(--fg); font-weight: 600; }
+  .tag { font-size: 10.5px; padding: 2px 8px; border-radius: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
+  .tag.post { background: var(--bar-bg); color: var(--indigo-bright); }
+  .tag.reels { background: rgba(124,58,237,.15); color: var(--violet); }
+  .tag.carousel { background: rgba(20,184,166,.15); color: var(--teal); }
+  .tag.story { background: var(--amber-soft); color: var(--amber); }
 
-  table.weeks { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
-  table.weeks th, table.weeks td { text-align: left; padding: 9px 6px; border-bottom: 1px solid var(--line); }
-  table.weeks th { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
-  table.weeks td .mini-act { display: inline-flex; gap: 6px; }
-  table.weeks button { background: none; border: none; cursor: pointer; font-size: 15px; padding: 2px; color: var(--muted); }
+  /* LIST ITEM */
+  .litem { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .litem:last-child { border-bottom: none; }
+  .litem .li-main { flex: 1; min-width: 0; }
+  .litem .li-title { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .litem .li-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .litem .li-act button { background: none; border: none; cursor: pointer; font-size: 15px; padding: 3px; color: var(--muted); }
+  .li-rank { width: 24px; height: 24px; border-radius: 50%; background: var(--indigo); color: #fff; font-size: 12px; font-weight: 800; display: grid; place-items: center; flex-shrink: 0; }
+  .li-rank.r1 { background: #eab308; } .li-rank.r2 { background: #94a3b8; } .li-rank.r3 { background: #b45309; }
+
+  table.mini { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+  table.mini th, table.mini td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+  table.mini th { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+  table.mini td.r, table.mini th.r { text-align: right; }
+
+  /* GOAL */
+  .goal-prog { height: 9px; background: var(--bar-bg); border-radius: 99px; overflow: hidden; margin-top: 7px; }
+  .goal-prog > div { height: 100%; border-radius: 99px; transition: width .4s; }
 
   /* TAB BAR */
   .tab-bar {
@@ -181,11 +217,11 @@
     padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -2px 16px rgba(0,0,0,.06);
   }
   .tab-btn {
-    flex: 1; background: none; border: none; cursor: pointer; padding: 9px 4px 8px; color: var(--muted);
+    flex: 1; background: none; border: none; cursor: pointer; padding: 9px 2px 8px; color: var(--muted);
     display: flex; flex-direction: column; align-items: center; gap: 3px; font-family: inherit; text-decoration: none;
   }
-  .tab-btn .icon { font-size: 20px; }
-  .tab-btn .lbl { font-size: 10.5px; font-weight: 600; }
+  .tab-btn .icon { font-size: 19px; }
+  .tab-btn .lbl { font-size: 10px; font-weight: 600; }
   .tab-btn.active { color: var(--indigo-bright); }
 
   .toast {
@@ -213,6 +249,7 @@
 <!-- ============ GENEL BAKIŞ ============ -->
 <section id="overview" class="active sec-pad">
   <div id="ovWeekBadge"></div>
+  <div id="ovGoals"></div>
   <div class="kpi-grid" id="kpiGrid"></div>
   <div class="card" id="ovBreakdown"></div>
   <div class="card">
@@ -223,61 +260,114 @@
 
 <!-- ============ VERİ GİR ============ -->
 <section id="entry" class="sec-pad">
-  <h2 class="sec-title"><span class="em">✍️</span> Haftalık Veri Girişi</h2>
-  <p class="subtle">Instagram istatistiklerini (Profesyonel Panel → Bilgiler) ve web sitesi verilerini haftalık olarak gir. Hafta başlangıcı Pazartesi olarak alınır.</p>
-
-  <div class="card">
-    <div class="field">
-      <label>Hafta başlangıcı (Pazartesi)</label>
-      <input type="date" id="f_week">
-    </div>
-
-    <div class="group-title">📷 Instagram — Hesap</div>
-    <div class="form-grid">
-      <div class="field"><label>Toplam takipçi</label><input type="number" id="f_followers" inputmode="numeric" placeholder="örn. 1240"></div>
-      <div class="field"><label>Yeni takipçi <span class="hint">(bu hafta)</span></label><input type="number" id="f_newFollowers" inputmode="numeric" placeholder="örn. 45"></div>
-      <div class="field"><label>Erişim <span class="hint">(reach)</span></label><input type="number" id="f_reach" inputmode="numeric" placeholder="ulaşılan hesap"></div>
-      <div class="field"><label>Gösterim <span class="hint">(impressions)</span></label><input type="number" id="f_impressions" inputmode="numeric" placeholder="toplam görüntülenme"></div>
-      <div class="field"><label>Profil ziyareti</label><input type="number" id="f_profileVisits" inputmode="numeric"></div>
-      <div class="field"><label>Web sitesi tıklaması</label><input type="number" id="f_websiteClicks" inputmode="numeric"></div>
-    </div>
-
-    <div class="group-title">❤️ Instagram — Etkileşim</div>
-    <div class="form-grid">
-      <div class="field"><label>Beğeni</label><input type="number" id="f_likes" inputmode="numeric"></div>
-      <div class="field"><label>Yorum</label><input type="number" id="f_comments" inputmode="numeric"></div>
-      <div class="field"><label>Kaydetme</label><input type="number" id="f_saves" inputmode="numeric"></div>
-      <div class="field"><label>Paylaşım</label><input type="number" id="f_shares" inputmode="numeric"></div>
-      <div class="field"><label>Story görüntüleme</label><input type="number" id="f_storyViews" inputmode="numeric"></div>
-    </div>
-
-    <div class="group-title">🗂️ Yayınlanan İçerik <span class="hint" style="font-weight:400;color:var(--muted)">(bu hafta)</span></div>
-    <div class="form-grid">
-      <div class="field"><label>Gönderi (post)</label><input type="number" id="f_posts" inputmode="numeric"></div>
-      <div class="field"><label>Reels</label><input type="number" id="f_reels" inputmode="numeric"></div>
-      <div class="field"><label>Story sayısı</label><input type="number" id="f_stories" inputmode="numeric"></div>
-    </div>
-
-    <div class="group-title">🌐 Web Sitesi Trafiği</div>
-    <div class="form-grid">
-      <div class="field"><label>Ziyaretçi <span class="hint">(users)</span></label><input type="number" id="f_visitors" inputmode="numeric"></div>
-      <div class="field"><label>Sayfa görüntüleme</label><input type="number" id="f_pageviews" inputmode="numeric"></div>
-      <div class="field"><label>Ort. süre <span class="hint">(sn)</span></label><input type="number" id="f_avgDuration" inputmode="numeric"></div>
-      <div class="field"><label>Hemen çıkma <span class="hint">(%)</span></label><input type="number" id="f_bounce" inputmode="numeric"></div>
-    </div>
-
-    <div class="field" style="margin-top:8px;">
-      <label>Not <span class="hint">(kampanya, viral içerik, tatil vb.)</span></label>
-      <textarea id="f_note" placeholder="Bu haftaya dair notlar…"></textarea>
-    </div>
-
-    <button class="btn btn-primary" onclick="saveWeek()">💾 Haftayı Kaydet</button>
-    <button class="btn btn-ghost" style="margin-top:10px;" onclick="clearForm()" id="cancelEditBtn">Formu Temizle</button>
+  <h2 class="sec-title"><span class="em">✍️</span> Veri Girişi</h2>
+  <div class="segment">
+    <button id="seg-weekly" class="active" onclick="showSub('weekly')">📅 Haftalık</button>
+    <button id="seg-post" onclick="showSub('post')">📝 Gönderi</button>
   </div>
 
-  <div class="card" id="weekListCard">
-    <h3><span class="t">🗓️ Kayıtlı Haftalar</span></h3>
-    <div id="weekList"></div>
+  <!-- WEEKLY SUBPANEL -->
+  <div class="subpanel active" id="sub-weekly">
+    <p class="subtle" style="margin-top:12px;">Instagram istatistiklerini (Profesyonel Panel → Bilgiler) ve web verilerini haftalık gir. Hafta başlangıcı Pazartesi.</p>
+    <div class="card">
+      <div class="field">
+        <label>Hafta başlangıcı (Pazartesi)</label>
+        <input type="date" id="f_week">
+      </div>
+      <div class="group-title">📷 Instagram — Hesap</div>
+      <div class="form-grid">
+        <div class="field"><label>Toplam takipçi</label><input type="number" id="f_followers" inputmode="numeric" placeholder="örn. 1240"></div>
+        <div class="field"><label>Yeni takipçi <span class="hint">(bu hafta)</span></label><input type="number" id="f_newFollowers" inputmode="numeric" placeholder="örn. 45"></div>
+        <div class="field"><label>Erişim <span class="hint">(reach)</span></label><input type="number" id="f_reach" inputmode="numeric"></div>
+        <div class="field"><label>Gösterim</label><input type="number" id="f_impressions" inputmode="numeric"></div>
+        <div class="field"><label>Profil ziyareti</label><input type="number" id="f_profileVisits" inputmode="numeric"></div>
+        <div class="field"><label>Web sitesi tıklaması</label><input type="number" id="f_websiteClicks" inputmode="numeric"></div>
+      </div>
+      <div class="group-title">❤️ Instagram — Etkileşim</div>
+      <div class="form-grid">
+        <div class="field"><label>Beğeni</label><input type="number" id="f_likes" inputmode="numeric"></div>
+        <div class="field"><label>Yorum</label><input type="number" id="f_comments" inputmode="numeric"></div>
+        <div class="field"><label>Kaydetme</label><input type="number" id="f_saves" inputmode="numeric"></div>
+        <div class="field"><label>Paylaşım</label><input type="number" id="f_shares" inputmode="numeric"></div>
+        <div class="field"><label>Story görüntüleme</label><input type="number" id="f_storyViews" inputmode="numeric"></div>
+      </div>
+      <div class="group-title">🗂️ Yayınlanan İçerik <span class="hint" style="font-weight:400;color:var(--muted)">(bu hafta)</span></div>
+      <div class="form-grid">
+        <div class="field"><label>Gönderi (post)</label><input type="number" id="f_posts" inputmode="numeric"></div>
+        <div class="field"><label>Reels</label><input type="number" id="f_reels" inputmode="numeric"></div>
+        <div class="field"><label>Story sayısı</label><input type="number" id="f_stories" inputmode="numeric"></div>
+      </div>
+      <div class="group-title">🌐 Web Sitesi Trafiği</div>
+      <div class="form-grid">
+        <div class="field"><label>Ziyaretçi</label><input type="number" id="f_visitors" inputmode="numeric"></div>
+        <div class="field"><label>Sayfa görüntüleme</label><input type="number" id="f_pageviews" inputmode="numeric"></div>
+        <div class="field"><label>Ort. süre <span class="hint">(sn)</span></label><input type="number" id="f_avgDuration" inputmode="numeric"></div>
+        <div class="field"><label>Hemen çıkma <span class="hint">(%)</span></label><input type="number" id="f_bounce" inputmode="numeric"></div>
+      </div>
+      <div class="field" style="margin-top:8px;">
+        <label>Not <span class="hint">(kampanya, viral içerik vb.)</span></label>
+        <textarea id="f_note" placeholder="Bu haftaya dair notlar…"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="saveWeek()">💾 Haftayı Kaydet</button>
+      <button class="btn btn-ghost" style="margin-top:10px;" onclick="clearForm()" id="cancelEditBtn">Formu Temizle</button>
+    </div>
+    <div class="card">
+      <h3><span class="t">🗓️ Kayıtlı Haftalar</span></h3>
+      <div id="weekList"></div>
+    </div>
+  </div>
+
+  <!-- POST SUBPANEL -->
+  <div class="subpanel" id="sub-post">
+    <p class="subtle" style="margin-top:12px;">Her gönderiyi tek tek ekle. Saat & gün bilgisi "en iyi yayın saatleri" analizini besler.</p>
+    <div class="card">
+      <div class="form-grid">
+        <div class="field"><label>Yayın tarihi</label><input type="date" id="p_date"></div>
+        <div class="field"><label>Saat</label><input type="time" id="p_time" value="19:00"></div>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label>İçerik türü</label>
+          <select id="p_type"><option value="post">Gönderi</option><option value="reels">Reels</option><option value="carousel">Karusel</option><option value="story">Story</option></select>
+        </div>
+        <div class="field"><label>Konu / başlık</label><input type="text" id="p_topic" placeholder="örn. ürün tanıtımı"></div>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label>Erişim</label><input type="number" id="p_reach" inputmode="numeric"></div>
+        <div class="field"><label>Beğeni</label><input type="number" id="p_likes" inputmode="numeric"></div>
+        <div class="field"><label>Yorum</label><input type="number" id="p_comments" inputmode="numeric"></div>
+        <div class="field"><label>Kaydetme</label><input type="number" id="p_saves" inputmode="numeric"></div>
+        <div class="field"><label>Paylaşım</label><input type="number" id="p_shares" inputmode="numeric"></div>
+      </div>
+      <button class="btn btn-primary" onclick="savePost()">💾 Gönderiyi Kaydet</button>
+      <button class="btn btn-ghost" style="margin-top:10px;" onclick="clearPostForm()" id="cancelPostBtn">Formu Temizle</button>
+    </div>
+    <div class="card">
+      <h3><span class="t">📋 Kayıtlı Gönderiler</span> <span class="subtle" id="postCount"></span></h3>
+      <div id="postList"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GÖNDERİ ANALİZİ ============ -->
+<section id="analysis" class="sec-pad">
+  <h2 class="sec-title"><span class="em">⏰</span> Yayın Saatleri & Gönderi Analizi</h2>
+  <div class="card">
+    <h3><span class="t">🔥 En İyi Yayın Zamanları</span>
+      <select id="heatMetric" onchange="renderAnalysis()" style="width:auto;font-size:12px;padding:6px 8px;">
+        <option value="eng">Etkileşim %</option><option value="reach">Erişim</option>
+      </select>
+    </h3>
+    <p class="subtle" id="heatHint"></p>
+    <div style="overflow-x:auto;"><div id="heatmap"></div></div>
+    <div id="bestSlots"></div>
+  </div>
+  <div class="card">
+    <h3><span class="t">🏆 En İyi Gönderiler</span></h3>
+    <div id="topPosts"></div>
+  </div>
+  <div class="card">
+    <h3><span class="t">🎬 İçerik Türüne Göre</span></h3>
+    <div id="byType"></div>
   </div>
 </section>
 
@@ -290,16 +380,41 @@
     <div id="chartArea"></div>
   </div>
   <div class="card">
-    <h3><span class="t">🔀 Karşılaştırma</span></h3>
-    <p class="subtle">İçerik üretimi (gönderi+reels) ile erişimin haftalık ilişkisi.</p>
+    <h3><span class="t">🔀 İçerik vs Erişim</span></h3>
+    <p class="subtle">Haftalık içerik üretimi (gönderi+reels) ile erişimin ilişkisi.</p>
     <div id="chartCompare"></div>
+  </div>
+  <div class="card">
+    <h3><span class="t">📅 Aylık Özet Rapor</span></h3>
+    <div id="monthly"></div>
   </div>
 </section>
 
 <!-- ============ STRATEJİ ============ -->
 <section id="strategy" class="sec-pad">
-  <h2 class="sec-title"><span class="em">🎯</span> Strateji & Öneriler</h2>
-  <p class="subtle">Veriler otomatik analiz edilir; her hafta yeni veri girdikçe öneriler güncellenir.</p>
+  <h2 class="sec-title"><span class="em">🎯</span> Strateji & Hedefler</h2>
+
+  <div class="card">
+    <h3><span class="t">🎯 Hedefler</span></h3>
+    <p class="subtle">Bir metrik için hedef ve son tarih belirle; ilerlemeni ve "yolunda mısın?" tahminini gör.</p>
+    <div class="form-grid" style="margin-top:10px;">
+      <div class="field"><label>Metrik</label>
+        <select id="g_metric">
+          <option value="followers">Takipçi</option>
+          <option value="engagement">Etkileşim oranı %</option>
+          <option value="reach">Haftalık erişim</option>
+          <option value="visitors">Web ziyaretçi</option>
+        </select>
+      </div>
+      <div class="field"><label>Hedef değer</label><input type="number" id="g_target" inputmode="numeric" placeholder="örn. 2000"></div>
+    </div>
+    <div class="field"><label>Son tarih</label><input type="date" id="g_deadline"></div>
+    <button class="btn btn-primary" onclick="saveGoal()">➕ Hedef Ekle</button>
+    <div id="goalList" style="margin-top:6px;"></div>
+  </div>
+
+  <h2 class="sec-title" style="margin-top:20px;"><span class="em">💡</span> Otomatik Öneriler</h2>
+  <p class="subtle">Veriler her hafta güncellendikçe öneriler yenilenir.</p>
   <div id="insights"></div>
 
   <div class="card">
@@ -309,7 +424,7 @@
 
   <div class="card">
     <h3><span class="t">💾 Veri Yönetimi</span></h3>
-    <p class="subtle">Verilerin yalnızca bu cihazda (tarayıcıda) saklanır. Yedek almak için dışa aktar.</p>
+    <p class="subtle">Verilerin yalnızca bu cihazda saklanır. Yedek için dışa aktar.</p>
     <div class="btn-row">
       <button class="btn btn-ghost" onclick="exportData()">⬇️ Dışa Aktar</button>
       <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">⬆️ İçe Aktar</button>
@@ -324,6 +439,7 @@
 <nav class="tab-bar">
   <button class="tab-btn active" id="tab-overview" onclick="showSection('overview')"><span class="icon">📊</span><span class="lbl">Genel</span></button>
   <button class="tab-btn" id="tab-entry" onclick="showSection('entry')"><span class="icon">✍️</span><span class="lbl">Veri Gir</span></button>
+  <button class="tab-btn" id="tab-analysis" onclick="showSection('analysis')"><span class="icon">⏰</span><span class="lbl">Saatler</span></button>
   <button class="tab-btn" id="tab-charts" onclick="showSection('charts')"><span class="icon">📈</span><span class="lbl">Grafik</span></button>
   <button class="tab-btn" id="tab-strategy" onclick="showSection('strategy')"><span class="icon">🎯</span><span class="lbl">Strateji</span></button>
 </nav>
@@ -333,11 +449,14 @@
 <script>
 /* ============ STATE ============ */
 const STORE_KEY = 'nabizAnalytics';
+const POST_KEY  = 'nabizPosts';
+const GOAL_KEY  = 'nabizGoals';
 const THEME_KEY = 'nabizTheme';
 let state = {
   weeks: JSON.parse(localStorage.getItem(STORE_KEY) || '[]'),
+  posts: JSON.parse(localStorage.getItem(POST_KEY) || '[]'),
+  goals: JSON.parse(localStorage.getItem(GOAL_KEY) || '[]'),
   theme: localStorage.getItem(THEME_KEY) || 'light',
-  editIndex: null,
   chartMetric: 'followers'
 };
 
@@ -353,60 +472,68 @@ const METRICS = [
   { key: 'pageviews',     label: 'Sayfa Görüntüleme',fmt: 'int' }
 ];
 
+const DAYS = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+const TIME_BUCKETS = [
+  { label:'06-09', min:6,  max:9  },
+  { label:'09-12', min:9,  max:12 },
+  { label:'12-15', min:12, max:15 },
+  { label:'15-18', min:15, max:18 },
+  { label:'18-21', min:18, max:21 },
+  { label:'21-24', min:21, max:24 },
+  { label:'00-06', min:0,  max:6  }
+];
+const TYPE_LABEL = { post:'Gönderi', reels:'Reels', carousel:'Karusel', story:'Story' };
+
 /* ============ HELPERS ============ */
 function $(id){ return document.getElementById(id); }
 function num(v){ const n = parseFloat(v); return isNaN(n) ? 0 : n; }
 function fmtInt(n){ return Math.round(n).toLocaleString('tr-TR'); }
 function fmtPct(n){ return (Math.round(n*100)/100).toLocaleString('tr-TR') + '%'; }
+function r2(n){ return Math.round(n*100)/100; }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
 function toast(msg){
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), 2200);
 }
-
-function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(state.weeks)); }
+function saveWeeks(){ localStorage.setItem(STORE_KEY, JSON.stringify(state.weeks)); }
+function savePosts(){ localStorage.setItem(POST_KEY, JSON.stringify(state.posts)); }
+function saveGoals(){ localStorage.setItem(GOAL_KEY, JSON.stringify(state.goals)); }
 
 function totalEng(w){ return num(w.likes)+num(w.comments)+num(w.saves)+num(w.shares); }
-function engRate(w){
-  const base = num(w.reach) || num(w.followers);
-  if(!base) return 0;
-  return totalEng(w) / base * 100;
-}
+function engRate(w){ const base = num(w.reach) || num(w.followers); return base ? totalEng(w)/base*100 : 0; }
 function totalContent(w){ return num(w.posts)+num(w.reels); }
-function metricValue(w, key){
-  if(key === 'engagement') return engRate(w);
-  return num(w[key]);
-}
+function metricValue(w, key){ return key === 'engagement' ? engRate(w) : num(w[key]); }
+function sortedWeeks(){ return [...state.weeks].sort((a,b)=> a.week < b.week ? -1 : 1); }
 
-function sortedWeeks(){
-  return [...state.weeks].sort((a,b)=> a.week < b.week ? -1 : 1);
-}
+function postEng(p){ return num(p.likes)+num(p.comments)+num(p.saves)+num(p.shares); }
+function postEngRate(p){ return num(p.reach) ? postEng(p)/num(p.reach)*100 : 0; }
 
 function weekLabel(iso){
   if(!iso) return '—';
-  const d = new Date(iso + 'T00:00:00');
-  return d.toLocaleDateString('tr-TR', { day:'numeric', month:'short' });
+  return new Date(iso+'T00:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short'});
 }
-
+function dateLabel(iso){
+  if(!iso) return '—';
+  return new Date(iso+'T00:00:00').toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'2-digit'});
+}
 function mondayOf(date){
-  const d = new Date(date);
-  const day = (d.getDay() + 6) % 7;
-  d.setDate(d.getDate() - day);
-  return d.toISOString().slice(0,10);
+  const d = new Date(date); const day = (d.getDay()+6)%7;
+  d.setDate(d.getDate()-day); return d.toISOString().slice(0,10);
 }
+function dowMon(iso){ return (new Date(iso+'T00:00:00').getDay()+6)%7; } // 0=Mon
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
 
-/* ============ THEME ============ */
+/* ============ THEME / NAV ============ */
 function applyTheme(){
-  document.documentElement.setAttribute('data-theme', state.theme === 'dark' ? 'dark' : 'light');
-  $('themeBtn').textContent = state.theme === 'dark' ? '☀️' : '🌙';
+  document.documentElement.setAttribute('data-theme', state.theme==='dark'?'dark':'light');
+  $('themeBtn').textContent = state.theme==='dark'?'☀️':'🌙';
 }
 function toggleTheme(){
-  state.theme = state.theme === 'dark' ? 'light' : 'dark';
-  localStorage.setItem(THEME_KEY, state.theme);
-  applyTheme(); renderAll();
+  state.theme = state.theme==='dark'?'light':'dark';
+  localStorage.setItem(THEME_KEY, state.theme); applyTheme(); renderAll();
 }
-
-/* ============ NAV ============ */
 function showSection(id){
   document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -414,70 +541,151 @@ function showSection(id){
   const tb = $('tab-'+id); if(tb) tb.classList.add('active');
   window.scrollTo(0,0);
 }
+function showSub(which){
+  ['weekly','post'].forEach(s=>{
+    $('sub-'+s).classList.toggle('active', s===which);
+    $('seg-'+s).classList.toggle('active', s===which);
+  });
+}
 
-/* ============ FORM ============ */
+/* ============ WEEKLY FORM ============ */
 const FORM_FIELDS = ['followers','newFollowers','reach','impressions','profileVisits','websiteClicks',
   'likes','comments','saves','shares','storyViews','posts','reels','stories',
   'visitors','pageviews','avgDuration','bounce'];
 
 function clearForm(){
-  state.editIndex = null;
   $('f_week').value = mondayOf(new Date());
   FORM_FIELDS.forEach(f => $('f_'+f).value = '');
   $('f_note').value = '';
   $('cancelEditBtn').textContent = 'Formu Temizle';
 }
-
 function saveWeek(){
   const week = $('f_week').value;
   if(!week){ toast('Lütfen hafta tarihi seç'); return; }
   const w = { week };
   FORM_FIELDS.forEach(f => { w[f] = num($('f_'+f).value); });
   w.note = $('f_note').value.trim();
-
-  const existing = state.weeks.findIndex(x => x.week === week);
-  if(existing >= 0){
-    state.weeks[existing] = w;
-    toast('Hafta güncellendi ✓');
-  } else {
-    state.weeks.push(w);
-    toast('Hafta kaydedildi ✓');
-  }
-  save();
-  clearForm();
-  renderAll();
-  showSection('overview');
+  const ex = state.weeks.findIndex(x => x.week === week);
+  if(ex >= 0){ state.weeks[ex] = w; toast('Hafta güncellendi ✓'); }
+  else { state.weeks.push(w); toast('Hafta kaydedildi ✓'); }
+  saveWeeks(); clearForm(); renderAll(); showSection('overview');
 }
-
 function editWeek(week){
-  const w = state.weeks.find(x => x.week === week);
-  if(!w) return;
+  const w = state.weeks.find(x => x.week === week); if(!w) return;
   $('f_week').value = w.week;
   FORM_FIELDS.forEach(f => $('f_'+f).value = w[f] || '');
   $('f_note').value = w.note || '';
   $('cancelEditBtn').textContent = 'İptal / Yeni Hafta';
-  showSection('entry');
+  showSection('entry'); showSub('weekly'); window.scrollTo(0,0);
   toast('Düzenleniyor — kaydet ile güncelle');
 }
-
 function deleteWeek(week){
-  if(!confirm(weekLabel(week) + ' haftası silinsin mi?')) return;
+  if(!confirm(weekLabel(week)+' haftası silinsin mi?')) return;
   state.weeks = state.weeks.filter(x => x.week !== week);
-  save(); renderAll();
-  toast('Hafta silindi');
+  saveWeeks(); renderAll(); toast('Hafta silindi');
+}
+
+/* ============ POST FORM ============ */
+const POST_FIELDS = ['reach','likes','comments','saves','shares'];
+let editingPostId = null;
+function clearPostForm(){
+  editingPostId = null;
+  $('p_date').value = todayISO();
+  $('p_time').value = '19:00';
+  $('p_type').value = 'post';
+  $('p_topic').value = '';
+  POST_FIELDS.forEach(f => $('p_'+f).value = '');
+  $('cancelPostBtn').textContent = 'Formu Temizle';
+}
+function savePost(){
+  const date = $('p_date').value;
+  if(!date){ toast('Lütfen yayın tarihi seç'); return; }
+  const p = {
+    id: editingPostId || uid(),
+    date, time: $('p_time').value || '12:00',
+    type: $('p_type').value, topic: $('p_topic').value.trim()
+  };
+  POST_FIELDS.forEach(f => { p[f] = num($('p_'+f).value); });
+  if(editingPostId){
+    const i = state.posts.findIndex(x=>x.id===editingPostId);
+    if(i>=0) state.posts[i] = p; toast('Gönderi güncellendi ✓');
+  } else { state.posts.push(p); toast('Gönderi kaydedildi ✓'); }
+  savePosts(); clearPostForm(); renderAll();
+}
+function editPost(id){
+  const p = state.posts.find(x=>x.id===id); if(!p) return;
+  editingPostId = id;
+  $('p_date').value = p.date; $('p_time').value = p.time || '12:00';
+  $('p_type').value = p.type; $('p_topic').value = p.topic || '';
+  POST_FIELDS.forEach(f => $('p_'+f).value = p[f] || '');
+  $('cancelPostBtn').textContent = 'İptal / Yeni Gönderi';
+  showSection('entry'); showSub('post'); window.scrollTo(0,0);
+  toast('Düzenleniyor');
+}
+function deletePost(id){
+  if(!confirm('Gönderi silinsin mi?')) return;
+  state.posts = state.posts.filter(x=>x.id!==id);
+  savePosts(); renderAll(); toast('Gönderi silindi');
+}
+
+/* ============ GOALS ============ */
+function goalCurrentValue(metric){
+  const ws = sortedWeeks(); if(!ws.length) return 0;
+  const cur = ws[ws.length-1];
+  return metric==='engagement' ? engRate(cur) : num(cur[metric]);
+}
+function saveGoal(){
+  const metric = $('g_metric').value;
+  const target = num($('g_target').value);
+  const deadline = $('g_deadline').value;
+  if(!target){ toast('Hedef değer gir'); return; }
+  if(!deadline){ toast('Son tarih seç'); return; }
+  state.goals.push({
+    id: uid(), metric, target, deadline,
+    start: goalCurrentValue(metric), createdAt: todayISO()
+  });
+  saveGoals();
+  $('g_target').value=''; $('g_deadline').value='';
+  renderAll(); toast('Hedef eklendi ✓');
+}
+function deleteGoal(id){
+  state.goals = state.goals.filter(g=>g.id!==id);
+  saveGoals(); renderAll(); toast('Hedef silindi');
+}
+function metricName(m){ const x = METRICS.find(k=>k.key===m); return x?x.label:m; }
+function fmtMetric(m,v){ return m==='engagement'?fmtPct(v):fmtInt(v); }
+
+function goalInfo(g){
+  const cur = goalCurrentValue(g.metric);
+  const span = g.target - g.start;
+  const done = cur - g.start;
+  let pct = span !== 0 ? done/span*100 : (cur>=g.target?100:0);
+  pct = Math.max(0, Math.min(pct, 100));
+  const reached = (g.target>=g.start) ? cur>=g.target : cur<=g.target;
+  const totalDays = Math.max(daysBetween(g.createdAt, g.deadline),1);
+  const elapsed = Math.max(daysBetween(g.createdAt, todayISO()),0);
+  const remaining = daysBetween(todayISO(), g.deadline);
+  const timePct = Math.min(elapsed/totalDays*100,100);
+  // projection: at current pace, value at deadline
+  const projected = elapsed>0 ? g.start + done/elapsed*totalDays : cur;
+  const willReach = (g.target>=g.start) ? projected>=g.target : projected<=g.target;
+  let statusCls, statusTxt;
+  if(reached){ statusCls='good'; statusTxt='Hedefe ulaşıldı 🎉'; }
+  else if(remaining < 0){ statusCls='bad'; statusTxt='Süre doldu'; }
+  else if(pct >= timePct - 2){ statusCls='good'; statusTxt='Yolunda 👍'; }
+  else if(willReach){ statusCls='warn'; statusTxt='Hızlanmalı'; }
+  else { statusCls='bad'; statusTxt='Geride'; }
+  return { cur, pct, reached, remaining, projected, willReach, statusCls, statusTxt, timePct };
 }
 
 /* ============ RENDER: OVERVIEW ============ */
 function deltaHtml(cur, prev, invert){
-  if(prev === 0 || prev == null){
-    return '<span class="delta flat">yeni</span>';
-  }
-  const pct = (cur - prev) / Math.abs(prev) * 100;
-  const rounded = Math.round(pct*10)/10;
-  let cls = 'flat', arrow = '→';
+  if(prev === 0 || prev == null) return '<span class="delta flat">yeni</span>';
+  const rounded = Math.round((cur-prev)/Math.abs(prev)*1000)/10;
+  let cls='flat', arrow='→';
   if(Math.abs(rounded) < 0.05){ cls='flat'; arrow='→'; }
-  else if(rounded > 0){ cls = invert ? 'down' : 'up'; arrow='▲'; }
-  else { cls = invert ? 'up' : 'down'; arrow='▼'; }
+  else if(rounded > 0){ cls = invert?'down':'up'; arrow='▲'; }
+  else { cls = invert?'up':'down'; arrow='▼'; }
   return `<span class="delta ${cls}">${arrow} ${Math.abs(rounded).toLocaleString('tr-TR')}%</span>`;
 }
 
@@ -485,6 +693,7 @@ function renderOverview(){
   const ws = sortedWeeks();
   if(ws.length === 0){
     $('ovWeekBadge').innerHTML = '';
+    $('ovGoals').innerHTML = '';
     $('kpiGrid').innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="big">📊</div>
       Henüz veri yok.<br><b>Veri Gir</b> sekmesinden ilk haftanı ekle.</div>`;
     $('ovBreakdown').innerHTML = ''; $('ovBreakdown').style.display='none';
@@ -492,10 +701,11 @@ function renderOverview(){
     return;
   }
   $('ovBreakdown').style.display='';
-  const cur = ws[ws.length-1];
-  const prev = ws.length > 1 ? ws[ws.length-2] : null;
-
+  const cur = ws[ws.length-1], prev = ws.length>1 ? ws[ws.length-2] : null;
   $('ovWeekBadge').innerHTML = `<span class="week-badge"><span class="dot"></span> Son hafta: ${weekLabel(cur.week)} · ${ws.length} hafta kayıtlı</span>`;
+
+  // goal progress strip
+  renderGoalStrip();
 
   const er = engRate(cur), erPrev = prev ? engRate(prev) : null;
   const cards = [
@@ -515,10 +725,7 @@ function renderOverview(){
     </div>`).join('');
 
   const eng = totalEng(cur);
-  const parts = [
-    ['Beğeni', num(cur.likes), '👍'], ['Yorum', num(cur.comments), '💬'],
-    ['Kaydetme', num(cur.saves), '🔖'], ['Paylaşım', num(cur.shares), '↗️']
-  ];
+  const parts = [['Beğeni',num(cur.likes),'👍'],['Yorum',num(cur.comments),'💬'],['Kaydetme',num(cur.saves),'🔖'],['Paylaşım',num(cur.shares),'↗️']];
   $('ovBreakdown').innerHTML = `<h3><span class="t">❤️ Etkileşim Dağılımı</span><span class="subtle">${fmtInt(eng)} toplam</span></h3>
     ${parts.map(([n,v,e])=>{
       const pct = eng ? v/eng*100 : 0;
@@ -529,23 +736,39 @@ function renderOverview(){
       <span class="pill">📷 ${fmtInt(num(cur.posts))} gönderi</span>
       <span class="pill">🎬 ${fmtInt(num(cur.reels))} reels</span>
       <span class="pill">📖 ${fmtInt(num(cur.stories))} story</span>
-      <span class="pill">🔖 Kaydetme oranı: ${cur.reach?fmtPct(num(cur.saves)/num(cur.reach)*100):'—'}</span>
+      <span class="pill">🔖 Kaydetme: ${cur.reach?fmtPct(num(cur.saves)/num(cur.reach)*100):'—'}</span>
     </div>
     ${cur.note?`<p class="subtle" style="margin-top:10px;">📝 ${cur.note}</p>`:''}`;
 
   const last4 = ws.slice(-4);
-  $('ovTrendMini').innerHTML = miniTrend(last4, 'followers','👥 Takipçi') +
-    miniTrend(last4, 'reach','📡 Erişim') +
-    miniTrend(last4, 'engagement','❤️ Etkileşim Oranı', true);
+  $('ovTrendMini').innerHTML = miniTrend(last4,'followers','👥 Takipçi') +
+    miniTrend(last4,'reach','📡 Erişim') + miniTrend(last4,'engagement','❤️ Etkileşim Oranı',true);
+}
+
+function renderGoalStrip(){
+  if(!state.goals.length){ $('ovGoals').innerHTML=''; return; }
+  $('ovGoals').innerHTML = '<div class="card"><h3><span class="t">🎯 Hedef İlerlemesi</span></h3>'+
+    state.goals.map(g=>{
+      const i = goalInfo(g);
+      const col = i.statusCls==='good'?'var(--green)':i.statusCls==='warn'?'var(--amber)':'var(--red)';
+      return `<div style="margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;">
+          <span>${metricName(g.metric)} → ${fmtMetric(g.metric,g.target)}</span>
+          <span style="color:${col};">${Math.round(i.pct)}%</span>
+        </div>
+        <div class="goal-prog"><div style="width:${i.pct}%;background:${col};"></div></div>
+        <div class="subtle" style="margin-top:4px;">${i.statusTxt} · şu an ${fmtMetric(g.metric,i.cur)} · ${i.remaining>=0?i.remaining+' gün kaldı':'süre doldu'}</div>
+      </div>`;
+    }).join('')+'</div>';
 }
 
 function miniTrend(weeks, key, label, isPct){
-  const vals = weeks.map(w=> metricValue(w, key));
-  const max = Math.max(...vals, 1);
+  const vals = weeks.map(w=> metricValue(w,key));
+  const max = Math.max(...vals,1);
   return `<div style="margin:12px 0 4px;font-size:13px;font-weight:600;">${label}</div>
     <div style="display:flex;align-items:flex-end;gap:8px;height:54px;">
       ${weeks.map((w,i)=>{
-        const h = max ? Math.max(vals[i]/max*100, 4) : 4;
+        const h = max ? Math.max(vals[i]/max*100,4) : 4;
         const txt = isPct ? fmtPct(vals[i]) : fmtInt(vals[i]);
         return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
           <div style="font-size:10px;color:var(--muted);">${txt}</div>
@@ -556,277 +779,382 @@ function miniTrend(weeks, key, label, isPct){
     </div>`;
 }
 
-/* ============ RENDER: WEEK LIST ============ */
+/* ============ RENDER: LISTS ============ */
 function renderWeekList(){
   const ws = sortedWeeks().reverse();
-  if(ws.length === 0){
-    $('weekList').innerHTML = '<p class="subtle">Henüz kayıt yok.</p>';
-    return;
-  }
-  $('weekList').innerHTML = `<table class="weeks">
-    <tr><th>Hafta</th><th>Takipçi</th><th>Erişim</th><th>Etk.%</th><th></th></tr>
+  if(!ws.length){ $('weekList').innerHTML = '<p class="subtle">Henüz kayıt yok.</p>'; return; }
+  $('weekList').innerHTML = `<table class="mini">
+    <tr><th>Hafta</th><th class="r">Takipçi</th><th class="r">Erişim</th><th class="r">Etk.%</th><th></th></tr>
     ${ws.map(w=>`<tr>
       <td><b>${weekLabel(w.week)}</b></td>
-      <td>${fmtInt(num(w.followers))}</td>
-      <td>${fmtInt(num(w.reach))}</td>
-      <td>${fmtPct(engRate(w))}</td>
-      <td><span class="mini-act">
-        <button onclick="editWeek('${w.week}')" title="Düzenle">✏️</button>
-        <button onclick="deleteWeek('${w.week}')" title="Sil">🗑️</button>
-      </span></td>
-    </tr>`).join('')}
-  </table>`;
+      <td class="r">${fmtInt(num(w.followers))}</td>
+      <td class="r">${fmtInt(num(w.reach))}</td>
+      <td class="r">${fmtPct(engRate(w))}</td>
+      <td class="r"><button onclick="editWeek('${w.week}')">✏️</button> <button onclick="deleteWeek('${w.week}')">🗑️</button></td>
+    </tr>`).join('')}</table>`;
+}
+
+function renderPostList(){
+  const ps = [...state.posts].sort((a,b)=> (a.date+a.time) < (b.date+b.time) ? 1 : -1);
+  $('postCount').textContent = ps.length ? ps.length+' gönderi' : '';
+  if(!ps.length){ $('postList').innerHTML = '<p class="subtle">Henüz gönderi yok.</p>'; return; }
+  $('postList').innerHTML = ps.map(p=>`
+    <div class="litem">
+      <div class="li-main">
+        <div class="li-title"><span class="tag ${p.type}">${TYPE_LABEL[p.type]||p.type}</span> ${p.topic||'<span class="subtle">başlıksız</span>'}</div>
+        <div class="li-sub">${dateLabel(p.date)} · ${p.time} · ${fmtInt(num(p.reach))} erişim · ❤️ ${fmtPct(postEngRate(p))}</div>
+      </div>
+      <div class="li-act"><button onclick="editPost('${p.id}')">✏️</button><button onclick="deletePost('${p.id}')">🗑️</button></div>
+    </div>`).join('');
 }
 
 /* ============ RENDER: CHARTS ============ */
-function lineChart(weeks, key, isPct){
-  const W = 680, H = 220, pad = { l: 42, r: 14, t: 16, b: 28 };
-  const vals = weeks.map(w=> metricValue(w, key));
-  const max = Math.max(...vals, 1) * 1.1;
-  const min = 0;
-  const innerW = W - pad.l - pad.r, innerH = H - pad.t - pad.b;
-  const n = weeks.length;
-  const x = i => pad.l + (n <= 1 ? innerW/2 : i/(n-1)*innerW);
-  const y = v => pad.t + innerH - (v-min)/(max-min || 1)*innerH;
-
-  let grid = '';
-  for(let g=0; g<=4; g++){
-    const gy = pad.t + innerH - g/4*innerH;
-    const gv = min + (max-min)*g/4;
-    grid += `<line x1="${pad.l}" y1="${gy}" x2="${W-pad.r}" y2="${gy}" stroke="var(--line)" stroke-width="1"/>
-      <text x="${pad.l-6}" y="${gy+4}" text-anchor="end" font-size="10" fill="var(--muted)">${isPct?Math.round(gv*10)/10:fmtShort(gv)}</text>`;
-  }
-  const pts = vals.map((v,i)=>`${x(i)},${y(v)}`).join(' ');
-  const areaPts = `${pad.l},${pad.t+innerH} ${pts} ${x(n-1)},${pad.t+innerH}`;
-  const dots = vals.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="var(--indigo-bright)" stroke="var(--card-bg)" stroke-width="2"/>`).join('');
-  const labels = weeks.map((w,i)=> (n<=6 || i%Math.ceil(n/6)===0) ? `<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${weekLabel(w.week)}</text>` : '').join('');
-
-  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
-    <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="var(--indigo-bright)" stop-opacity="0.28"/>
-      <stop offset="100%" stop-color="var(--indigo-bright)" stop-opacity="0"/>
-    </linearGradient></defs>
-    ${grid}
-    ${n>1?`<polygon points="${areaPts}" fill="url(#ag)"/>`:''}
-    ${n>1?`<polyline points="${pts}" fill="none" stroke="var(--indigo-bright)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`:''}
-    ${dots}
-    ${labels}
-  </svg>`;
-}
-
 function fmtShort(n){
-  if(n >= 1000000) return (n/1000000).toFixed(1).replace('.0','')+'M';
-  if(n >= 1000) return (n/1000).toFixed(1).replace('.0','')+'k';
+  if(n>=1e6) return (n/1e6).toFixed(1).replace('.0','')+'M';
+  if(n>=1e3) return (n/1e3).toFixed(1).replace('.0','')+'k';
   return Math.round(n).toString();
 }
-
-function dualChart(weeks){
-  const W = 680, H = 220, pad = { l: 42, r: 14, t: 16, b: 28 };
-  const innerW = W - pad.l - pad.r, innerH = H - pad.t - pad.b;
-  const n = weeks.length;
-  const content = weeks.map(totalContent);
-  const reach = weeks.map(w=>num(w.reach));
-  const maxC = Math.max(...content, 1)*1.2;
-  const maxR = Math.max(...reach, 1)*1.1;
-  const bw = innerW / Math.max(n,1) * 0.5;
-  const x = i => pad.l + (n<=1? innerW/2 : i/(Math.max(n-1,1))*innerW);
-  const yC = v => pad.t + innerH - v/maxC*innerH;
-  const yR = v => pad.t + innerH - v/maxR*innerH;
-  const bars = content.map((v,i)=>`<rect x="${x(i)-bw/2}" y="${yC(v)}" width="${bw}" height="${pad.t+innerH-yC(v)}" rx="3" fill="var(--teal-bright)" opacity="0.8"/>`).join('');
-  const pts = reach.map((v,i)=>`${x(i)},${yR(v)}`).join(' ');
-  const line = n>1?`<polyline points="${pts}" fill="none" stroke="var(--indigo-bright)" stroke-width="2.5"/>`:'';
-  const dots = reach.map((v,i)=>`<circle cx="${x(i)}" cy="${yR(v)}" r="3" fill="var(--indigo-bright)"/>`).join('');
-  const labels = weeks.map((w,i)=> (n<=6 || i%Math.ceil(n/6)===0)?`<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${weekLabel(w.week)}</text>`:'').join('');
-  return `<svg class="chart" viewBox="0 0 ${W} ${H}">${bars}${line}${dots}${labels}</svg>
-    <div class="chart-meta"><span>🟢 İçerik (gönderi+reels)</span><span>🔵 Erişim</span></div>`;
+function lineChart(weeks, key, isPct){
+  const W=680,H=220,pad={l:42,r:14,t:16,b:28};
+  const vals = weeks.map(w=>metricValue(w,key));
+  const max = Math.max(...vals,1)*1.1, min=0;
+  const iW=W-pad.l-pad.r, iH=H-pad.t-pad.b, n=weeks.length;
+  const x=i=>pad.l+(n<=1?iW/2:i/(n-1)*iW);
+  const y=v=>pad.t+iH-(v-min)/(max-min||1)*iH;
+  let grid='';
+  for(let g=0;g<=4;g++){ const gy=pad.t+iH-g/4*iH, gv=min+(max-min)*g/4;
+    grid+=`<line x1="${pad.l}" y1="${gy}" x2="${W-pad.r}" y2="${gy}" stroke="var(--line)" stroke-width="1"/><text x="${pad.l-6}" y="${gy+4}" text-anchor="end" font-size="10" fill="var(--muted)">${isPct?r2(gv):fmtShort(gv)}</text>`; }
+  const pts=vals.map((v,i)=>`${x(i)},${y(v)}`).join(' ');
+  const area=`${pad.l},${pad.t+iH} ${pts} ${x(n-1)},${pad.t+iH}`;
+  const dots=vals.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="var(--indigo-bright)" stroke="var(--card-bg)" stroke-width="2"/>`).join('');
+  const labels=weeks.map((w,i)=>(n<=6||i%Math.ceil(n/6)===0)?`<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${weekLabel(w.week)}</text>`:'').join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}"><defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--indigo-bright)" stop-opacity="0.28"/><stop offset="100%" stop-color="var(--indigo-bright)" stop-opacity="0"/></linearGradient></defs>${grid}${n>1?`<polygon points="${area}" fill="url(#ag)"/><polyline points="${pts}" fill="none" stroke="var(--indigo-bright)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`:''}${dots}${labels}</svg>`;
 }
-
+function dualChart(weeks){
+  const W=680,H=220,pad={l:42,r:14,t:16,b:28};
+  const iW=W-pad.l-pad.r,iH=H-pad.t-pad.b,n=weeks.length;
+  const content=weeks.map(totalContent), reach=weeks.map(w=>num(w.reach));
+  const maxC=Math.max(...content,1)*1.2, maxR=Math.max(...reach,1)*1.1;
+  const bw=iW/Math.max(n,1)*0.5;
+  const x=i=>pad.l+(n<=1?iW/2:i/Math.max(n-1,1)*iW);
+  const yC=v=>pad.t+iH-v/maxC*iH, yR=v=>pad.t+iH-v/maxR*iH;
+  const bars=content.map((v,i)=>`<rect x="${x(i)-bw/2}" y="${yC(v)}" width="${bw}" height="${pad.t+iH-yC(v)}" rx="3" fill="var(--teal-bright)" opacity="0.8"/>`).join('');
+  const pts=reach.map((v,i)=>`${x(i)},${yR(v)}`).join(' ');
+  const line=n>1?`<polyline points="${pts}" fill="none" stroke="var(--indigo-bright)" stroke-width="2.5"/>`:'';
+  const dots=reach.map((v,i)=>`<circle cx="${x(i)}" cy="${yR(v)}" r="3" fill="var(--indigo-bright)"/>`).join('');
+  const labels=weeks.map((w,i)=>(n<=6||i%Math.ceil(n/6)===0)?`<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${weekLabel(w.week)}</text>`:'').join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}">${bars}${line}${dots}${labels}</svg><div class="chart-meta"><span>🟢 İçerik</span><span>🔵 Erişim</span></div>`;
+}
 function renderCharts(){
   const ws = sortedWeeks();
   $('chartTabs').innerHTML = METRICS.map(m=>`<button class="chip ${m.key===state.chartMetric?'active':''}" onclick="setChartMetric('${m.key}')">${m.label}</button>`).join('');
-  if(ws.length === 0){
-    $('chartTitle').textContent = '—';
-    $('chartArea').innerHTML = '<div class="empty"><div class="big">📈</div>Grafik için veri girin.</div>';
-    $('chartCompare').innerHTML = '';
+  if(!ws.length){
+    $('chartTitle').textContent='—';
+    $('chartArea').innerHTML='<div class="empty"><div class="big">📈</div>Grafik için veri girin.</div>';
+    $('chartCompare').innerHTML=''; $('monthly').innerHTML='<p class="subtle">Aylık rapor için veri girin.</p>';
     return;
   }
   const m = METRICS.find(x=>x.key===state.chartMetric);
   $('chartTitle').textContent = m.label;
   const vals = ws.map(w=>metricValue(w,m.key));
-  const first = vals[0], last = vals[vals.length-1];
-  $('chartArea').innerHTML = lineChart(ws, m.key, m.fmt==='pct') +
-    `<div class="chart-meta">
-      <span>İlk: <b>${m.fmt==='pct'?fmtPct(first):fmtInt(first)}</b></span>
-      <span>Son: <b>${m.fmt==='pct'?fmtPct(last):fmtInt(last)}</b></span>
-      <span>${ws.length>1?`Toplam: ${deltaHtml(last,first)}`:''}</span>
-    </div>`;
+  const first=vals[0], last=vals[vals.length-1];
+  $('chartArea').innerHTML = lineChart(ws,m.key,m.fmt==='pct') +
+    `<div class="chart-meta"><span>İlk: <b>${m.fmt==='pct'?fmtPct(first):fmtInt(first)}</b></span><span>Son: <b>${m.fmt==='pct'?fmtPct(last):fmtInt(last)}</b></span><span>${ws.length>1?`Toplam: ${deltaHtml(last,first)}`:''}</span></div>`;
   $('chartCompare').innerHTML = dualChart(ws);
+  renderMonthly();
+}
+function setChartMetric(k){ state.chartMetric=k; renderCharts(); }
+
+/* ============ RENDER: MONTHLY REPORT ============ */
+function renderMonthly(){
+  const ws = sortedWeeks();
+  if(!ws.length){ $('monthly').innerHTML='<p class="subtle">Veri yok.</p>'; return; }
+  const months = {};
+  ws.forEach(w=>{
+    const key = w.week.slice(0,7);
+    (months[key] = months[key] || []).push(w);
+  });
+  const keys = Object.keys(months).sort();
+  const rows = keys.map(k=>{
+    const arr = months[k];
+    const newF = arr.reduce((s,w)=>s+num(w.newFollowers),0);
+    const reach = arr.reduce((s,w)=>s+num(w.reach),0);
+    const impr = arr.reduce((s,w)=>s+num(w.impressions),0);
+    const content = arr.reduce((s,w)=>s+totalContent(w),0);
+    const visitors = arr.reduce((s,w)=>s+num(w.visitors),0);
+    const avgEng = arr.reduce((s,w)=>s+engRate(w),0)/arr.length;
+    const endFollowers = num(arr[arr.length-1].followers);
+    return { k, weeks:arr.length, newF, reach, impr, content, visitors, avgEng, endFollowers };
+  });
+  const monthName = k=>{ const [y,m]=k.split('-'); return new Date(y,m-1,1).toLocaleDateString('tr-TR',{month:'long',year:'numeric'}); };
+  $('monthly').innerHTML = rows.slice().reverse().map((r,idx,a)=>{
+    const prev = a[idx+1]; // previous month (since reversed)
+    const d = prev ? deltaHtml(r.newF, prev.newF) : '';
+    return `<div style="border:1px solid var(--line);border-radius:14px;padding:13px;margin-top:${idx?10:4}px;${idx===0?'box-shadow:var(--card-shadow);':''}">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <b style="font-size:15px;text-transform:capitalize;">${monthName(r.k)}</b>
+        <span class="subtle">${r.weeks} hafta</span>
+      </div>
+      <div class="kpi-grid" style="margin-top:8px;gap:8px;">
+        <div style="font-size:13px;">✨ Kazanılan takipçi<br><b style="font-size:17px;">${fmtInt(r.newF)}</b> ${idx<a.length-1?d:''}</div>
+        <div style="font-size:13px;">👥 Ay sonu takipçi<br><b style="font-size:17px;">${fmtInt(r.endFollowers)}</b></div>
+        <div style="font-size:13px;">📡 Toplam erişim<br><b style="font-size:17px;">${fmtInt(r.reach)}</b></div>
+        <div style="font-size:13px;">❤️ Ort. etkileşim<br><b style="font-size:17px;">${fmtPct(r.avgEng)}</b></div>
+        <div style="font-size:13px;">🗂️ Üretilen içerik<br><b style="font-size:17px;">${fmtInt(r.content)}</b></div>
+        <div style="font-size:13px;">🌐 Web ziyaretçi<br><b style="font-size:17px;">${fmtInt(r.visitors)}</b></div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
-function setChartMetric(k){ state.chartMetric = k; renderCharts(); }
+/* ============ RENDER: POST ANALYSIS ============ */
+function bucketOf(time){
+  const h = parseInt((time||'12:00').split(':')[0],10);
+  for(let i=0;i<TIME_BUCKETS.length;i++){
+    const b = TIME_BUCKETS[i];
+    if(b.min < b.max){ if(h>=b.min && h<b.max) return i; }
+    else { if(h>=b.min || h<b.max) return i; }
+  }
+  return TIME_BUCKETS.length-1;
+}
+function renderAnalysis(){
+  const ps = state.posts.filter(p=>p.type!=='story'); // stories rarely have reach-based eng
+  const metric = $('heatMetric').value; // eng | reach
+  $('heatHint').textContent = metric==='eng'
+    ? 'Renk koyuluğu = o gün/saatte ortalama etkileşim oranı.'
+    : 'Renk koyuluğu = o gün/saatte ortalama erişim.';
+
+  if(ps.length < 1){
+    $('heatmap').innerHTML = '<div class="empty"><div class="big">⏰</div><b>Veri Gir → Gönderi</b> sekmesinden gönderi ekleyince burada en iyi yayın saatlerin çıkar.</div>';
+    $('bestSlots').innerHTML=''; $('topPosts').innerHTML=''; $('byType').innerHTML='';
+    return;
+  }
+
+  // aggregate by [day][bucket]
+  const cells = {}; // key d-b -> {sum,count}
+  const val = p => metric==='eng' ? postEngRate(p) : num(p.reach);
+  ps.forEach(p=>{
+    const d = dowMon(p.date), b = bucketOf(p.time);
+    const key = d+'-'+b;
+    const c = cells[key] = cells[key] || { sum:0, count:0 };
+    c.sum += val(p); c.count++;
+  });
+  let maxAvg = 0;
+  Object.values(cells).forEach(c=>{ maxAvg = Math.max(maxAvg, c.sum/c.count); });
+  maxAvg = maxAvg || 1;
+
+  // heatmap table
+  let html = '<table class="heat"><tr><th></th>'+TIME_BUCKETS.map(b=>`<th>${b.label}</th>`).join('')+'</tr>';
+  for(let d=0; d<7; d++){
+    html += `<tr><td class="day">${DAYS[d]}</td>`;
+    for(let b=0; b<TIME_BUCKETS.length; b++){
+      const c = cells[d+'-'+b];
+      if(c){
+        const avg = c.sum/c.count;
+        const intensity = 0.18 + 0.82*(avg/maxAvg);
+        const label = metric==='eng' ? r2(avg) : fmtShort(avg);
+        html += `<td class="cell" style="background:rgba(99,102,241,${intensity.toFixed(2)});" title="${c.count} gönderi">${label}</td>`;
+      } else {
+        html += `<td class="cell" style="background:var(--bar-bg);color:var(--muted);">·</td>`;
+      }
+    }
+    html += '</tr>';
+  }
+  html += '</table>';
+  $('heatmap').innerHTML = html;
+
+  // best slots ranking
+  const slots = Object.entries(cells).map(([key,c])=>{
+    const [d,b] = key.split('-').map(Number);
+    return { d, b, avg: c.sum/c.count, count: c.count };
+  }).sort((a,b)=> b.avg - a.avg).slice(0,3);
+  const unit = metric==='eng' ? '%' : ' erişim';
+  $('bestSlots').innerHTML = `<div class="group-title" style="margin-top:14px;">🏅 En iyi 3 zaman dilimi</div>` +
+    slots.map((s,i)=>`<div class="litem"><div class="li-rank r${i+1}">${i+1}</div>
+      <div class="li-main"><div class="li-title">${DAYS[s.d]} · ${TIME_BUCKETS[s.b].label}</div>
+      <div class="li-sub">ortalama ${metric==='eng'?r2(s.avg)+unit:fmtInt(s.avg)+unit} · ${s.count} gönderi</div></div></div>`).join('') +
+    `<p class="subtle" style="margin-top:10px;">💡 Yeni içeriklerini bu gün/saatlerde paylaşmayı dene; örneklem büyüdükçe sonuç netleşir.</p>`;
+
+  // top posts
+  const top = [...state.posts].sort((a,b)=> postEngRate(b)-postEngRate(a)).slice(0,5);
+  $('topPosts').innerHTML = top.map((p,i)=>`
+    <div class="litem"><div class="li-rank r${i+1}">${i+1}</div>
+      <div class="li-main"><div class="li-title"><span class="tag ${p.type}">${TYPE_LABEL[p.type]||p.type}</span> ${p.topic||'başlıksız'}</div>
+      <div class="li-sub">${dateLabel(p.date)} · ❤️ ${fmtPct(postEngRate(p))} · ${fmtInt(num(p.reach))} erişim · ${fmtInt(postEng(p))} etkileşim</div></div></div>`).join('');
+
+  // by type
+  const types = {};
+  state.posts.forEach(p=>{
+    const t = types[p.type] = types[p.type] || { count:0, reach:0, eng:0, er:0 };
+    t.count++; t.reach += num(p.reach); t.eng += postEng(p); t.er += postEngRate(p);
+  });
+  const tEntries = Object.entries(types).sort((a,b)=> b[1].er/b[1].count - a[1].er/a[1].count);
+  $('byType').innerHTML = `<table class="mini">
+    <tr><th>Tür</th><th class="r">Adet</th><th class="r">Ort. erişim</th><th class="r">Ort. etk.%</th></tr>
+    ${tEntries.map(([t,v])=>`<tr><td><span class="tag ${t}">${TYPE_LABEL[t]||t}</span></td>
+      <td class="r">${v.count}</td><td class="r">${fmtInt(v.reach/v.count)}</td><td class="r">${fmtPct(v.er/v.count)}</td></tr>`).join('')}
+  </table>${tEntries.length?`<p class="subtle" style="margin-top:8px;">💡 En yüksek etkileşimi <b>${TYPE_LABEL[tEntries[0][0]]||tEntries[0][0]}</b> sağlıyor — bu formatı çoğalt.</p>`:''}`;
+}
 
 /* ============ STRATEGY ENGINE ============ */
 function renderStrategy(){
+  renderGoalList();
   const ws = sortedWeeks();
   const box = $('insights');
-  if(ws.length === 0){
-    box.innerHTML = '<div class="empty"><div class="big">🎯</div>En az 1 hafta veri girince öneriler oluşur.<br>2+ hafta ile karşılaştırmalı analiz başlar.</div>';
-    $('healthScore').innerHTML = '<p class="subtle">Veri bekleniyor.</p>';
+  if(!ws.length){
+    box.innerHTML = '<div class="empty"><div class="big">💡</div>En az 1 hafta veri girince öneriler oluşur.</div>';
+    $('healthScore').innerHTML='<p class="subtle">Veri bekleniyor.</p>';
     return;
   }
-  const cur = ws[ws.length-1];
-  const prev = ws.length>1 ? ws[ws.length-2] : null;
+  const cur = ws[ws.length-1], prev = ws.length>1?ws[ws.length-2]:null;
   const insights = [];
+  const er = engRate(cur), erPrev = prev?engRate(prev):null;
 
-  const er = engRate(cur);
-  const erPrev = prev ? engRate(prev) : null;
+  if(er>=3) insights.push(['good','🔥','Etkileşim oranın güçlü',`%${r2(er)} — sektör ortalamasının (≈%1-3) üzerinde. Bu formatı sürdür.`]);
+  else if(er>=1) insights.push(['tip','👍','Etkileşim oranı ortalama',`%${r2(er)}. Soru soran başlıklar, anketler ve "kaydet" çağrıları ile yükselt.`]);
+  else insights.push(['warn','⚠️','Etkileşim oranı düşük',`%${r2(er)}. İlk 3 saniyede dikkat çeken hook ve net CTA ekle.`]);
 
-  if(er >= 3) insights.push(['good','🔥','Etkileşim oranın güçlü',`%${(Math.round(er*100)/100)} — sektör ortalamasının (≈%1-3) üzerinde. İçerik türün kitleyle örtüşüyor; bu formatı sürdür.`]);
-  else if(er >= 1) insights.push(['tip','👍','Etkileşim oranı ortalama',`%${(Math.round(er*100)/100)}. Daha çok soru soran başlıklar, anketler ve "kaydet" çağrıları ile yükseltebilirsin.`]);
-  else insights.push(['warn','⚠️','Etkileşim oranı düşük',`%${(Math.round(er*100)/100)}. Erişimin var ama etkileşim zayıf. İlk 3 saniyede dikkat çeken hook'lar ve net bir harekete geçirme (CTA) ekle.`]);
-
-  if(erPrev !== null){
-    const d = er - erPrev;
-    if(d > 0.2) insights.push(['good','📈','Etkileşim yükseliyor',`Geçen haftaya göre +${(Math.round(d*100)/100)} puan. Son haftanın içerik temasını analiz edip tekrarla.`]);
-    else if(d < -0.2) insights.push(['bad','📉','Etkileşim düştü',`Geçen haftaya göre ${(Math.round(d*100)/100)} puan. İçerik sıklığını ve yayın saatlerini gözden geçir.`]);
+  if(erPrev!==null){ const d=er-erPrev;
+    if(d>0.2) insights.push(['good','📈','Etkileşim yükseliyor',`+${r2(d)} puan. Son haftanın temasını tekrarla.`]);
+    else if(d<-0.2) insights.push(['bad','📉','Etkileşim düştü',`${r2(d)} puan. İçerik sıklığını ve yayın saatlerini gözden geçir.`]);
   }
-
-  if(prev){
-    const fg = num(cur.followers) - num(prev.followers);
-    const fgPct = num(prev.followers) ? fg/num(prev.followers)*100 : 0;
-    if(fg > 0) insights.push(['good','✨','Takipçi büyüyor',`Bu hafta +${fmtInt(fg)} (%${Math.round(fgPct*100)/100}). Çalışan içerik türünden haftada en az 1 tane daha üret.`]);
-    else if(fg < 0) insights.push(['bad','👋','Takipçi kaybı var',`${fmtInt(fg)} takipçi. Çok sık/alakasız paylaşım veya zayıf içerik olabilir. Son haftanın gönderilerini gözden geçir.`]);
-    else insights.push(['warn','😐','Takipçi sabit','Büyüme durdu. Keşfet\'e çıkma şansı için Reels üretimini ve hashtag stratejisini artır.']);
+  if(prev){ const fg=num(cur.followers)-num(prev.followers), fgPct=num(prev.followers)?fg/num(prev.followers)*100:0;
+    if(fg>0) insights.push(['good','✨','Takipçi büyüyor',`+${fmtInt(fg)} (%${r2(fgPct)}). Çalışan içerikten haftada 1 tane daha üret.`]);
+    else if(fg<0) insights.push(['bad','👋','Takipçi kaybı var',`${fmtInt(fg)} takipçi. Son haftanın gönderilerini gözden geçir.`]);
+    else insights.push(['warn','😐','Takipçi sabit','Reels üretimini ve hashtag stratejisini artır.']);
   }
-
   const content = totalContent(cur);
-  if(content === 0){
-    insights.push(['warn','🗂️','Bu hafta içerik yok',`Yayın yapılmamış görünüyor. Düzenli paylaşım (haftada 3-5 gönderi/reels) algoritma görünürlüğü için kritik.`]);
-  } else {
-    const reachPer = num(cur.reach)/content;
-    insights.push(['tip','🎬','İçerik verimliliği',`${content} içerik → içerik başına ≈${fmtInt(reachPer)} erişim. ${num(cur.reels)>0?'Reels üretmeye devam et — en yüksek erişimi genelde Reels sağlar.':'Reels eklemeyi dene; erişimi en çok büyüten format.'}`]);
+  if(content===0) insights.push(['warn','🗂️','Bu hafta içerik yok','Düzenli paylaşım (haftada 3-5) görünürlük için kritik.']);
+  else { const rp=num(cur.reach)/content;
+    insights.push(['tip','🎬','İçerik verimliliği',`${content} içerik → içerik başına ≈${fmtInt(rp)} erişim. ${num(cur.reels)>0?'Reels devam et.':'Reels eklemeyi dene.'}`]); }
+  if(num(cur.reach)){ const sr=num(cur.saves)/num(cur.reach)*100;
+    if(sr>=1) insights.push(['good','🔖','Kaydetme oranı yüksek',`%${r2(sr)}. Referans değeri olan içeriği çoğalt.`]);
+    else insights.push(['tip','🔖','Kaydedilebilir içerik üret',`Kaydetme %${r2(sr)}. İpucu listeleri/rehberler erişimi artırır.`]); }
+  if(num(cur.profileVisits)){ const cv=num(cur.newFollowers)/num(cur.profileVisits)*100;
+    if(cv<5) insights.push(['warn','🪪','Profil dönüşümü düşük',`Ziyaretçilerin %${r2(cv)}\'i takip etti. Bio + vitrin + son 9 gönderiyi güçlendir.`]);
+    else insights.push(['good','🪪','Profil iyi dönüştürüyor',`Ziyaretçilerin %${r2(cv)}\'i takip etti.`]); }
+  if(prev && num(prev.visitors)){ const vg=(num(cur.visitors)-num(prev.visitors))/num(prev.visitors)*100;
+    if(vg<-10) insights.push(['warn','🌐','Web trafiği düşüyor',`Ziyaretçi %${Math.round(Math.abs(vg))} azaldı. IG→web köprüsünü güçlendir.`]);
+    else if(vg>10) insights.push(['good','🌐','Web trafiği artıyor',`Ziyaretçi %${Math.round(vg)} arttı. Yönlendiren içeriği tekrarla.`]); }
+
+  // post-based insight (best time)
+  const realPosts = state.posts.filter(p=>p.type!=='story');
+  if(realPosts.length>=3){
+    const cells={};
+    realPosts.forEach(p=>{ const k=dowMon(p.date)+'-'+bucketOf(p.time); const c=cells[k]=cells[k]||{s:0,n:0}; c.s+=postEngRate(p); c.n++; });
+    const best=Object.entries(cells).map(([k,c])=>({k,avg:c.s/c.n})).sort((a,b)=>b.avg-a.avg)[0];
+    const [d,b]=best.k.split('-').map(Number);
+    insights.push(['tip','⏰','En iyi yayın zamanın',`${DAYS[d]} ${TIME_BUCKETS[b].label} arası en yüksek etkileşimi alıyor (%${r2(best.avg)}). Önemli içerikleri bu slota koy.`]);
   }
+  if(ws.length>=3){ let best=ws[0]; ws.forEach(w=>{ if(engRate(w)>engRate(best)) best=w; });
+    insights.push(['tip','🏆','En iyi haftan',`${weekLabel(best.week)} (etkileşim %${r2(engRate(best))}). ${best.note?'"'+best.note+'"':'not eklenmemiş.'}`]); }
 
-  if(num(cur.reach)){
-    const saveRate = num(cur.saves)/num(cur.reach)*100;
-    if(saveRate >= 1) insights.push(['good','🔖','Kaydetme oranı yüksek',`%${Math.round(saveRate*100)/100}. İçeriğin "referans değeri" var (rehber, ipucu, liste). Bu türü çoğalt.`]);
-    else insights.push(['tip','🔖','Kaydedilebilir içerik üret',`Kaydetme oranı %${Math.round(saveRate*100)/100}. "Kaydet" dedirten içerikler (ipucu listeleri, rehberler) erişimi artırır.`]);
-  }
+  // goal-based nudges
+  state.goals.forEach(g=>{ const i=goalInfo(g);
+    if(!i.reached && i.statusCls==='bad' && i.remaining>=0)
+      insights.push(['warn','🎯',`Hedef geride: ${metricName(g.metric)}`,`${fmtMetric(g.metric,g.target)} hedefine ${i.remaining} günde ulaşmak için temponu artırman gerekiyor (şu an ${fmtMetric(g.metric,i.cur)}).`]);
+    else if(i.reached)
+      insights.push(['good','🎉',`Hedefe ulaştın: ${metricName(g.metric)}`,`${fmtMetric(g.metric,g.target)} hedefi tamam. Yeni bir hedef belirle.`]);
+  });
 
-  if(num(cur.profileVisits)){
-    const conv = num(cur.newFollowers)/num(cur.profileVisits)*100;
-    if(conv < 5) insights.push(['warn','🪪','Profil dönüşümü düşük',`Profil ziyaretçilerinin yalnızca %${Math.round(conv*100)/100}\'i takip etti. Biyografini, vitrin (highlight) ve son 9 gönderinin görünümünü güçlendir.`]);
-    else insights.push(['good','🪪','Profil iyi dönüştürüyor',`Ziyaretçilerin %${Math.round(conv*100)/100}\'i takip etti. Profil vitrinin iş görüyor.`]);
-  }
-
-  if(prev && num(cur.websiteClicks) !== num(prev.websiteClicks)){
-    const wc = num(cur.websiteClicks)-num(prev.websiteClicks);
-    if(wc>0) insights.push(['good','🔗','Web yönlendirmesi artıyor',`Profil/web tıklaması +${fmtInt(wc)}. Bağlantıyı (link in bio) öne çıkaran CTA çalışıyor.`]);
-    else insights.push(['tip','🔗','Web tıklaması azaldı',`Story\'lerde "bağlantı" çıkartması ve gönderi açıklamalarında net yönlendirme ekle.`]);
-  }
-
-  if(prev && num(prev.visitors)){
-    const vg = (num(cur.visitors)-num(prev.visitors))/num(prev.visitors)*100;
-    if(vg < -10) insights.push(['warn','🌐','Web trafiği düşüyor',`Ziyaretçi %${Math.round(Math.abs(vg))} azaldı. Sosyal medya ile web arasındaki köprüyü (kampanya, blog, ürün linki) güçlendir.`]);
-    else if(vg > 10) insights.push(['good','🌐','Web trafiği artıyor',`Ziyaretçi %${Math.round(vg)} arttı. Hangi içeriğin yönlendirdiğini bul ve tekrarla.`]);
-  }
-
-  if(ws.length >= 3){
-    let best = ws[0];
-    ws.forEach(w=>{ if(engRate(w) > engRate(best)) best = w; });
-    insights.push(['tip','🏆','En iyi haftan',`${weekLabel(best.week)} (etkileşim %${Math.round(engRate(best)*100)/100}). O haftanın notu ve içerik karışımını referans al: ${best.note? '"'+best.note+'"' : 'not eklenmemiş.'}`]);
-  }
-
-  insights.push(['tip','📅','Bu haftanın aksiyon planı', buildPlan(cur, prev, er)]);
-
-  box.innerHTML = insights.map(([cls,ic,t,x])=>`
-    <div class="insight ${cls}"><div class="ic">${ic}</div><div class="body"><div class="it">${t}</div><div class="ix">${x}</div></div></div>`).join('');
-
+  insights.push(['tip','📅','Bu haftanın aksiyon planı', buildPlan(cur, er)]);
+  box.innerHTML = insights.map(([c,ic,t,x])=>`<div class="insight ${c}"><div class="ic">${ic}</div><div class="body"><div class="it">${t}</div><div class="ix">${x}</div></div></div>`).join('');
   renderHealth(ws, cur, prev, er);
 }
 
-function buildPlan(cur, prev, er){
-  const items = [];
-  if(num(cur.reels) < 2) items.push('Haftada en az 2-3 Reels paylaş (erişimi en çok büyüten format).');
-  if(er < 2) items.push('Her gönderiye net bir CTA + soru ekle, yorumları teşvik et.');
-  if(num(cur.saves) < num(cur.likes)*0.1) items.push('1 adet "kaydedilebilir" rehber/ipucu içeriği üret.');
-  if(num(cur.stories) < 5) items.push('Günde 1-2 story ile süreklilik sağla (anket/soru çıkartması kullan).');
+function buildPlan(cur, er){
+  const items=[];
+  if(num(cur.reels)<2) items.push('Haftada en az 2-3 Reels paylaş.');
+  if(er<2) items.push('Her gönderiye net CTA + soru ekle.');
+  if(num(cur.saves)<num(cur.likes)*0.1) items.push('1 adet "kaydedilebilir" rehber içeriği üret.');
+  if(num(cur.stories)<5) items.push('Günde 1-2 story ile süreklilik sağla.');
+  if(state.posts.length<5) items.push('Gönderileri tek tek ekle ki en iyi saat analizi güçlensin.');
   items.push('Verileri Pazartesi sabahı gir, geçen haftayla karşılaştır.');
   return '<ul style="margin:6px 0 0 18px;padding:0;">'+items.map(i=>`<li style="margin-bottom:4px;">${i}</li>`).join('')+'</ul>';
 }
-
 function renderHealth(ws, cur, prev, er){
-  let score = 0, parts = [];
-  const eScore = Math.min(er/4*35, 35);
-  score += eScore; parts.push(['Etkileşim', eScore, 35]);
-  let gScore = 12;
-  if(prev && num(prev.followers)){
-    const g = (num(cur.followers)-num(prev.followers))/num(prev.followers)*100;
-    gScore = Math.max(0, Math.min((g+2)/6*25, 25));
-  }
-  score += gScore; parts.push(['Büyüme', gScore, 25]);
-  const cScore = Math.min(totalContent(cur)/5*20, 20);
-  score += cScore; parts.push(['İçerik düzeni', cScore, 20]);
-  const wScore = Math.min(num(cur.websiteClicks)/50*20, 20);
-  score += wScore; parts.push(['Web köprüsü', wScore, 20]);
+  let score=0, parts=[];
+  const eS=Math.min(er/4*35,35); score+=eS; parts.push(['Etkileşim',eS,35]);
+  let gS=12; if(prev&&num(prev.followers)){ const g=(num(cur.followers)-num(prev.followers))/num(prev.followers)*100; gS=Math.max(0,Math.min((g+2)/6*25,25)); }
+  score+=gS; parts.push(['Büyüme',gS,25]);
+  const cS=Math.min(totalContent(cur)/5*20,20); score+=cS; parts.push(['İçerik düzeni',cS,20]);
+  const wS=Math.min(num(cur.websiteClicks)/50*20,20); score+=wS; parts.push(['Web köprüsü',wS,20]);
+  score=Math.round(score);
+  const color=score>=70?'var(--green)':score>=45?'var(--amber)':'var(--red)';
+  const label=score>=70?'Güçlü 💪':score>=45?'Gelişmekte 📈':'Dikkat gerekiyor ⚠️';
+  $('healthScore').innerHTML=`<div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;">
+    <div style="font-size:40px;font-weight:800;color:${color};line-height:1;">${score}<span style="font-size:16px;color:var(--muted);">/100</span></div>
+    <div><div style="font-weight:700;">${label}</div><div class="subtle">Son hafta: ${weekLabel(cur.week)}</div></div></div>
+    ${parts.map(([n,v,m])=>`<div style="margin:8px 0 3px;display:flex;justify-content:space-between;font-size:12.5px;"><span>${n}</span><span class="subtle">${Math.round(v)}/${m}</span></div>
+    <div style="height:6px;background:var(--bar-bg);border-radius:99px;overflow:hidden;"><div style="height:100%;width:${v/m*100}%;background:${color};"></div></div>`).join('')}`;
+}
 
-  score = Math.round(score);
-  const color = score>=70?'var(--green)':score>=45?'var(--amber)':'var(--red)';
-  const label = score>=70?'Güçlü 💪':score>=45?'Gelişmekte 📈':'Dikkat gerekiyor ⚠️';
-
-  $('healthScore').innerHTML = `
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;">
-      <div style="font-size:40px;font-weight:800;color:${color};line-height:1;">${score}<span style="font-size:16px;color:var(--muted);">/100</span></div>
-      <div><div style="font-weight:700;">${label}</div><div class="subtle">Son hafta: ${weekLabel(cur.week)}</div></div>
-    </div>
-    ${parts.map(([n,v,m])=>`
-      <div style="margin:8px 0 3px;display:flex;justify-content:space-between;font-size:12.5px;"><span>${n}</span><span class="subtle">${Math.round(v)}/${m}</span></div>
-      <div style="height:6px;background:var(--bar-bg);border-radius:99px;overflow:hidden;"><div style="height:100%;width:${v/m*100}%;background:${color};"></div></div>
-    `).join('')}`;
+function renderGoalList(){
+  if(!state.goals.length){ $('goalList').innerHTML='<p class="subtle" style="margin-top:12px;">Henüz hedef yok.</p>'; return; }
+  $('goalList').innerHTML = state.goals.map(g=>{
+    const i = goalInfo(g);
+    const col = i.statusCls==='good'?'var(--green)':i.statusCls==='warn'?'var(--amber)':'var(--red)';
+    return `<div style="border:1px solid var(--line);border-radius:14px;padding:13px;margin-top:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div><b>${metricName(g.metric)}</b><div class="subtle">Hedef ${fmtMetric(g.metric,g.target)} · son tarih ${dateLabel(g.deadline)}</div></div>
+        <button onclick="deleteGoal('${g.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);">🗑️</button>
+      </div>
+      <div class="goal-prog"><div style="width:${i.pct}%;background:${col};"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:12px;">
+        <span class="subtle">Başlangıç ${fmtMetric(g.metric,g.start)} → şu an <b style="color:var(--fg);">${fmtMetric(g.metric,i.cur)}</b></span>
+        <span style="color:${col};font-weight:700;">${i.statusTxt}</span>
+      </div>
+      <div class="subtle" style="margin-top:3px;font-size:12px;">${i.remaining>=0?i.remaining+' gün kaldı':'süre doldu'} · bu tempoyla tahmini: <b>${fmtMetric(g.metric,Math.round(i.projected))}</b></div>
+    </div>`;
+  }).join('');
 }
 
 /* ============ DATA MANAGEMENT ============ */
 function exportData(){
-  const blob = new Blob([JSON.stringify(state.weeks, null, 2)], { type:'application/json' });
+  const payload = { weeks: state.weeks, posts: state.posts, goals: state.goals, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = `nabiz-analiz-${new Date().toISOString().slice(0,10)}.json`;
-  a.click(); URL.revokeObjectURL(url);
-  toast('Veriler indirildi ✓');
+  a.href=url; a.download=`nabiz-yedek-${todayISO()}.json`; a.click(); URL.revokeObjectURL(url);
+  toast('Yedek indirildi ✓');
 }
 function importData(e){
-  const file = e.target.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    try {
-      const data = JSON.parse(ev.target.result);
-      if(!Array.isArray(data)) throw new Error('format');
-      const map = {};
-      state.weeks.forEach(w=> map[w.week]=w);
-      data.forEach(w=>{ if(w && w.week) map[w.week]=w; });
-      state.weeks = Object.values(map);
-      save(); renderAll();
-      toast(`${data.length} hafta içe aktarıldı ✓`);
-    } catch(err){ toast('Geçersiz dosya'); }
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      // support old format (array of weeks) and new format (object)
+      const weeks = Array.isArray(data) ? data : (data.weeks||[]);
+      const posts = Array.isArray(data) ? [] : (data.posts||[]);
+      const goals = Array.isArray(data) ? [] : (data.goals||[]);
+      const wmap={}; state.weeks.forEach(w=>wmap[w.week]=w); weeks.forEach(w=>{ if(w&&w.week) wmap[w.week]=w; });
+      state.weeks=Object.values(wmap);
+      const pmap={}; state.posts.forEach(p=>pmap[p.id]=p); posts.forEach(p=>{ if(p&&p.id) pmap[p.id]=p; });
+      state.posts=Object.values(pmap);
+      const gmap={}; state.goals.forEach(g=>gmap[g.id]=g); goals.forEach(g=>{ if(g&&g.id) gmap[g.id]=g; });
+      state.goals=Object.values(gmap);
+      saveWeeks(); savePosts(); saveGoals(); renderAll();
+      toast(`İçe aktarıldı: ${weeks.length} hafta, ${posts.length} gönderi ✓`);
+    }catch(err){ toast('Geçersiz dosya'); }
   };
-  reader.readAsText(file);
-  e.target.value = '';
+  reader.readAsText(file); e.target.value='';
 }
 function resetAll(){
-  if(!confirm('TÜM analiz verileri silinecek. Emin misin?')) return;
-  state.weeks = []; save(); renderAll();
-  toast('Tüm veriler silindi');
+  if(!confirm('TÜM veriler (hafta, gönderi, hedef) silinecek. Emin misin?')) return;
+  state.weeks=[]; state.posts=[]; state.goals=[];
+  saveWeeks(); savePosts(); saveGoals(); renderAll(); toast('Tüm veriler silindi');
 }
 
 /* ============ INIT ============ */
 function renderAll(){
-  renderOverview();
-  renderWeekList();
-  renderCharts();
-  renderStrategy();
+  renderOverview(); renderWeekList(); renderPostList();
+  renderCharts(); renderAnalysis(); renderStrategy();
 }
 applyTheme();
 clearForm();
+clearPostForm();
+$('g_deadline').value = '';
 renderAll();
 </script>
 </body>
