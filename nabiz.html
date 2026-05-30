@@ -303,7 +303,7 @@
   <div class="row">
     <div>
       <div class="brand">📡 Nabız · Profesyonel Panel</div>
-      <div class="htitle">Sosyal Medya Yorumlama <small>· IG · Web · FB · YouTube</small></div>
+      <div class="htitle">Instagram Analiz <small>· yorumlama & strateji</small></div>
     </div>
     <button class="icon-btn" onclick="toggleTheme()" id="themeBtn" title="Tema">🌙</button>
   </div>
@@ -318,7 +318,6 @@
   <div id="ovGoals"></div>
   <div class="kpi-grid" id="kpiGrid"></div>
   <div class="card" id="ovBreakdown"></div>
-  <div class="card" id="ovPlatforms"></div>
   <div class="card">
     <h3><span class="t">📈 4 Haftalık Özet</span></h3>
     <div id="ovTrendMini"></div>
@@ -337,16 +336,7 @@
   <div class="subpanel active" id="sub-weekly">
     <div class="card" style="margin-top:12px;border:1px dashed var(--indigo-bright);">
       <h3><span class="t">📸 Ekran Görüntüsünden Oku (OCR)</span></h3>
-      <p class="subtle">Instagram / Facebook / YouTube / Web insights ekran görüntünü yükle — panel sayıları otomatik okuyup aşağıdaki forma doldurur. Sonra kontrol edip <b>Kaydet</b>. 🔒 Görüntüler cihazından çıkmaz; OCR tarayıcında çalışır.</p>
-      <div class="field" style="margin-top:10px;">
-        <label>Hangi platform?</label>
-        <select id="ocrPlatform">
-          <option value="instagram">📷 Instagram</option>
-          <option value="facebook">👍 Facebook</option>
-          <option value="youtube">▶️ YouTube</option>
-          <option value="website">🌐 Web Sitesi</option>
-        </select>
-      </div>
+      <p class="subtle">Instagram Insights ekran görüntünü yükle — panel sayıları otomatik okuyup aşağıdaki forma doldurur. Sonra kontrol edip <b>Kaydet</b>. 🔒 Görüntüler cihazından çıkmaz; OCR tarayıcında çalışır.</p>
       <input type="file" id="ocrFile" accept="image/*" multiple capture="environment" style="display:none" onchange="runOCR(event)">
       <button class="btn btn-primary" onclick="document.getElementById('ocrFile').click()">📷 Görüntü Seç / Çek</button>
       <div id="ocrStatus" class="subtle" style="margin-top:10px;"></div>
@@ -384,30 +374,6 @@
         <div class="field"><label>Gönderi (post)</label><input type="number" id="f_posts" inputmode="numeric"></div>
         <div class="field"><label>Reels</label><input type="number" id="f_reels" inputmode="numeric"></div>
         <div class="field"><label>Story sayısı</label><input type="number" id="f_stories" inputmode="numeric"></div>
-      </div>
-      <div class="group-title">🌐 Web Sitesi Trafiği</div>
-      <div class="form-grid">
-        <div class="field"><label>Ziyaretçi</label><input type="number" id="f_visitors" inputmode="numeric"></div>
-        <div class="field"><label>Sayfa görüntüleme</label><input type="number" id="f_pageviews" inputmode="numeric"></div>
-        <div class="field"><label>Ort. süre <span class="hint">(sn)</span></label><input type="number" id="f_avgDuration" inputmode="numeric"></div>
-        <div class="field"><label>Hemen çıkma <span class="hint">(%)</span></label><input type="number" id="f_bounce" inputmode="numeric"></div>
-      </div>
-
-      <div class="group-title">👍 Facebook</div>
-      <div class="form-grid">
-        <div class="field"><label>Sayfa beğenisi / takipçi</label><input type="number" id="f_fb_pageLikes" inputmode="numeric"></div>
-        <div class="field"><label>Erişim</label><input type="number" id="f_fb_reach" inputmode="numeric"></div>
-        <div class="field"><label>Etkileşim</label><input type="number" id="f_fb_engagement" inputmode="numeric"></div>
-        <div class="field"><label>Sayfa ziyareti</label><input type="number" id="f_fb_visits" inputmode="numeric"></div>
-      </div>
-
-      <div class="group-title">▶️ YouTube</div>
-      <div class="form-grid">
-        <div class="field"><label>Abone</label><input type="number" id="f_yt_subscribers" inputmode="numeric"></div>
-        <div class="field"><label>Görüntüleme</label><input type="number" id="f_yt_views" inputmode="numeric"></div>
-        <div class="field"><label>İzlenme saati</label><input type="number" id="f_yt_watchHours" inputmode="numeric"></div>
-        <div class="field"><label>Beğeni</label><input type="number" id="f_yt_likes" inputmode="numeric"></div>
-        <div class="field"><label>Yorum</label><input type="number" id="f_yt_comments" inputmode="numeric"></div>
       </div>
 
       <div class="field" style="margin-top:8px;">
@@ -509,7 +475,7 @@
           <option value="followers">Takipçi</option>
           <option value="engagement">Etkileşim oranı %</option>
           <option value="reach">Haftalık erişim</option>
-          <option value="visitors">Web ziyaretçi</option>
+          <option value="profileVisits">Profil ziyareti</option>
         </select>
       </div>
       <div class="field"><label>Hedef değer</label><input type="number" id="g_target" inputmode="numeric" placeholder="örn. 2000"></div>
@@ -577,13 +543,7 @@ const METRICS = [
   { key: 'impressions',   label: 'Gösterim',         fmt: 'int' },
   { key: 'profileVisits', label: 'Profil Ziyareti',  fmt: 'int' },
   { key: 'websiteClicks', label: 'Web Tıklaması',    fmt: 'int' },
-  { key: 'engagement',    label: 'Etkileşim Oranı %',fmt: 'pct' },
-  { key: 'visitors',      label: 'Web Ziyaretçi',    fmt: 'int' },
-  { key: 'pageviews',     label: 'Sayfa Görüntüleme',fmt: 'int' },
-  { key: 'fb_pageLikes',  label: 'FB Beğeni',        fmt: 'int' },
-  { key: 'fb_reach',      label: 'FB Erişim',        fmt: 'int' },
-  { key: 'yt_subscribers',label: 'YT Abone',         fmt: 'int' },
-  { key: 'yt_views',      label: 'YT Görüntüleme',   fmt: 'int' }
+  { key: 'engagement',    label: 'Etkileşim Oranı %',fmt: 'pct' }
 ];
 
 const DAYS = ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
@@ -664,10 +624,7 @@ function showSub(which){
 
 /* ============ WEEKLY FORM ============ */
 const FORM_FIELDS = ['followers','newFollowers','reach','impressions','profileVisits','websiteClicks',
-  'likes','comments','saves','shares','storyViews','posts','reels','stories',
-  'visitors','pageviews','avgDuration','bounce',
-  'fb_pageLikes','fb_reach','fb_engagement','fb_visits',
-  'yt_subscribers','yt_views','yt_watchHours','yt_likes','yt_comments'];
+  'likes','comments','saves','shares','storyViews','posts','reels','stories'];
 
 function clearForm(){
   $('f_week').value = mondayOf(new Date());
@@ -814,7 +771,6 @@ function renderOverview(){
     $('kpiGrid').innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="big">📊</div>
       Henüz veri yok.<br><b>Veri Gir</b> sekmesinden ilk haftanı ekle.</div>`;
     $('ovBreakdown').innerHTML = ''; $('ovBreakdown').style.display='none';
-    $('ovPlatforms').style.display='none';
     $('ovReportBtn').style.display='none';
     $('ovTrendMini').innerHTML = '<p class="subtle">Veri girildikçe burada özet görünecek.</p>';
     return;
@@ -834,7 +790,7 @@ function renderOverview(){
     { label:'✨ Yeni Takipçi', val: fmtInt(num(cur.newFollowers)), d: deltaHtml(num(cur.newFollowers), prev?num(prev.newFollowers):null) },
     { label:'📡 Erişim', val: fmtInt(num(cur.reach)), d: deltaHtml(num(cur.reach), prev?num(prev.reach):null) },
     { label:'👁️ Gösterim', val: fmtInt(num(cur.impressions)), d: deltaHtml(num(cur.impressions), prev?num(prev.impressions):null) },
-    { label:'🌐 Web Ziyaretçi', val: fmtInt(num(cur.visitors)), d: deltaHtml(num(cur.visitors), prev?num(prev.visitors):null) },
+    { label:'🪪 Profil Ziyareti', val: fmtInt(num(cur.profileVisits)), d: deltaHtml(num(cur.profileVisits), prev?num(prev.profileVisits):null) },
     { label:'🔗 Web Tıklaması', val: fmtInt(num(cur.websiteClicks)), d: deltaHtml(num(cur.websiteClicks), prev?num(prev.websiteClicks):null) }
   ];
   $('kpiGrid').innerHTML = cards.map(c=>`
@@ -863,32 +819,6 @@ function renderOverview(){
   const last4 = ws.slice(-4);
   $('ovTrendMini').innerHTML = miniTrend(last4,'followers','👥 Takipçi') +
     miniTrend(last4,'reach','📡 Erişim') + miniTrend(last4,'engagement','❤️ Etkileşim Oranı',true);
-  renderPlatforms(cur, prev);
-}
-
-function platKpi(label, cur, prev, key){
-  return `<div class="kpi"><div class="label">${label}</div><div class="val">${fmtInt(num(cur[key]))}</div>${prev?deltaHtml(num(cur[key]),num(prev[key])):''}</div>`;
-}
-function renderPlatforms(cur, prev){
-  const el = $('ovPlatforms');
-  const fbKeys = ['fb_pageLikes','fb_reach','fb_engagement','fb_visits'];
-  const ytKeys = ['yt_subscribers','yt_views','yt_watchHours','yt_likes','yt_comments'];
-  const hasFB = fbKeys.some(k=>num(cur[k]));
-  const hasYT = ytKeys.some(k=>num(cur[k]));
-  if(!hasFB && !hasYT){ el.style.display='none'; return; }
-  el.style.display='';
-  let html = '<h3><span class="t">🧩 Diğer Platformlar</span></h3>';
-  if(hasFB){
-    html += '<div class="group-title">👍 Facebook</div><div class="kpi-grid" style="gap:8px;">' +
-      platKpi('Sayfa beğenisi', cur, prev, 'fb_pageLikes') + platKpi('Erişim', cur, prev, 'fb_reach') +
-      platKpi('Etkileşim', cur, prev, 'fb_engagement') + platKpi('Sayfa ziyareti', cur, prev, 'fb_visits') + '</div>';
-  }
-  if(hasYT){
-    html += '<div class="group-title">▶️ YouTube</div><div class="kpi-grid" style="gap:8px;">' +
-      platKpi('Abone', cur, prev, 'yt_subscribers') + platKpi('Görüntüleme', cur, prev, 'yt_views') +
-      platKpi('İzlenme saati', cur, prev, 'yt_watchHours') + platKpi('Beğeni', cur, prev, 'yt_likes') + '</div>';
-  }
-  el.innerHTML = html;
 }
 
 function renderGoalStrip(){
@@ -1027,10 +957,10 @@ function renderMonthly(){
     const reach = arr.reduce((s,w)=>s+num(w.reach),0);
     const impr = arr.reduce((s,w)=>s+num(w.impressions),0);
     const content = arr.reduce((s,w)=>s+totalContent(w),0);
-    const visitors = arr.reduce((s,w)=>s+num(w.visitors),0);
+    const profileVisits = arr.reduce((s,w)=>s+num(w.profileVisits),0);
     const avgEng = arr.reduce((s,w)=>s+engRate(w),0)/arr.length;
     const endFollowers = num(arr[arr.length-1].followers);
-    return { k, weeks:arr.length, newF, reach, impr, content, visitors, avgEng, endFollowers };
+    return { k, weeks:arr.length, newF, reach, impr, content, profileVisits, avgEng, endFollowers };
   });
   const monthName = k=>{ const [y,m]=k.split('-'); return new Date(y,m-1,1).toLocaleDateString('tr-TR',{month:'long',year:'numeric'}); };
   $('monthly').innerHTML = rows.slice().reverse().map((r,idx,a)=>{
@@ -1047,7 +977,7 @@ function renderMonthly(){
         <div style="font-size:13px;">📡 Toplam erişim<br><b style="font-size:17px;">${fmtInt(r.reach)}</b></div>
         <div style="font-size:13px;">❤️ Ort. etkileşim<br><b style="font-size:17px;">${fmtPct(r.avgEng)}</b></div>
         <div style="font-size:13px;">🗂️ Üretilen içerik<br><b style="font-size:17px;">${fmtInt(r.content)}</b></div>
-        <div style="font-size:13px;">🌐 Web ziyaretçi<br><b style="font-size:17px;">${fmtInt(r.visitors)}</b></div>
+        <div style="font-size:13px;">🪪 Profil ziyareti<br><b style="font-size:17px;">${fmtInt(r.profileVisits)}</b></div>
       </div>
     </div>`;
   }).join('');
@@ -1171,21 +1101,9 @@ function buildInsights(ws){
   if(num(cur.profileVisits)){ const cv=num(cur.newFollowers)/num(cur.profileVisits)*100;
     if(cv<5) insights.push(['warn','🪪','Profil dönüşümü düşük',`Ziyaretçilerin %${r2(cv)}\'i takip etti. Bio + vitrin + son 9 gönderiyi güçlendir.`]);
     else insights.push(['good','🪪','Profil iyi dönüştürüyor',`Ziyaretçilerin %${r2(cv)}\'i takip etti.`]); }
-  if(prev && num(prev.visitors)){ const vg=(num(cur.visitors)-num(prev.visitors))/num(prev.visitors)*100;
-    if(vg<-10) insights.push(['warn','🌐','Web trafiği düşüyor',`Ziyaretçi %${Math.round(Math.abs(vg))} azaldı. IG→web köprüsünü güçlendir.`]);
-    else if(vg>10) insights.push(['good','🌐','Web trafiği artıyor',`Ziyaretçi %${Math.round(vg)} arttı. Yönlendiren içeriği tekrarla.`]); }
-  // Facebook
-  if(prev && num(prev.fb_reach)){ const fr=(num(cur.fb_reach)-num(prev.fb_reach))/num(prev.fb_reach)*100;
-    if(fr<-10) insights.push(['warn','👍','Facebook erişimi düşüyor',`%${Math.round(Math.abs(fr))} azaldı. Video içerik ve gruplarda paylaşımla erişimi toparla.`]);
-    else if(fr>10) insights.push(['good','👍','Facebook erişimi artıyor',`%${Math.round(fr)} arttı. Çalışan gönderi türünü Reels'e de uyarla.`]); }
-  if(num(cur.fb_reach) && num(cur.fb_engagement)){ const fe=num(cur.fb_engagement)/num(cur.fb_reach)*100;
-    if(fe<1) insights.push(['tip','👍','Facebook etkileşimi zayıf',`Erişime göre %${r2(fe)}. Soru soran ve yorum çağıran başlıklar dene.`]); }
-  // YouTube
-  if(prev && num(cur.yt_subscribers)){ const d=num(cur.yt_subscribers)-num(prev.yt_subscribers);
-    if(d>0) insights.push(['good','▶️','YouTube abonen artıyor',`+${fmtInt(d)} abone. Düzenli yükleme + IG/FB çapraz tanıtımı sürdür.`]);
-    else if(d<0) insights.push(['warn','▶️','YouTube abone kaybı',`${fmtInt(d)} abone. Thumbnail, başlık ve videonun ilk 30 saniyesini güçlendir.`]); }
-  if(num(cur.yt_views) && num(cur.yt_watchHours)){ const avgMin=num(cur.yt_watchHours)*60/num(cur.yt_views);
-    insights.push(['tip','▶️','YouTube izlenme kalitesi',`Görüntüleme başına ≈${r2(avgMin)} dk izleniyor. Süreyi artırmak için bölümlere ayrılmış, akıcı kurgu kullan.`]); }
+  if(prev && num(cur.websiteClicks)!==num(prev.websiteClicks)){ const wc=num(cur.websiteClicks)-num(prev.websiteClicks);
+    if(wc>0) insights.push(['good','🔗','Web tıklaması artıyor',`Profildeki bağlantı tıklaması +${fmtInt(wc)}. Bio'daki çağrı (CTA) çalışıyor.`]);
+    else insights.push(['tip','🔗','Web tıklaması azaldı',`Story'lerde "bağlantı" çıkartması ve gönderi açıklamalarında net yönlendirme ekle.`]); }
 
   // post-based insight (best time)
   const realPosts = state.posts.filter(p=>p.type!=='story');
@@ -1307,11 +1225,11 @@ function weeklyNarrative(cur, prev){
   // reach
   if(prev){ const [rw,rc]=trendWord(num(cur.reach),num(prev.reach));
     bits.push(`Erişim <b class="${rc}">${fmtInt(num(cur.reach))}</b>'e ${rw}.`); }
-  // best mover among web/fb/yt
+  // extra Instagram movers
   const extra=[];
-  if(prev && (num(cur.visitors)||num(prev.visitors))){ const [vw,vc]=trendWord(num(cur.visitors),num(prev.visitors)); extra.push(`web ziyaretçi ${fmtInt(num(cur.visitors))} (${vw})`); }
-  if(num(cur.yt_subscribers)) extra.push(`YouTube abone ${fmtInt(num(cur.yt_subscribers))}`);
-  if(num(cur.fb_reach)) extra.push(`Facebook erişim ${fmtInt(num(cur.fb_reach))}`);
+  if(num(cur.newFollowers)) extra.push(`${fmtInt(num(cur.newFollowers))} yeni takipçi`);
+  if(num(cur.saves)) extra.push(`${fmtInt(num(cur.saves))} kaydetme`);
+  if(num(cur.websiteClicks)) extra.push(`${fmtInt(num(cur.websiteClicks))} web tıklaması`);
   if(extra.length) bits.push('Ayrıca: '+extra.join(', ')+'.');
   return bits.join(' ');
 }
@@ -1342,12 +1260,12 @@ function showWeeklyReport(week){
 
   const kpi = (l,v,d)=>`<div class="rep-kpi"><div class="l">${l}</div><div class="v">${v}</div>${prev?d:''}</div>`;
 
-  // platform strip
+  // secondary Instagram metrics strip
   const plat=[];
-  if(num(cur.visitors)) plat.push(['🌐 Web ziyaretçi', fmtInt(num(cur.visitors))]);
-  if(num(cur.fb_reach)||num(cur.fb_pageLikes)) plat.push(['👍 FB erişim', fmtInt(num(cur.fb_reach))]);
-  if(num(cur.yt_subscribers)) plat.push(['▶️ YT abone', fmtInt(num(cur.yt_subscribers))]);
-  if(num(cur.yt_views)) plat.push(['▶️ YT görüntüleme', fmtInt(num(cur.yt_views))]);
+  if(num(cur.impressions)) plat.push(['👁️ Gösterim', fmtInt(num(cur.impressions))]);
+  if(num(cur.profileVisits)) plat.push(['🪪 Profil ziyareti', fmtInt(num(cur.profileVisits))]);
+  if(num(cur.saves)) plat.push(['🔖 Kaydetme', fmtInt(num(cur.saves))]);
+  if(num(cur.storyViews)) plat.push(['📖 Story görüntüleme', fmtInt(num(cur.storyViews))]);
 
   // goals
   const goalHTML = state.goals.length ? `<div class="rep-h">🎯 Hedefler</div>` + state.goals.map(g=>{
@@ -1382,7 +1300,7 @@ function showWeeklyReport(week){
       <div class="rep-narr">${weeklyNarrative(cur, prev)}</div>
       ${cur.note?`<div class="rep-narr subtle" style="margin-top:8px;">📌 ${cur.note}</div>`:''}
 
-      ${plat.length?`<div class="rep-h">🧩 Platformlar</div><div class="rep-plat">${plat.map(([l,v])=>`<div class="b"><div class="pl">${l}</div><div class="pv">${v}</div></div>`).join('')}</div>`:''}
+      ${plat.length?`<div class="rep-h">📊 Diğer Metrikler</div><div class="rep-plat">${plat.map(([l,v])=>`<div class="b"><div class="pl">${l}</div><div class="pv">${v}</div></div>`).join('')}</div>`:''}
 
       ${highlights.length?`<div class="rep-h">💡 Öne çıkanlar</div><ul class="rep-list">${highlights.map(i=>`<li><span class="ic">${i[1]}</span><span><b>${i[2]}.</b> ${i[3]}</span></li>`).join('')}</ul>`:''}
 
@@ -1421,25 +1339,6 @@ const OCR_MAP = {
     ['f_saves',         ['kaydet','save']],
     ['f_shares',        ['paylaş','share']],
     ['f_storyViews',    ['hikaye','story görüntü','story view']]
-  ],
-  facebook: [
-    ['f_fb_pageLikes',  ['sayfa beğen','page like','takipçi','follower','beğen']],
-    ['f_fb_reach',      ['eriş','reach','ulaşılan']],
-    ['f_fb_engagement', ['etkileşim','engagement','tepki','interaction']],
-    ['f_fb_visits',     ['sayfa ziyaret','page visit','ziyaret']]
-  ],
-  youtube: [
-    ['f_yt_subscribers',['abone','subscriber']],
-    ['f_yt_views',      ['görüntüleme','views','izlenme']],
-    ['f_yt_watchHours', ['izlenme saat','watch time','watch hour','saat']],
-    ['f_yt_likes',      ['beğen','like']],
-    ['f_yt_comments',   ['yorum','comment']]
-  ],
-  website: [
-    ['f_visitors',  ['ziyaretçi','kullanıcı','users','visitor']],
-    ['f_pageviews', ['sayfa görüntü','pageview','page view','görüntüleme']],
-    ['f_avgDuration',['ortalama süre','avg duration','oturum süre','session duration','avg. session']],
-    ['f_bounce',    ['hemen çıkma','bounce']]
   ]
 };
 
@@ -1496,7 +1395,7 @@ function parseAndFill(text, platform){
 async function runOCR(e){
   const files = [...e.target.files]; e.target.value='';
   if(!files.length) return;
-  const platform = $('ocrPlatform').value;
+  const platform = 'instagram';
   const ok = await ensureTesseract();
   if(!ok){
     setOcrStatus('⚠️ OCR motoru yüklenemedi (internet yok olabilir). Sayıları aşağıdan elle girebilir veya ham metni yapıştırabilirsin.');
@@ -1522,7 +1421,7 @@ async function runOCR(e){
     : '⚠️ Sayı eşlenemedi. Ham metni düzeltip "Yeniden Doldur" deneyebilir veya elle girebilirsin.');
 }
 function reparseOCR(){
-  const n = parseAndFill($('ocrRaw').value, $('ocrPlatform').value);
+  const n = parseAndFill($('ocrRaw').value, 'instagram');
   setOcrStatus(n>0 ? `✅ ${n} alan dolduruldu.` : '⚠️ Sayı bulunamadı.');
 }
 
