@@ -188,6 +188,7 @@
   <div class="wrap">
     <div class="top-row">
       <input class="prog-title" id="progTitle" placeholder="Program adı..." maxlength="60">
+      <button class="icon-btn" onclick="openDashboard()" title="İstatistik">📊</button>
       <button class="icon-btn" onclick="openShare()" title="Paylaş & Yedek">🔗</button>
       <button class="icon-btn" onclick="toggleTheme()" id="themeBtn" title="Tema">🌙</button>
     </div>
@@ -255,7 +256,7 @@ function periodMs(f) { return f === 'daily' ? DAY : f === 'weekly' ? 7 * DAY : 3
 
 let state = loadState();
 let activeFilter = 'all';
-let adv = { project: '', assignee: '', priority: '', search: '' };
+let adv = { project: '', assignee: '', priority: '', tag: '', search: '' };
 
 /* ============ STATE ============ */
 function defaultState() { return { v: 3, title: '', members: [], me: null, projects: [], tasks: [] }; }
@@ -268,6 +269,7 @@ function migrate(s) {
     subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
     comments: Array.isArray(t.comments) ? t.comments : [],
     activity: Array.isArray(t.activity) ? t.activity : [],
+    tags: Array.isArray(t.tags) ? t.tags : [],
     createdAt: t.createdAt || Date.now(), ...t,
   }));
   s.v = 3;
@@ -350,7 +352,7 @@ function renderFilters() {
   });
 }
 function updateFilterBadge() {
-  const n = (adv.project ? 1 : 0) + (adv.assignee ? 1 : 0) + (adv.priority ? 1 : 0);
+  const n = (adv.project ? 1 : 0) + (adv.assignee ? 1 : 0) + (adv.priority ? 1 : 0) + (adv.tag ? 1 : 0);
   const t = document.getElementById('filterToggle');
   t.innerHTML = 'Filtre' + (n ? `<span class="dot">${n}</span>` : '');
 }
@@ -367,6 +369,7 @@ function passFilter(t) {
   if (activeFilter === 'blocked' && !(t.status === 'blocked' && !t.recurring)) return false;
   if (adv.assignee && t.assignee !== adv.assignee) return false;
   if (adv.priority && t.priority !== adv.priority) return false;
+  if (adv.tag && !(t.tags || []).includes(adv.tag)) return false;
   return matchesSearch(t);
 }
 function sortTasks(ts) {
@@ -447,6 +450,7 @@ function taskEl(t) {
   const subDone = (t.subtasks || []).filter(s => s.done).length;
   if (t.subtasks && t.subtasks.length) meta += `<span class="tag sub">☑ ${subDone}/${t.subtasks.length}</span>`;
   if (t.comments && t.comments.length) meta += `<span class="tag cmt">💬 ${t.comments.length}</span>`;
+  (t.tags || []).forEach(tg => meta += `<span class="tag sub">#${esc(tg)}</span>`);
   div.innerHTML = `
     <button class="check${complete?' on':''}${t.recurring?' recur':''}">${complete?'✓':''}</button>
     <div class="task-body">
@@ -507,6 +511,8 @@ function openFilterSheet() {
   const sheet = document.getElementById('sheet');
   const projOpts = state.projects.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
   const memOpts = state.members.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
+  const allTags = [...new Set(state.tasks.flatMap(t => t.tags || []))].sort();
+  const tagOpts = allTags.map(tg => `<option value="${escAttr(tg)}">#${esc(tg)}</option>`).join('');
   sheet.innerHTML = `<h2>Gelişmiş filtre</h2>
     <div class="field"><label>Proje</label><select id="fProject">
       <option value="">Tümü</option><option value="custom">Sadece özel görevler</option>${projOpts}</select></div>
@@ -514,6 +520,7 @@ function openFilterSheet() {
       <option value="">Herkes</option>${memOpts}</select></div>
     <div class="field"><label>Öncelik</label><select id="fPriority">
       <option value="">Tümü</option><option value="high">Yüksek</option><option value="med">Orta</option><option value="low">Düşük</option></select></div>
+    ${allTags.length ? `<div class="field"><label>Etiket</label><select id="fTag"><option value="">Tümü</option>${tagOpts}</select></div>` : ''}
     <div class="btn-row">
       <button class="btn btn-ghost" onclick="clearAdv()">Temizle</button>
       <button class="btn btn-primary" onclick="applyAdv()">Uygula</button>
@@ -521,15 +528,76 @@ function openFilterSheet() {
   document.getElementById('fProject').value = adv.project;
   document.getElementById('fAssignee').value = adv.assignee;
   document.getElementById('fPriority').value = adv.priority;
+  if (document.getElementById('fTag')) document.getElementById('fTag').value = adv.tag;
   openSheet();
 }
 function applyAdv() {
   adv.project = document.getElementById('fProject').value;
   adv.assignee = document.getElementById('fAssignee').value;
   adv.priority = document.getElementById('fPriority').value;
+  adv.tag = document.getElementById('fTag') ? document.getElementById('fTag').value : '';
   closeSheet(); render();
 }
-function clearAdv() { adv.project = adv.assignee = adv.priority = ''; closeSheet(); render(); }
+function clearAdv() { adv.project = adv.assignee = adv.priority = adv.tag = ''; closeSheet(); render(); }
+
+/* ============ DASHBOARD & REMINDERS ============ */
+function openDashboard() {
+  const total = state.tasks.length, done = state.tasks.filter(isComplete).length, pct = total ? Math.round(done / total * 100) : 0;
+  const st = { todo: 0, progress: 0, blocked: 0, done: 0 };
+  state.tasks.filter(t => !t.recurring).forEach(t => st[t.status] = (st[t.status] || 0) + 1);
+  const recTotal = state.tasks.filter(t => t.recurring).length;
+  const recDue = state.tasks.filter(t => t.recurring && !checkSatisfied(t)).length;
+  const stChip = (n, c, lbl) => n ? `<span class="tag" style="background:${c}1a;color:${c}">${lbl}: ${n}</span>` : '';
+  const statusRow = [stChip(st.todo, '#6b7280', 'Açık'), stChip(st.progress, '#0ea5e9', 'Devam'), stChip(st.blocked, '#ef4444', 'Engelli'), stChip(st.done, '#10b981', 'Tamam'), recTotal ? `<span class="tag freq">🔁 ${recTotal - recDue}/${recTotal} kontrol güncel</span>` : ''].join('');
+
+  const memRows = state.members.map(m => {
+    const a = state.tasks.filter(t => t.assignee === m.id), d = a.filter(isComplete).length, p = a.length ? Math.round(d / a.length * 100) : 0;
+    return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+      <span><span class="avatar" style="display:inline-grid;width:18px;height:18px;font-size:9px;background:${m.color};vertical-align:-4px">${initials(m.name)}</span> ${esc(m.name)}</span>
+      <span style="color:var(--muted)">${d}/${a.length}</span></div>
+      <div class="mini-bar" style="max-width:none"><span style="width:${p}%"></span></div></div>`;
+  }).join('') || '<div class="empty-sm">Kişi yok.</div>';
+
+  const projRows = state.projects.map(p => {
+    const a = state.tasks.filter(t => t.projectId === p.id), d = a.filter(isComplete).length, pc = a.length ? Math.round(d / a.length * 100) : 0;
+    return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+      <span>📁 ${esc(p.name)} <span style="font-size:10px;color:var(--muted)">${p.type === 'existing' ? 'kontrol' : 'kurulum'}</span></span>
+      <span style="color:var(--muted)">${d}/${a.length}</span></div>
+      <div class="mini-bar" style="max-width:none"><span style="width:${pc}%;background:${p.color || 'var(--accent)'}"></span></div></div>`;
+  }).join('') || '<div class="empty-sm">Proje yok.</div>';
+
+  const upcoming = [];
+  state.tasks.forEach(t => {
+    if (isComplete(t)) return;
+    if (t.recurring) { if (!checkSatisfied(t)) upcoming.push({ t, when: t.lastDone ? nextDue(t) : 0 }); }
+    else if (t.due) upcoming.push({ t, when: new Date(t.due + 'T00:00').getTime() });
+  });
+  upcoming.sort((a, b) => a.when - b.when);
+  const upRows = upcoming.slice(0, 10).map(u => {
+    const ov = u.when && u.when < Date.now();
+    const lbl = u.t.recurring ? 'kontrol zamanı' : fmtDate(u.t.due);
+    return `<div class="activity"><span style="color:${ov ? 'var(--danger)' : 'var(--accent)'}">${ov ? '⚠️' : '📅'}</span> ${esc(u.t.title)} · <b>${lbl}</b></div>`;
+  }).join('') || '<div class="empty-sm">Tarihli/gecikmiş görev yok.</div>';
+
+  document.getElementById('sheet').innerHTML = `<h2>📊 İstatistik</h2>
+    <div class="ai-box" style="margin:0 0 4px"><div class="ai-head">Genel</div>
+      <b style="font-size:22px">%${pct}</b> tamamlandı · ${done}/${total} görev<div class="detail-meta" style="margin-top:8px">${statusRow}</div></div>
+    <div class="sub-block"><h4>Kişi başı iş yükü</h4>${memRows}</div>
+    <div class="sub-block"><h4>Proje ilerlemeleri</h4>${projRows}</div>
+    <div class="sub-block"><h4>Yaklaşan & geciken</h4>${upRows}</div>
+    <div class="btn-row"><button class="btn btn-ghost" onclick="notifyToday()">🔔 Bugünü hatırlat</button>
+      <button class="btn btn-primary" onclick="closeSheet()">Kapat</button></div>`;
+  openSheet();
+}
+function notifyToday() {
+  const due = state.tasks.filter(t => !isComplete(t) && ((t.recurring && !checkSatisfied(t)) || (!t.recurring && t.due && t.due <= todayStr())));
+  if (!('Notification' in window)) { toast('Bu cihaz bildirim desteklemiyor'); return; }
+  Notification.requestPermission().then(p => {
+    if (p !== 'granted') { toast('Bildirim izni verilmedi'); return; }
+    new Notification(state.title || 'Ortak Program', { body: due.length ? `${due.length} görev bugün/gecikmiş durumda` : 'Bugün için bekleyen görev yok 🎉', icon: 'icon-192.png' });
+    toast('Hatırlatma gönderildi ✓');
+  });
+}
 
 /* ============ PROJECT CRUD ============ */
 let pEditId = null, pType = 'new', pColor = COLORS[0];
@@ -583,6 +651,7 @@ function openTaskEdit(id, target) {
       <div class="chip${!draft.projectId?' sel':''}" data-pid="">📝 Özel görev</div>${projOpts}</div></div>
     <div class="field"><label>Başlık</label><input id="fTitle" placeholder="Ne yapılacak?" value="${escAttr(draft.title)}"></div>
     <div class="field"><label>Not (opsiyonel)</label><textarea id="fNote" placeholder="Detay, link, açıklama...">${esc(draft.note||'')}</textarea></div>
+    <div class="field"><label>Etiketler (virgülle ayırın)</label><input id="fTags" placeholder="örn. acil, tasarım, müşteri" value="${escAttr((draft.tags||[]).join(', '))}"></div>
     <div class="field"><label>Kime atansın?</label><div class="chips" id="assigneePicker"></div></div>
     <div class="field"><label>Öncelik</label><div class="seg" id="prioSeg">
       <button data-p="low">Düşük</button><button data-p="med">Orta</button><button data-p="high">Yüksek</button></div></div>
@@ -619,6 +688,7 @@ function saveTask() {
   const title = document.getElementById('fTitle').value.trim();
   if (!title) { toast('Başlık gerekli'); return; }
   draft.title = title; draft.note = document.getElementById('fNote').value.trim(); draft.due = document.getElementById('fDue').value;
+  draft.tags = document.getElementById('fTags').value.split(',').map(s => s.trim().replace(/^#/, '')).filter(Boolean).slice(0, 8);
   const p = draft.projectId ? projectById(draft.projectId) : null;
   draft.kind = p ? 'project' : 'custom'; draft.recurring = !!(p && p.type === 'existing');
   if (editId) { const i = state.tasks.findIndex(x => x.id === editId); state.tasks[i] = { ...state.tasks[i], ...draft }; }
@@ -802,7 +872,7 @@ function doImportText() {
 function loadImported(data) {
   if (!data || !Array.isArray(data.tasks)) { toast('Geçersiz veri'); return; }
   if (!confirm('Mevcut programın yerine bu veri yüklensin mi?')) return;
-  state = migrate(data); activeFilter = 'all'; adv = { project: '', assignee: '', priority: '', search: '' };
+  state = migrate(data); activeFilter = 'all'; adv = { project: '', assignee: '', priority: '', tag: '', search: '' };
   closeSheet(); render(); toast('Yüklendi ✓');
 }
 
