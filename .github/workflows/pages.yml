@@ -1,10 +1,8 @@
 name: GitHub Pages dağıtımı
 
 on:
-  push:
-    branches:
-      - claude/shared-task-assignment-app-fHNpG
-      - main
+  # Otomatik tetik kapalı: Pages "Deploy from a branch" ile elle açılıyor.
+  # Bu workflow yalnızca elle (Run workflow) çalıştırılabilir.
   workflow_dispatch:
 
 permissions:
