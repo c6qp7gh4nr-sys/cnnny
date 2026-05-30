@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#7a1a3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="IG Post">
+<title>Instagram Post Formatlayıcı</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;0,900;1,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --burgundy: #7a1a3a;
+    --burgundy-dark: #4f0e23;
+    --gold: #c9a55c;
+    --gold-bright: #e8c574;
+    --gold-pale: #f3dca5;
+    --cream: #faf3e7;
+    --ink: #1a0d12;
+    --paper: #f7f0e5;
+    --muted: rgba(26, 13, 18, 0.55);
+    --line: #e3d6c0;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.5;
+    padding: 0 0 40px;
+  }
+  header {
+    background: linear-gradient(135deg, var(--burgundy), var(--burgundy-dark));
+    color: var(--cream);
+    padding: 22px 18px 26px;
+    text-align: center;
+  }
+  header .logo {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 900; font-size: 26px; letter-spacing: 1px;
+  }
+  header .logo .heart { color: var(--gold-bright); }
+  header .sub { font-size: 12.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold-pale); margin-top: 6px; }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 18px 16px 0; }
+
+  .grid { display: grid; gap: 18px; }
+  @media (min-width: 720px) { .grid { grid-template-columns: 1fr 360px; align-items: start; } }
+
+  .panel {
+    background: #fff; border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: 0 2px 14px rgba(122,26,58,.07); padding: 16px;
+  }
+  .panel h2 {
+    font-family: 'Playfair Display', Georgia, serif; font-size: 16px; font-weight: 700;
+    color: var(--burgundy); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+  }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .5px; margin: 0 0 6px; }
+  .field { margin-bottom: 14px; }
+  input[type="text"], textarea {
+    width: 100%; font-family: inherit; font-size: 15px; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; outline: none;
+    background: var(--paper); transition: border-color .15s, box-shadow .15s;
+  }
+  input[type="text"]:focus, textarea:focus { border-color: var(--burgundy); box-shadow: 0 0 0 3px rgba(122,26,58,.1); }
+  textarea { resize: vertical; min-height: 72px; line-height: 1.4; }
+
+  /* Drop zone */
+  .drop {
+    border: 2px dashed var(--gold); border-radius: 12px; background: var(--paper);
+    padding: 22px 14px; text-align: center; cursor: pointer; transition: .15s; color: var(--muted);
+  }
+  .drop:hover, .drop.drag { background: #fff7ea; border-color: var(--burgundy); color: var(--burgundy); }
+  .drop .big { font-size: 28px; }
+  .drop .t { font-size: 14px; font-weight: 600; color: var(--ink); margin-top: 4px; }
+  .drop .s { font-size: 12px; margin-top: 2px; }
+  .drop.has { padding: 12px; border-style: solid; }
+  .drop .fname { font-size: 12.5px; color: var(--burgundy); font-weight: 600; word-break: break-all; }
+
+  /* Format chips */
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    border: 1px solid var(--line); background: var(--paper); border-radius: 999px;
+    padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--ink);
+    display: flex; flex-direction: column; align-items: center; line-height: 1.2;
+  }
+  .chip small { font-size: 10px; font-weight: 500; color: var(--muted); }
+  .chip.active { background: var(--burgundy); color: #fff; border-color: var(--burgundy); }
+  .chip.active small { color: var(--gold-pale); }
+
+  /* Slider */
+  .slider-row { display: flex; align-items: center; gap: 10px; }
+  input[type="range"] { flex: 1; accent-color: var(--burgundy); }
+
+  /* Preview */
+  .preview-wrap { position: sticky; top: 14px; }
+  .canvas-shell {
+    background: repeating-conic-gradient(#eee 0 25%, #f6f6f6 0 50%) 50% / 22px 22px;
+    border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+    display: grid; place-items: center; padding: 10px;
+  }
+  canvas#out { max-width: 100%; height: auto; display: block; border-radius: 6px;
+    box-shadow: 0 6px 22px rgba(0,0,0,.18); }
+
+  .actions { display: flex; gap: 10px; margin-top: 14px; }
+  .btn {
+    flex: 1; border: none; border-radius: 12px; padding: 13px 12px; font-size: 15px; font-weight: 700;
+    cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 7px;
+    transition: transform .08s, opacity .15s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary { background: linear-gradient(135deg, var(--burgundy), var(--burgundy-dark)); color: #fff; }
+  .btn-gold { background: linear-gradient(135deg, var(--gold-bright), var(--gold)); color: var(--burgundy-dark); }
+  .hint { font-size: 12px; color: var(--muted); text-align: center; margin-top: 10px; }
+
+  /* Color theme picker for band */
+  .swatches { display: flex; gap: 8px; }
+  .sw { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+  .sw.active { border-color: var(--ink); box-shadow: 0 0 0 2px #fff inset; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">📐 Post Formatlayıcı</div>
+  <div class="sub">Kurumsal Instagram · Sabit Alt Bant</div>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+    <!-- LEFT: controls -->
+    <div>
+      <div class="panel">
+        <h2>📷 Fotoğraf</h2>
+        <div id="drop" class="drop">
+          <div class="big">⬆️</div>
+          <div class="t">Fotoğrafı buraya bırak veya seç</div>
+          <div class="s">JPG · PNG · HEIC</div>
+        </div>
+        <input id="file" type="file" accept="image/*" hidden>
+        <div class="field" style="margin-top:14px;display:none" id="focusWrap">
+          <label>Dikey konum (kırpma)</label>
+          <div class="slider-row">
+            <span style="font-size:12px;color:var(--muted)">↑</span>
+            <input id="focus" type="range" min="0" max="100" value="50">
+            <span style="font-size:12px;color:var(--muted)">↓</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:16px">
+        <h2>✍️ Metin</h2>
+        <div class="field">
+          <label>Üst etiket (opsiyonel)</label>
+          <input id="eyebrow" type="text" placeholder="örn. YENİ KOLEKSİYON · DUYURU · KAMPANYA" maxlength="40">
+        </div>
+        <div class="field">
+          <label>Ana metin</label>
+          <textarea id="title" placeholder="Paylaşmak istediğin başlık / mesaj..." maxlength="120">Başlığını buraya yaz</textarea>
+        </div>
+        <div class="field">
+          <label>Marka adı (alt bantta sabit kalır)</label>
+          <input id="brand" type="text" placeholder="örn. MARKA ADI" maxlength="40">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label>Handle / kullanıcı adı (opsiyonel)</label>
+          <input id="handle" type="text" placeholder="@kullaniciadi" maxlength="40">
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:16px">
+        <h2>🎨 Format & Renk</h2>
+        <div class="field">
+          <label>Boyut</label>
+          <div class="chips" id="formats">
+            <div class="chip active" data-fmt="1:1">Kare<small>1080×1080</small></div>
+            <div class="chip" data-fmt="4:5">Dikey<small>1080×1350</small></div>
+            <div class="chip" data-fmt="9:16">Story<small>1080×1920</small></div>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label>Bant rengi</label>
+          <div class="swatches" id="swatches">
+            <div class="sw active" data-c="burgundy" style="background:#7a1a3a" title="Bordo"></div>
+            <div class="sw" data-c="ink" style="background:#1a0d12" title="Siyah"></div>
+            <div class="sw" data-c="forest" style="background:#1f3a2e" title="Yeşil"></div>
+            <div class="sw" data-c="navy" style="background:#152844" title="Lacivert"></div>
+            <div class="sw" data-c="cream" style="background:#faf3e7" title="Krem"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: preview -->
+    <div class="preview-wrap">
+      <div class="panel">
+        <h2>👁 Önizleme</h2>
+        <div class="canvas-shell">
+          <canvas id="out" width="1080" height="1080"></canvas>
+        </div>
+        <div class="actions">
+          <button id="share" class="btn btn-gold">📲 Paylaş</button>
+          <button id="download" class="btn btn-primary">⬇️ İndir</button>
+        </div>
+        <div class="hint">Görsel cihazında hazırlanır, sunucuya yüklenmez.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const canvas = $('#out');
+const ctx = canvas.getContext('2d');
+
+const BANDS = {
+  burgundy: { top:'#7a1a3a', bot:'#4f0e23', accent:'#e8c574', eyebrow:'#e8c574', title:'#faf3e7', brand:'#e8c574' },
+  ink:      { top:'#241419', bot:'#0a0608', accent:'#c9a55c', eyebrow:'#c9a55c', title:'#faf3e7', brand:'#c9a55c' },
+  forest:   { top:'#274738', bot:'#13251c', accent:'#d9b86a', eyebrow:'#d9b86a', title:'#f4efe3', brand:'#d9b86a' },
+  navy:     { top:'#1c3354', bot:'#0d1a2e', accent:'#cfa75e', eyebrow:'#cfa75e', title:'#f3f0e8', brand:'#cfa75e' },
+  cream:    { top:'#faf3e7', bot:'#efe3cc', accent:'#7a1a3a', eyebrow:'#7a1a3a', title:'#3a1521', brand:'#7a1a3a' },
+};
+
+// Marka kimliği localStorage'da saklanır → her açılışta aynı sabit tasarım gelir
+const saved = JSON.parse(localStorage.getItem('igFormatter') || '{}');
+const state = {
+  img: null,
+  fmt: '1:1',
+  band: saved.band || 'burgundy',
+  focus: 0.5,
+  eyebrow: '',
+  title: 'Başlığını buraya yaz',
+  brand: saved.brand || '',
+  handle: saved.handle || '',
+  fontReady: false,
+};
+function persist() {
+  localStorage.setItem('igFormatter', JSON.stringify({ band: state.band, brand: state.brand, handle: state.handle }));
+}
+
+const PRESETS = { '1:1':{w:1080,h:1080}, '4:5':{w:1080,h:1350}, '9:16':{w:1080,h:1920} };
+const BAND_H = 300;        // sabit alt bant yüksekliği — her görselde aynı
+const PAD = 76;
+
+/* ---------- text helpers ---------- */
+function wrapLines(text, maxW, maxLines) {
+  const words = (text || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const lines = []; let cur = '';
+  for (const w of words) {
+    const test = cur ? cur + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; }
+    else cur = test;
+  }
+  if (cur) lines.push(cur);
+  if (lines.length > maxLines) {
+    lines.length = maxLines;
+    let last = lines[maxLines - 1];
+    while (last.length && ctx.measureText(last + '…').width > maxW) last = last.slice(0, -1);
+    lines[maxLines - 1] = last.replace(/\s+$/,'') + '…';
+  }
+  return lines;
+}
+
+/* ---------- main render ---------- */
+function render() {
+  const { w, h } = PRESETS[state.fmt];
+  canvas.width = w; canvas.height = h;
+  const c = BANDS[state.band];
+  const photoH = h - BAND_H;
+
+  // bg fallback
+  ctx.fillStyle = c.bot; ctx.fillRect(0, 0, w, h);
+
+  // photo (cover into photo area)
+  if (state.img) {
+    const iw = state.img.width, ih = state.img.height;
+    const scale = Math.max(w / iw, photoH / ih);
+    const dw = iw * scale, dh = ih * scale;
+    const dx = (w - dw) / 2;
+    const dy = (photoH - dh) * state.focus;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 0, w, photoH); ctx.clip();
+    ctx.drawImage(state.img, dx, dy, dw, dh);
+    ctx.restore();
+  } else {
+    // placeholder
+    const g = ctx.createLinearGradient(0, 0, w, photoH);
+    g.addColorStop(0, '#efe3cc'); g.addColorStop(1, '#d8c39a');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, photoH);
+    ctx.fillStyle = 'rgba(122,26,58,.35)';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '40px "Playfair Display", Georgia, serif';
+    ctx.fillText('Fotoğraf ekleyin', w/2, photoH/2 - 24);
+    ctx.font = '600 22px -apple-system, sans-serif';
+    ctx.fillText('⬆️', w/2, photoH/2 + 30);
+  }
+
+  // soft shadow above band for separation
+  const sh = ctx.createLinearGradient(0, photoH - 60, 0, photoH);
+  sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.18)');
+  ctx.fillStyle = sh; ctx.fillRect(0, photoH - 60, w, 60);
+
+  // ----- BAND -----
+  const by = photoH;
+  const bg = ctx.createLinearGradient(0, by, 0, h);
+  bg.addColorStop(0, c.top); bg.addColorStop(1, c.bot);
+  ctx.fillStyle = bg; ctx.fillRect(0, by, w, BAND_H);
+
+  // gold double hairline at top of band (klasik dokunuş)
+  ctx.fillStyle = c.accent;
+  ctx.fillRect(0, by, w, 7);
+  ctx.globalAlpha = .55; ctx.fillRect(PAD, by + 18, w - PAD*2, 2); ctx.globalAlpha = 1;
+
+  // brand bottom row (sol: marka adı · sağ: handle)
+  ctx.textBaseline = 'alphabetic';
+  if (state.brand) {
+    ctx.textAlign = 'left';
+    ctx.letterSpacing = '3px';
+    ctx.font = '700 30px "Playfair Display", Georgia, serif';
+    ctx.fillStyle = c.brand;
+    ctx.fillText(state.brand.toUpperCase(), PAD, h - 50);
+  }
+  if (state.handle) {
+    ctx.textAlign = 'right';
+    ctx.letterSpacing = '1px';
+    ctx.font = '500 26px -apple-system, "SF Pro Text", sans-serif';
+    ctx.globalAlpha = .85;
+    ctx.fillStyle = c.title;
+    ctx.fillText(state.handle, w - PAD, h - 50);
+    ctx.globalAlpha = 1;
+  }
+  ctx.letterSpacing = '0px';
+  ctx.textAlign = 'left';
+
+  // content zone (between hairlines and brand row)
+  let ty = by + 70;
+  const contentMaxW = w - PAD * 2;
+
+  if (state.eyebrow) {
+    ctx.letterSpacing = '4px';
+    ctx.font = '700 28px -apple-system, "SF Pro Text", sans-serif';
+    ctx.fillStyle = c.eyebrow;
+    ctx.textBaseline = 'top';
+    ctx.fillText(state.eyebrow.toUpperCase(), PAD, ty);
+    ctx.letterSpacing = '0px';
+    ty += 50;
+  }
+
+  // title (Playfair, wrap up to 2 lines)
+  const titleSize = 60;
+  ctx.font = `700 ${titleSize}px "Playfair Display", Georgia, serif`;
+  ctx.fillStyle = c.title;
+  ctx.textBaseline = 'top';
+  const lines = wrapLines(state.title, contentMaxW, 2);
+  const lineH = titleSize * 1.12;
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], PAD, ty + i * lineH);
+  }
+}
+
+/* ---------- image loading ---------- */
+function loadFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const drop = $('#drop');
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    state.img = img;
+    URL.revokeObjectURL(url);
+    $('#focusWrap').style.display = 'block';
+    drop.classList.add('has');
+    drop.innerHTML = `<div class="t">✅ Fotoğraf yüklendi</div><div class="fname">${file.name}</div><div class="s">Değiştirmek için tıkla</div>`;
+    render();
+  };
+  img.src = url;
+}
+
+/* ---------- export ---------- */
+function slug(s, max) {
+  return (s || '').toLowerCase()
+    .replace(/[ğ]/g,'g').replace(/[ü]/g,'u').replace(/[ş]/g,'s')
+    .replace(/[ı]/g,'i').replace(/[ö]/g,'o').replace(/[ç]/g,'c')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0, max);
+}
+function fileName() {
+  const b = slug(state.brand, 24);
+  const t = slug(state.title, 40) || 'post';
+  return `${b ? b + '-' : ''}${t}.png`;
+}
+function getBlob() {
+  return new Promise(res => canvas.toBlob(res, 'image/png', 0.95));
+}
+async function doDownload() {
+  const blob = await getBlob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fileName();
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+async function doShare() {
+  const blob = await getBlob();
+  const file = new File([blob], fileName(), { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: state.brand || 'Instagram Post' });
+      return;
+    } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  doDownload(); // fallback
+}
+
+/* ---------- events ---------- */
+const drop = $('#drop'), fileInput = $('#file');
+drop.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag'); }));
+drop.addEventListener('drop', e => { if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
+// paste from clipboard
+window.addEventListener('paste', e => {
+  const it = [...(e.clipboardData?.items||[])].find(i => i.type.startsWith('image/'));
+  if (it) loadFile(it.getAsFile());
+});
+
+$('#eyebrow').addEventListener('input', e => { state.eyebrow = e.target.value; render(); });
+$('#title').addEventListener('input', e => { state.title = e.target.value; render(); });
+$('#brand').addEventListener('input', e => { state.brand = e.target.value.trim(); persist(); render(); });
+$('#handle').addEventListener('input', e => { state.handle = e.target.value.trim(); persist(); render(); });
+$('#focus').addEventListener('input', e => { state.focus = e.target.value / 100; render(); });
+
+$('#formats').addEventListener('click', e => {
+  const chip = e.target.closest('.chip'); if (!chip) return;
+  document.querySelectorAll('#formats .chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active'); state.fmt = chip.dataset.fmt; render();
+});
+$('#swatches').addEventListener('click', e => {
+  const sw = e.target.closest('.sw'); if (!sw) return;
+  document.querySelectorAll('#swatches .sw').forEach(c => c.classList.remove('active'));
+  sw.classList.add('active'); state.band = sw.dataset.c; persist(); render();
+});
+$('#download').addEventListener('click', doDownload);
+$('#share').addEventListener('click', doShare);
+
+// init field defaults (saklanan marka kimliğini geri yükle)
+$('#title').value = state.title;
+$('#brand').value = state.brand;
+$('#handle').value = state.handle;
+document.querySelectorAll('#swatches .sw').forEach(sw => sw.classList.toggle('active', sw.dataset.c === state.band));
+
+// render after fonts load (Playfair) for crisp output
+render();
+if (document.fonts && document.fonts.ready) {
+  document.fonts.load('700 60px "Playfair Display"').then(() => document.fonts.ready).then(() => { state.fontReady = true; render(); });
+}
+</script>
+</body>
+</html>
