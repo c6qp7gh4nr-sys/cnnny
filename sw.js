@@ -1,5 +1,5 @@
 /* Ortak Program – basit çevrimdışı önbellek (service worker) */
-const CACHE = 'ortak-program-v3';
+const CACHE = 'ortak-program-v4';
 const ASSETS = [
   'ortak-program.html',
   'manifest.json',

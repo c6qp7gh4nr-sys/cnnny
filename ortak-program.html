@@ -216,21 +216,25 @@
   </div>
   <div class="toolbar">
     <div class="search">🔍<input id="searchInput" placeholder="Görev ara..." autocomplete="off"></div>
+    <button class="filter-toggle" onclick="toggleView()" id="viewToggle">📅 Ajanda</button>
     <button class="filter-toggle" onclick="openFilterSheet()" id="filterToggle">Filtre</button>
   </div>
   <div class="filters" id="filters"></div>
 
-  <div class="sec-head">
-    <h3>📁 Projeler</h3>
-    <button class="add-btn" onclick="openProject(null)">＋ Proje</button>
-  </div>
-  <div id="projects"></div>
+  <div id="listView">
+    <div class="sec-head">
+      <h3>📁 Projeler</h3>
+      <button class="add-btn" onclick="openProject(null)">＋ Proje</button>
+    </div>
+    <div id="projects"></div>
 
-  <div class="sec-head" id="customHead">
-    <h3>📝 Özel Görevler</h3>
-    <button class="add-btn" onclick="openTaskEdit(null,'custom')">＋ Görev</button>
+    <div class="sec-head" id="customHead">
+      <h3>📝 Özel Görevler</h3>
+      <button class="add-btn" onclick="openTaskEdit(null,'custom')">＋ Görev</button>
+    </div>
+    <div class="tasks" id="customTasks"></div>
   </div>
-  <div class="tasks" id="customTasks"></div>
+  <div id="agendaView" style="display:none"></div>
 </div>
 
 <button class="fab" onclick="openAddMenu()">＋</button>
@@ -257,6 +261,7 @@ function periodMs(f) { return f === 'daily' ? DAY : f === 'weekly' ? 7 * DAY : 3
 let state = loadState();
 let activeFilter = 'all';
 let adv = { project: '', assignee: '', priority: '', tag: '', search: '' };
+let view = localStorage.getItem('ortakView') || 'list';
 
 /* ============ STATE ============ */
 function defaultState() { return { v: 3, title: '', members: [], me: null, projects: [], tasks: [] }; }
@@ -270,6 +275,7 @@ function migrate(s) {
     comments: Array.isArray(t.comments) ? t.comments : [],
     activity: Array.isArray(t.activity) ? t.activity : [],
     tags: Array.isArray(t.tags) ? t.tags : [],
+    attachments: Array.isArray(t.attachments) ? t.attachments : [],
     createdAt: t.createdAt || Date.now(), ...t,
   }));
   s.v = 3;
@@ -287,6 +293,7 @@ function loadState() {
 }
 function safeParse(s) { try { return s ? JSON.parse(s) : null; } catch { return null; } }
 function save() { localStorage.setItem('ortakProgram', JSON.stringify(state)); }
+function saveSafe() { try { save(); return true; } catch (e) { toast('Depolama dolu — ek çok büyük olabilir'); return false; } }
 function uid() { return Math.random().toString(36).slice(2, 9); }
 
 /* ============ BASE64 (UTF-8 safe) ============ */
@@ -313,9 +320,41 @@ function logActivity(t, text) { t.activity = t.activity || []; t.activity.push({
 /* ============ RENDER ============ */
 function render() {
   document.getElementById('progTitle').value = state.title;
-  renderMembers(); renderFilters(); renderProjects(); renderCustom();
+  renderMembers(); renderFilters();
+  document.getElementById('listView').style.display = view === 'list' ? '' : 'none';
+  document.getElementById('agendaView').style.display = view === 'agenda' ? '' : 'none';
+  document.getElementById('viewToggle').textContent = view === 'list' ? '📅 Ajanda' : '📋 Liste';
+  if (view === 'list') { renderProjects(); renderCustom(); } else renderAgenda();
   renderStats(); renderAI(); updateFilterBadge();
   save();
+}
+function toggleView() { view = view === 'list' ? 'agenda' : 'list'; localStorage.setItem('ortakView', view); render(); }
+function renderAgenda() {
+  const el = document.getElementById('agendaView'); el.innerHTML = '';
+  const open = state.tasks.filter(t => isOpenNow(t) && passFilter(t));
+  const now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const b = { overdue: [], today: [], tomorrow: [], week: [], later: [], none: [] };
+  open.forEach(t => {
+    let due = null;
+    if (t.recurring) due = t.lastDone ? nextDue(t) : t0;
+    else if (t.due) due = new Date(t.due + 'T00:00').getTime();
+    if (due == null) { b.none.push(t); return; }
+    const d = Math.floor((due - t0) / DAY);
+    if (d < 0) b.overdue.push(t); else if (d === 0) b.today.push(t); else if (d === 1) b.tomorrow.push(t);
+    else if (d <= 7) b.week.push(t); else b.later.push(t);
+  });
+  const order = [['overdue', '⚠️ Gecikmiş'], ['today', '📌 Bugün'], ['tomorrow', '☀️ Yarın'], ['week', '🗓️ Bu hafta'], ['later', '⏭️ İleride'], ['none', '∞ Tarihsiz']];
+  let any = false;
+  order.forEach(([k, lbl]) => {
+    if (!b[k].length) return; any = true;
+    const h = document.createElement('div'); h.className = 'sec-head';
+    h.innerHTML = `<h3>${lbl} <span style="color:var(--muted);font-weight:600;font-size:13px">${b[k].length}</span></h3>`;
+    el.appendChild(h);
+    const list = document.createElement('div'); list.className = 'tasks';
+    sortTasks(b[k]).forEach(t => list.appendChild(taskEl(t)));
+    el.appendChild(list);
+  });
+  if (!any) el.innerHTML = `<div class="empty"><div class="big">📅</div><div>Açık görev yok.</div></div>`;
 }
 function renderStats() {
   const total = state.tasks.length, done = state.tasks.filter(isComplete).length;
@@ -450,6 +489,7 @@ function taskEl(t) {
   const subDone = (t.subtasks || []).filter(s => s.done).length;
   if (t.subtasks && t.subtasks.length) meta += `<span class="tag sub">☑ ${subDone}/${t.subtasks.length}</span>`;
   if (t.comments && t.comments.length) meta += `<span class="tag cmt">💬 ${t.comments.length}</span>`;
+  if (t.attachments && t.attachments.length) meta += `<span class="tag sub">📎 ${t.attachments.length}</span>`;
   (t.tags || []).forEach(tg => meta += `<span class="tag sub">#${esc(tg)}</span>`);
   div.innerHTML = `
     <button class="check${complete?' on':''}${t.recurring?' recur':''}">${complete?'✓':''}</button>
@@ -585,9 +625,51 @@ function openDashboard() {
     <div class="sub-block"><h4>Kişi başı iş yükü</h4>${memRows}</div>
     <div class="sub-block"><h4>Proje ilerlemeleri</h4>${projRows}</div>
     <div class="sub-block"><h4>Yaklaşan & geciken</h4>${upRows}</div>
-    <div class="btn-row"><button class="btn btn-ghost" onclick="notifyToday()">🔔 Bugünü hatırlat</button>
+    <div class="btn-row"><button class="btn btn-ghost" onclick="notifyToday()">🔔 Şimdi hatırlat</button>
+      <button class="btn btn-ghost" onclick="openReminderSettings()">⏰ Otomatik</button>
       <button class="btn btn-primary" onclick="closeSheet()">Kapat</button></div>`;
   openSheet();
+}
+function openReminderSettings() {
+  const r = getReminder();
+  document.getElementById('sheet').innerHTML = `<h2>⏰ Otomatik hatırlatma</h2>
+    <p class="hint">Uygulama açıkken (ya da ana ekrana ekliyse) her gün belirlediğiniz saatte bekleyen/geciken görevleri bildirir. Tarayıcı kapalıyken garanti değildir — iPhone'da bildirim için uygulamayı <b>ana ekrana ekleyin</b>.</p>
+    <div class="field"><label>Durum</label><div class="seg" id="remSeg"><button data-e="1">Açık</button><button data-e="0">Kapalı</button></div></div>
+    <div class="field"><label>Saat</label><input type="time" id="remTime" value="${r.time}"></div>
+    <div class="btn-row"><button class="btn btn-ghost" onclick="closeSheet()">İptal</button><button class="btn btn-primary" onclick="saveReminder()">Kaydet</button></div>`;
+  const seg = document.getElementById('remSeg');
+  [...seg.children].forEach(b => { b.classList.toggle('sel', (b.dataset.e === '1') === r.enabled); b.onclick = () => [...seg.children].forEach(x => x.classList.toggle('sel', x === b)); });
+  openSheet();
+}
+function getReminder() { return safeParse(localStorage.getItem('ortakReminder')) || { enabled: false, time: '09:00', lastFired: '' }; }
+function setReminder(r) { localStorage.setItem('ortakReminder', JSON.stringify(r)); }
+function saveReminder() {
+  const enabled = document.getElementById('remSeg').querySelector('.sel').dataset.e === '1';
+  const time = document.getElementById('remTime').value || '09:00';
+  if (enabled && 'Notification' in window && Notification.permission !== 'granted') Notification.requestPermission();
+  setReminder({ enabled, time, lastFired: '' }); closeSheet(); toast(enabled ? 'Otomatik hatırlatma açık' : 'Kapatıldı'); scheduleReminder();
+}
+let remTimer;
+function scheduleReminder() {
+  clearTimeout(remTimer); const r = getReminder(); if (!r.enabled) return;
+  checkReminderNow();
+  const [h, m] = r.time.split(':').map(Number);
+  const now = new Date(); const next = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  remTimer = setTimeout(() => { fireReminder(); scheduleReminder(); }, next - now);
+}
+function checkReminderNow() {
+  const r = getReminder(); if (!r.enabled) return;
+  const [h, m] = r.time.split(':').map(Number);
+  const now = new Date(); const dueTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m).getTime();
+  if (Date.now() >= dueTime && r.lastFired !== todayStr()) fireReminder();
+}
+function fireReminder() {
+  const r = getReminder(); r.lastFired = todayStr(); setReminder(r);
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const due = state.tasks.filter(t => !isComplete(t) && ((t.recurring && !checkSatisfied(t)) || (!t.recurring && t.due && t.due <= todayStr())));
+  if (!due.length) return;
+  new Notification(state.title || 'Ortak Program', { body: `${due.length} görev bugün/gecikmiş — programı açın`, icon: 'icon-192.png' });
 }
 function notifyToday() {
   const due = state.tasks.filter(t => !isComplete(t) && ((t.recurring && !checkSatisfied(t)) || (!t.recurring && t.due && t.due <= todayStr())));
@@ -742,6 +824,13 @@ function renderDetail() {
       <span>${esc(s.title)}</span><span class="del" data-delsub="${s.id}">✕</span></div>`).join('');
   const subDone = (t.subtasks||[]).filter(s => s.done).length;
 
+  const atts = (t.attachments || []).map(at => {
+    if (at.type && at.type.startsWith('image/') && at.data)
+      return `<a href="${at.data}" target="_blank" style="display:inline-block;position:relative;margin:0 8px 8px 0"><img src="${at.data}" style="width:72px;height:72px;object-fit:cover;border-radius:10px;border:1px solid var(--line);vertical-align:top"><span class="del" data-delatt="${at.id}" style="position:absolute;top:-7px;right:-7px;background:var(--card);border:1px solid var(--line);border-radius:50%;width:22px;height:22px;display:grid;place-items:center">✕</span></a>`;
+    const link = at.data ? `<a href="${at.data}" download="${escAttr(at.name)}" style="flex:1">📎 ${esc(at.name)} <span style="color:var(--muted);font-size:11px">${fmtSize(at.size)}</span></a>` : `<span style="flex:1;color:var(--muted)">📎 ${esc(at.name)} (yalnızca yedekte)</span>`;
+    return `<div class="subtask">${link}<span class="del" data-delatt="${at.id}">✕</span></div>`;
+  }).join('') || '<div class="empty-sm">Ek yok.</div>';
+
   const comments = (t.comments || []).slice().reverse().map(c => `
     <div class="comment"><div class="avatar" style="width:28px;height:28px;font-size:11px;background:${colorFor(c.by)}">${initials(c.by)}</div>
       <div class="body"><div class="who">${esc(c.by)}<span class="when">${fmtAgo(c.at)}</span></div><div class="txt">${esc(c.text)}</div></div></div>`).join('') || `<div class="empty-sm">Henüz yorum yok.</div>`;
@@ -755,6 +844,8 @@ function renderDetail() {
     ${statusBlock}
     <div class="sub-block"><h4>Alt görevler ${(t.subtasks||[]).length?`(${subDone}/${t.subtasks.length})`:''}</h4>
       ${subs}<div class="inline-add"><input id="newSub" placeholder="Alt görev ekle..."><button onclick="addSubtask()">Ekle</button></div></div>
+    <div class="sub-block"><h4>📎 Ekler ${(t.attachments||[]).length?`(${t.attachments.length})`:''}</h4>${atts}
+      <div class="inline-add"><input type="file" id="newAtt" style="flex:1;padding:7px" accept="image/*,application/pdf"></div></div>
     <div class="sub-block"><h4>💬 Yorumlar</h4>${comments}
       <div class="inline-add"><input id="newCmt" placeholder="Yorum yaz..."><button onclick="addComment()">Gönder</button></div></div>
     <div class="sub-block"><h4>📜 Aktivite</h4>${acts}</div>
@@ -768,6 +859,8 @@ function renderDetail() {
   }
   [...document.querySelectorAll('[data-sub]')].forEach(e => e.onclick = () => toggleSub(t.id, e.dataset.sub));
   [...document.querySelectorAll('[data-delsub]')].forEach(e => e.onclick = () => delSub(t.id, e.dataset.delsub));
+  [...document.querySelectorAll('[data-delatt]')].forEach(e => e.onclick = (ev) => { ev.preventDefault(); delAttachment(t.id, e.dataset.delatt); });
+  const na = document.getElementById('newAtt'); if (na) na.onchange = () => addAttachment();
   const ns = document.getElementById('newSub'); if (ns) ns.onkeydown = e => { if (e.key === 'Enter') addSubtask(); };
   const nc = document.getElementById('newCmt'); if (nc) nc.onkeydown = e => { if (e.key === 'Enter') addComment(); };
 }
@@ -793,6 +886,20 @@ function addComment() {
   const t = taskById(detailId); t.comments = t.comments || []; t.comments.push({ id: uid(), by: meName(), at: Date.now(), text: v });
   logActivity(t, 'yorum yaptı'); save(); renderDetail(); renderProjects(); renderCustom();
 }
+function addAttachment() {
+  const inp = document.getElementById('newAtt'); const f = inp.files[0]; if (!f) return;
+  const t = taskById(detailId); t.attachments = t.attachments || [];
+  const finish = (data, type, name, size) => { t.attachments.push({ id: uid(), name, type, size, data }); logActivity(t, 'ek ekledi'); if (saveSafe()) { renderDetail(); renderProjects(); renderCustom(); toast('Ek eklendi ✓'); } else { t.attachments.pop(); renderDetail(); } };
+  if (f.type.startsWith('image/')) compressImage(f, (durl) => finish(durl, 'image/jpeg', f.name, Math.round(durl.length * 0.75)));
+  else { if (f.size > 1.5 * 1024 * 1024) { toast('Dosya çok büyük (max 1.5MB)'); return; } const r = new FileReader(); r.onload = () => finish(r.result, f.type, f.name, f.size); r.readAsDataURL(f); }
+}
+function compressImage(file, cb) {
+  const r = new FileReader();
+  r.onload = () => { const img = new Image(); img.onload = () => { const max = 1200; let w = img.width, h = img.height; if (w > max || h > max) { const s = Math.min(max / w, max / h); w = Math.round(w * s); h = Math.round(h * s); } const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); cb(c.toDataURL('image/jpeg', 0.7)); }; img.src = r.result; };
+  r.readAsDataURL(file);
+}
+function delAttachment(id, aid) { const t = taskById(id); t.attachments = (t.attachments || []).filter(a => a.id !== aid); saveSafe(); renderDetail(); renderProjects(); renderCustom(); }
+function fmtSize(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB'; }
 
 /* ============ MEMBERS ============ */
 let mEditId = null, mColor = COLORS[0];
@@ -827,11 +934,16 @@ function deleteMember() {
 }
 
 /* ============ SHARE / BACKUP ============ */
-function buildShareUrl() { return location.origin + location.pathname + '#p=' + encodeURIComponent(encodeData(state)); }
+function stateForShare() {
+  const s = JSON.parse(JSON.stringify(state));
+  s.tasks.forEach(t => { if (t.attachments) t.attachments = t.attachments.map(a => ({ ...a, data: '' })); });
+  return s;
+}
+function buildShareUrl() { return location.origin + location.pathname + '#p=' + encodeURIComponent(encodeData(stateForShare())); }
 function openShare() {
   const url = buildShareUrl();
   document.getElementById('sheet').innerHTML = `<h2>🔗 Paylaş & Yedek</h2>
-    <p class="hint">Bağlantıyı gönderince tüm program (kişiler, projeler, görevler) karşı tarafta açılır. Sunucu yok — veri linkin içinde taşınır.</p>
+    <p class="hint">Bağlantıyı gönderince tüm program (kişiler, projeler, görevler) karşı tarafta açılır. Sunucu yok — veri linkin içinde taşınır. Dosya/görsel ekleri linke sığmaz; ekleri taşımak için <b>JSON yedek</b> kullanın.</p>
     <div class="field"><label>Paylaşım bağlantısı</label><textarea class="share-code" id="shareUrl" rows="3" readonly>${url}</textarea></div>
     <div class="btn-row"><button class="btn btn-ghost" onclick="nativeShare()">📤 Paylaş</button>
       <button class="btn btn-primary" onclick="copyShare()">Bağlantıyı kopyala</button></div>
@@ -905,12 +1017,14 @@ let searchTimer;
 document.getElementById('searchInput').addEventListener('input', e => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { adv.search = e.target.value.trim(); renderProjects(); renderCustom(); }, 150); });
 if (localStorage.getItem('ortakTheme') === 'dark') toggleTheme();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkReminderNow(); });
 function init() {
   render();
   if (pendingImport) {
     if (confirm('Bir paylaşım bağlantısı açtınız. Bu program yüklensin mi? (Mevcut veriniz değişebilir)')) { state = pendingImport; activeFilter = 'all'; }
     pendingImport = null; render();
   }
+  scheduleReminder();
 }
 init();
 </script>
