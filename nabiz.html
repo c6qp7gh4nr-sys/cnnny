@@ -337,7 +337,7 @@
     <div class="card" style="margin-top:12px;border:1px dashed var(--indigo-bright);">
       <h3><span class="t">📸 Ekran Görüntüsünden Oku (OCR)</span></h3>
       <p class="subtle">Instagram Insights ekran görüntünü yükle — panel sayıları otomatik okuyup aşağıdaki forma doldurur. Sonra kontrol edip <b>Kaydet</b>. 🔒 Görüntüler cihazından çıkmaz; OCR tarayıcında çalışır.</p>
-      <input type="file" id="ocrFile" accept="image/*" multiple capture="environment" style="display:none" onchange="runOCR(event)">
+      <input type="file" id="ocrFile" accept="image/*" multiple style="display:none" onchange="runOCR(event)">
       <button class="btn btn-primary" onclick="document.getElementById('ocrFile').click()">📷 Görüntü Seç / Çek</button>
       <div id="ocrStatus" class="subtle" style="margin-top:10px;"></div>
       <details id="ocrRawWrap" style="display:none;margin-top:10px;">
