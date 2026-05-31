@@ -349,19 +349,22 @@
     <p class="subtle" style="margin-top:12px;">…veya verileri elle gir / OCR sonucunu kontrol et. Hafta başlangıcı Pazartesi.</p>
     <div class="card">
       <div class="field">
-        <label>Hafta başlangıcı (Pazartesi)</label>
+        <label>Dönem tarihi <span class="hint">(ay veya hafta başlangıcı)</span></label>
         <input type="date" id="f_week">
       </div>
       <div class="group-title">📷 Instagram — Hesap</div>
       <div class="form-grid">
-        <div class="field"><label>Toplam takipçi</label><input type="number" id="f_followers" inputmode="numeric" placeholder="örn. 1240"></div>
-        <div class="field"><label>Yeni takipçi <span class="hint">(bu hafta)</span></label><input type="number" id="f_newFollowers" inputmode="numeric" placeholder="örn. 45"></div>
-        <div class="field"><label>Erişim <span class="hint">(reach)</span></label><input type="number" id="f_reach" inputmode="numeric"></div>
-        <div class="field"><label>Gösterim</label><input type="number" id="f_impressions" inputmode="numeric"></div>
+        <div class="field"><label>Toplam takipçi</label><input type="number" id="f_followers" inputmode="numeric" placeholder="örn. 9435"></div>
+        <div class="field"><label>Net yeni takipçi <span class="hint">(bu dönem)</span></label><input type="number" id="f_newFollowers" inputmode="numeric" placeholder="örn. 503"></div>
+        <div class="field"><label>Görüntüleme <span class="hint">(views)</span></label><input type="number" id="f_views" inputmode="numeric" placeholder="örn. 454145"></div>
+        <div class="field"><label>Erişim <span class="hint">(erişilen hesap)</span></label><input type="number" id="f_reach" inputmode="numeric" placeholder="örn. 172889"></div>
         <div class="field"><label>Profil ziyareti</label><input type="number" id="f_profileVisits" inputmode="numeric"></div>
-        <div class="field"><label>Web sitesi tıklaması</label><input type="number" id="f_websiteClicks" inputmode="numeric"></div>
+        <div class="field"><label>Dış bağlantı tıklaması</label><input type="number" id="f_websiteClicks" inputmode="numeric"></div>
+        <div class="field"><label>Gösterim <span class="hint">(varsa)</span></label><input type="number" id="f_impressions" inputmode="numeric"></div>
       </div>
       <div class="group-title">❤️ Instagram — Etkileşim</div>
+      <div class="field"><label>Toplam etkileşim <span class="hint">(yeni Insights'taki tek "Etkileşimler" sayısı — bunu girmen yeterli)</span></label><input type="number" id="f_engagement" inputmode="numeric" placeholder="örn. 2890"></div>
+      <p class="subtle" style="margin:2px 0 10px;">Beğeni/yorum/kaydetme'yi ayrı biliyorsan aşağıya da girebilirsin (zorunlu değil).</p>
       <div class="form-grid">
         <div class="field"><label>Beğeni</label><input type="number" id="f_likes" inputmode="numeric"></div>
         <div class="field"><label>Yorum</label><input type="number" id="f_comments" inputmode="numeric"></div>
@@ -380,7 +383,7 @@
         <label>Not <span class="hint">(kampanya, viral içerik vb.)</span></label>
         <textarea id="f_note" placeholder="Bu haftaya dair notlar…"></textarea>
       </div>
-      <button class="btn btn-primary" onclick="saveWeek()">💾 Haftayı Kaydet</button>
+      <button class="btn btn-primary" onclick="saveWeek()">💾 Dönemi Kaydet</button>
       <button class="btn btn-ghost" style="margin-top:10px;" onclick="clearForm()" id="cancelEditBtn">Formu Temizle</button>
     </div>
     <div class="card">
@@ -574,8 +577,8 @@ function saveWeeks(){ localStorage.setItem(STORE_KEY, JSON.stringify(state.weeks
 function savePosts(){ localStorage.setItem(POST_KEY, JSON.stringify(state.posts)); }
 function saveGoals(){ localStorage.setItem(GOAL_KEY, JSON.stringify(state.goals)); }
 
-function totalEng(w){ return num(w.likes)+num(w.comments)+num(w.saves)+num(w.shares); }
-function engRate(w){ const base = num(w.reach) || num(w.followers); return base ? totalEng(w)/base*100 : 0; }
+function totalEng(w){ const t = num(w.engagement); return t>0 ? t : (num(w.likes)+num(w.comments)+num(w.saves)+num(w.shares)); }
+function engRate(w){ const base = num(w.reach) || num(w.views) || num(w.followers); return base ? totalEng(w)/base*100 : 0; }
 function totalContent(w){ return num(w.posts)+num(w.reels); }
 function metricValue(w, key){ return key === 'engagement' ? engRate(w) : num(w[key]); }
 function sortedWeeks(){ return [...state.weeks].sort((a,b)=> a.week < b.week ? -1 : 1); }
@@ -623,8 +626,8 @@ function showSub(which){
 }
 
 /* ============ WEEKLY FORM ============ */
-const FORM_FIELDS = ['followers','newFollowers','reach','impressions','profileVisits','websiteClicks',
-  'likes','comments','saves','shares','storyViews','posts','reels','stories'];
+const FORM_FIELDS = ['followers','newFollowers','reach','views','impressions','profileVisits','websiteClicks',
+  'engagement','likes','comments','saves','shares','storyViews','posts','reels','stories'];
 
 function clearForm(){
   $('f_week').value = mondayOf(new Date());
@@ -788,10 +791,10 @@ function renderOverview(){
     { hero:true, label:'❤️ Etkileşim Oranı', val: fmtPct(er), sub:'erişime göre', d: deltaHtml(er, erPrev) },
     { label:'👥 Takipçi', val: fmtInt(num(cur.followers)), d: deltaHtml(num(cur.followers), prev?num(prev.followers):null) },
     { label:'✨ Yeni Takipçi', val: fmtInt(num(cur.newFollowers)), d: deltaHtml(num(cur.newFollowers), prev?num(prev.newFollowers):null) },
+    { label:'👁️ Görüntüleme', val: fmtInt(num(cur.views)), d: deltaHtml(num(cur.views), prev?num(prev.views):null) },
     { label:'📡 Erişim', val: fmtInt(num(cur.reach)), d: deltaHtml(num(cur.reach), prev?num(prev.reach):null) },
-    { label:'👁️ Gösterim', val: fmtInt(num(cur.impressions)), d: deltaHtml(num(cur.impressions), prev?num(prev.impressions):null) },
     { label:'🪪 Profil Ziyareti', val: fmtInt(num(cur.profileVisits)), d: deltaHtml(num(cur.profileVisits), prev?num(prev.profileVisits):null) },
-    { label:'🔗 Web Tıklaması', val: fmtInt(num(cur.websiteClicks)), d: deltaHtml(num(cur.websiteClicks), prev?num(prev.websiteClicks):null) }
+    { label:'🔗 Dış Bağlantı', val: fmtInt(num(cur.websiteClicks)), d: deltaHtml(num(cur.websiteClicks), prev?num(prev.websiteClicks):null) }
   ];
   $('kpiGrid').innerHTML = cards.map(c=>`
     <div class="kpi ${c.hero?'hero':''}">
@@ -1328,12 +1331,14 @@ function openLatestReport(){
 // Hangi anahtar kelime hangi form alanını doldurur. Türkçe + İngilizce.
 const OCR_MAP = {
   instagram: [
-    ['f_newFollowers',  ['yeni takipçi','net followers','new follower','büyüme','growth']],
+    ['f_views',         ['görüntüleme','görüntülenme','izlenme','views']],
+    ['f_reach',         ['erişilen hesap','eriş','reach','ulaşılan','accounts reached']],
+    ['f_engagement',    ['etkileşim','interaction','engagement']],
+    ['f_newFollowers',  ['net takipçi','yeni takipçi','new follower','büyüme','growth']],
     ['f_followers',     ['takipçi','followers','follower']],
-    ['f_reach',         ['eriş','reach','ulaşılan','accounts reached']],
+    ['f_profileVisits', ['profil ziyaret','profile visit']],
+    ['f_websiteClicks', ['harici bağlantı','dış bağlantı','external link','web sitesi','website tap','website click','bağlantı dokun','link tık']],
     ['f_impressions',   ['gösterim','impression']],
-    ['f_profileVisits', ['profil ziyaret','profile visit','profil etkin']],
-    ['f_websiteClicks', ['web sitesi','website tap','website click','bağlantı tık','link tık']],
     ['f_likes',         ['beğen','like']],
     ['f_comments',      ['yorum','comment']],
     ['f_saves',         ['kaydet','save']],
@@ -1352,15 +1357,25 @@ async function ensureTesseract(){
   try{ await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'); return !!window.Tesseract; }
   catch(e){ return false; }
 }
-// Türkçe/İngilizce sayıyı parse et: "1.234", "12,3 B", "1.2K", "%4,5", "2,1 Mn"
+// Türkçe/İngilizce sayıyı parse et: "454,145", "172.889", "12,3 B", "1.2K", "%4,5", "2,1 Mn"
 function parseNum(tok){
   if(!tok) return null;
+  const isPct = tok.includes('%');
   let s = tok.toLowerCase().replace(/[%\s]/g,'');
   let mult = 1;
   const mm = s.match(/(mn|bin|[kmb])$/);
   if(mm){ const u=mm[1]; mult = (u==='m'||u==='mn') ? 1e6 : 1000; s = s.slice(0, -u.length); }
-  if(s.includes(',')){ s = s.replace(/\./g,'').replace(',','.'); }
-  else if(mult===1){ s = s.replace(/\./g,''); }   // 1.234 = binlik ayraç (çarpan yoksa)
+  if(mult!==1 || isPct){
+    // kısaltmalı (8,9 B / 1.2K) ya da yüzde → tek ondalık ayraç
+    s = s.replace(',','.');
+  } else if(/[.,]\d{3}(?=[.,]|$)/.test(s) && !/[.,]\d{1,2}$/.test(s)){
+    // binlik gruplama: 454,145 / 172.889 / 1.234.567 → ayraçları kaldır
+    s = s.replace(/[.,]/g,'');
+  } else if(s.includes(',')){
+    s = s.replace(/\./g,'').replace(',','.');   // ondalık virgül: 12,3
+  } else {
+    s = s.replace(/\./g,'');                      // 1.234 = binlik ayraç
+  }
   const v = parseFloat(s);
   if(isNaN(v)) return null;
   return Math.round(v*mult);
