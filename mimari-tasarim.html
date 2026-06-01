@@ -6,6 +6,9 @@
 <meta name="theme-color" content="#1f6f5c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Mimari Tasarım Üretici · Koordinat / Ada-Parsel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #eef2f0;
@@ -198,6 +201,54 @@
   .toast.show{ opacity:1; transform:none; }
   .toast.ok{ background:var(--brand); color:#fff; } .toast.err{ background:var(--danger); color:#fff; }
   *::-webkit-scrollbar{ width:8px; height:8px; } *::-webkit-scrollbar-thumb{ background:var(--line); border-radius:8px; }
+
+  /* ===== Şıklık katmanı (glassmorphism + Inter) ===== */
+  :root{
+    --glass: rgba(255,255,255,.70); --glass-brd: rgba(255,255,255,.65);
+    --elev: 0 14px 36px -16px rgba(20,64,52,.30), 0 2px 8px rgba(20,64,52,.05);
+  }
+  [data-theme="dark"]{
+    --glass: rgba(22,34,28,.60); --glass-brd: rgba(255,255,255,.07);
+    --elev: 0 18px 46px -18px rgba(0,0,0,.72), 0 2px 10px rgba(0,0,0,.45);
+  }
+  body{ font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; letter-spacing:-.011em; }
+  .wrap{ max-width:1120px; }
+
+  header{ background:linear-gradient(135deg, var(--brand) 0%, var(--brand-deep) 68%, #0a2a22 100%); padding:16px 0 20px; }
+  .brand-title{ font-weight:800; letter-spacing:-.02em; }
+  .brand-sub{ opacity:.84; letter-spacing:0; }
+  .icon-btn{ border-radius:13px; }
+
+  .card{
+    background:var(--glass); border:1px solid var(--glass-brd); border-radius:20px; padding:18px;
+    box-shadow:var(--elev); -webkit-backdrop-filter:blur(16px) saturate(1.5); backdrop-filter:blur(16px) saturate(1.5);
+  }
+  [data-theme="dark"] .card{ border-color:var(--line); }
+  .card:hover{ box-shadow:0 20px 48px -18px rgba(20,64,52,.36), 0 3px 10px rgba(20,64,52,.06); }
+  .card h2{ font-weight:700; letter-spacing:.01em; color:var(--brand-deep); }
+  [data-theme="dark"] .card h2{ color:var(--brand); }
+
+  input[type=text],input[type=number],select,textarea{ background:rgba(255,255,255,.55); border-radius:13px; }
+  [data-theme="dark"] input[type=text],[data-theme="dark"] input[type=number],[data-theme="dark"] select,[data-theme="dark"] textarea{ background:rgba(255,255,255,.045); }
+  input:focus,select:focus,textarea:focus{ background:var(--card); }
+
+  .seg{ background:rgba(0,0,0,.045); border-radius:14px; }
+  [data-theme="dark"] .seg{ background:rgba(255,255,255,.05); }
+  .btn{ border-radius:14px; padding:14px; }
+
+  .viewer{ background:var(--glass); }
+  .tab-btn{ border-radius:11px; background:rgba(255,255,255,.55); }
+  [data-theme="dark"] .tab-btn{ background:rgba(255,255,255,.045); }
+  .tab-btn.active{ background:var(--brand); }
+
+  .metric{ background:rgba(255,255,255,.45); border:1px solid var(--glass-brd); border-radius:14px; }
+  [data-theme="dark"] .metric{ background:rgba(255,255,255,.03); border-color:var(--line); }
+  .metric .v{ font-size:21px; letter-spacing:-.02em; }
+  .badge{ border-radius:999px; font-weight:700; }
+
+  .fab button{ border-radius:18px; }
+  .fab .alt{ border-radius:16px; }
+  .toast{ border-radius:14px; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
 </style>
 </head>
 <body>
