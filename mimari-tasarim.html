@@ -1849,42 +1849,89 @@ $('sunSaat').addEventListener('input', e=>{ const v=+e.target.value; $('sunSaatV
 
 /* ---------- PDF / Pafta ---------- */
 $('pdfBtn').onclick = () => {
-  const C=state.last; if(!C){ alert('Önce bir tasarım oluşturun.'); return; }
+  const C=state.last; if(!C){ toast('Önce bir tasarım oluşturun','err'); return; }
   const v=viewVaziyet(C), kt=viewKat(C), r=viewKutle(C);
-  const rows=metricRows(C);
+  const rows=metricRows(C), f=feasibility(C);
   const tarih=new Date().toLocaleDateString('tr-TR');
+  const p=(state.realParcel&&state.realParcel.props)||{};
   const baslik=(state.locLabel||'Mimari Tasarım').replace(/[📍🗺️]/g,'').trim();
   const metricHtml=rows.map(x=>`<tr><td>${x[0]}</td><td><b>${x[1]}</b> ${x[2]}</td></tr>`).join('');
-  const w=window.open('','_blank'); if(!w){ alert('Açılır pencere engellendi.'); return; }
-  w.document.write(`<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Mimari Pafta · ${baslik}</title>
+  const hasMoney=(f.insBirim||f.satFiyat);
+  const feasRows=[['Toplam Yapı Alanı',fmt(f.toplamYapi)+' m²'],['Satılabilir Alan',fmt(f.satilabilir)+' m²'],['Bağımsız Bölüm',(f.toplamDaire||'—')+' daire'],['Otopark',f.otopark+' araç'],['Sığınak',f.siginakGerek?('~'+fmt(f.siginakAlan)+' m²'):'Gerekmez']]
+    .concat(hasMoney?[['İnşaat Maliyeti',trMoney(f.insMaliyet)],['Toplam Maliyet',trMoney(f.toplamMaliyet)],['Tahmini Gelir',trMoney(f.gelir)],['Kaba Kâr',trMoney(f.kar)+(f.karlilik?(' · %'+fmt(f.karlilik)):'')]]:[]);
+  const feasHtml=feasRows.map(x=>`<tr><td>${x[0]}</td><td><b>${x[1]}</b></td></tr>`).join('');
+  const parselTbl=(state.realParcel)?`<table>
+    <tr><td>İl / İlçe</td><td><b>${p.ilAd||'—'} / ${p.ilceAd||'—'}</b></td></tr>
+    <tr><td>Mahalle</td><td><b>${p.mahalleAd||'—'}</b></td></tr>
+    <tr><td>Ada / Parsel</td><td><b>${p.adaNo||'—'} / ${p.parselNo||'—'}</b></td></tr>
+    <tr><td>Parsel Alanı</td><td><b>${fmt(C.parselAlan)} m²</b></td></tr>
+    <tr><td>Nitelik / Mevkii</td><td>${p.nitelik||'—'} · ${p.mevkii||'—'}</td></tr></table>`
+    : `<table><tr><td>Parsel</td><td><b>${fmt(C.inp.cephe,1)} × ${fmt(C.inp.derinlik,1)} m</b></td></tr><tr><td>Alan</td><td><b>${fmt(C.parselAlan)} m²</b></td></tr></table>`;
+  const w=window.open('','_blank'); if(!w){ toast('Açılır pencere engellendi','err'); return; }
+  w.document.write(`<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Mimari Rapor · ${baslik}</title>
   <style>
-    @page{ size:A4 landscape; margin:8mm; }
+    @page{ size:A4 landscape; margin:9mm; }
     *{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
-    body{margin:0;color:#15201c;}
-    .sheet{padding:6mm;}
+    body{margin:0;color:#15201c;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .page{padding:4mm;page-break-after:always;}
+    .page:last-child{page-break-after:auto;}
     .hdr{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1f6f5c;padding-bottom:6px;margin-bottom:10px;}
-    .hdr h1{font-size:18px;margin:0;color:#134034;} .hdr .sub{font-size:11px;color:#5f6f68;}
-    .grid{display:grid;grid-template-columns:1.3fr 1fr;gap:10px;}
+    .hdr h1{font-size:16px;margin:0;color:#134034;} .hdr .sub{font-size:11px;color:#5f6f68;}
+    .grid{display:grid;grid-template-columns:1.25fr 1fr;gap:10px;}
     .cell{border:1px solid #dde5e1;border-radius:8px;padding:8px;}
-    .cell h3{margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#1f6f5c;}
-    .cell svg{width:100%;height:auto;max-height:118mm;}
-    .render{grid-column:1/-1;}
-    table{width:100%;border-collapse:collapse;font-size:11px;} td{padding:3px 5px;border-bottom:1px solid #eef;}
-    .foot{font-size:9px;color:#5f6f68;margin-top:8px;border-top:1px solid #dde5e1;padding-top:5px;}
+    .cell h3{margin:0 0 4px;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:#1f6f5c;}
+    .cell svg{width:100%;height:auto;max-height:120mm;}
+    table{width:100%;border-collapse:collapse;font-size:11px;} td{padding:3.5px 6px;border-bottom:1px solid #eef;}
+    .foot{font-size:8.5px;color:#5f6f68;margin-top:8px;border-top:1px solid #dde5e1;padding-top:5px;}
+    /* kapak */
+    .cover{height:178mm;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;
+      background:linear-gradient(135deg,#1f6f5c,#134034);color:#fff;border-radius:14px;padding:24px;}
+    .cover .mark{font-size:46px}
+    .cover h1{font-size:30px;margin:10px 0 4px;letter-spacing:.5px}
+    .cover .loc{font-size:15px;opacity:.92;margin-bottom:18px}
+    .figs{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+    .fig{background:rgba(255,255,255,.14);border-radius:12px;padding:12px 18px;min-width:120px}
+    .fig .n{font-size:24px;font-weight:800} .fig .l{font-size:11px;opacity:.85}
+    .cov-foot{margin-top:22px;font-size:11px;opacity:.8}
     @media print{ .noprint{display:none;} }
   </style></head><body>
-  <div class="sheet">
-    <div class="hdr"><div><h1>Mimari Kavramsal Tasarım Paftası</h1><div class="sub">${baslik} · ${C.katAdet} kat · Hmax ${fmt(C.hmax,2)} m · Emsal ${C.emsalKullanim.toFixed(2)}</div></div><div class="sub">Tarih: ${tarih}</div></div>
+  <div class="page"><div class="cover">
+    <div class="mark">⌖</div>
+    <h1>MİMARİ KAVRAMSAL TASARIM RAPORU</h1>
+    <div class="loc">${baslik}</div>
+    <div class="figs">
+      <div class="fig"><div class="n">${fmt(C.parselAlan)}</div><div class="l">Parsel (m²)</div></div>
+      <div class="fig"><div class="n">${C.katAdet}</div><div class="l">Kat</div></div>
+      <div class="fig"><div class="n">${fmt(C.hmax,1)} m</div><div class="l">Hmax</div></div>
+      <div class="fig"><div class="n">${C.emsalKullanim.toFixed(2)}</div><div class="l">Emsal</div></div>
+      <div class="fig"><div class="n">${fmt(C.toplamInsaat)}</div><div class="l">İnşaat (m²)</div></div>
+      ${hasMoney?`<div class="fig"><div class="n">${trMoney(f.kar)}</div><div class="l">Kaba Kâr</div></div>`:''}
+    </div>
+    <div class="cov-foot">Tarih: ${tarih} · Bu rapor kavramsal/şematiktir, resmî proje değildir.</div>
+  </div></div>
+
+  <div class="page">
+    <div class="hdr"><div><h1>Vaziyet & Kat Planı</h1><div class="sub">${baslik}</div></div><div class="sub">${tarih}</div></div>
     <div class="grid">
       <div class="cell"><h3>Vaziyet Planı</h3>${v}</div>
       <div class="cell"><h3>Tip Kat Planı</h3>${kt}</div>
-      <div class="cell render"><h3>3B Temsili Render</h3>${r}</div>
-      <div class="cell" style="grid-column:1/-1"><h3>Tasarım & İmar Özeti</h3><table>${metricHtml}</table></div>
     </div>
-    <div class="foot">Bu pafta kavramsal/şematiktir. Hmax, Planlı Alanlar İmar Yönetmeliği (3,00·kat+3,50 m) ile türetilmiştir; TAKS/KAKS imar planından gelir. Resmî projeler için yetkili mimar ve belediye imar durumu esastır.</div>
-    <button class="noprint" onclick="window.print()" style="margin-top:10px;padding:8px 16px;border:none;border-radius:8px;background:#1f6f5c;color:#fff;font-weight:700;cursor:pointer;">🖨️ Yazdır / PDF kaydet</button>
   </div>
-  <script>setTimeout(()=>window.print(),400);<\/script>
+
+  <div class="page">
+    <div class="hdr"><div><h1>Kütle · Tasarım Özeti · Fizibilite</h1><div class="sub">${baslik}</div></div><div class="sub">${tarih}</div></div>
+    <div class="grid">
+      <div class="cell"><h3>3B Temsili Render</h3>${r}</div>
+      <div class="cell">
+        <h3>Parsel Bilgisi</h3>${parselTbl}
+        <h3 style="margin-top:8px">Tasarım & İmar Özeti</h3><table>${metricHtml}</table>
+        <h3 style="margin-top:8px">Fizibilite</h3><table>${feasHtml}</table>
+      </div>
+    </div>
+    <div class="foot">Hmax, Planlı Alanlar İmar Yönetmeliği (3,00·kat+3,50 m) ile türetilmiştir; TAKS/KAKS imar planından gelir. Maliyet/gelir kaba tahmindir. Resmî projeler için yetkili mimar ve belediye imar durumu esastır.</div>
+    <button class="noprint" onclick="window.print()" style="margin-top:8px;padding:8px 16px;border:none;border-radius:8px;background:#1f6f5c;color:#fff;font-weight:700;cursor:pointer;">🖨️ Yazdır / PDF kaydet</button>
+  </div>
+  <script>setTimeout(()=>window.print(),500);<\/script>
   </body></html>`);
   w.document.close();
 };
