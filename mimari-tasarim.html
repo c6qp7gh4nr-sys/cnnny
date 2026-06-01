@@ -356,6 +356,10 @@
             <button class="tab-btn" data-view="kat">Kat Planı</button>
             <button class="tab-btn" data-view="kutle">3B Kütle</button>
           </div>
+          <span id="rotCtl" style="display:none;gap:4px">
+            <button class="tab-btn" id="rotL" title="Sola döndür">⟲</button>
+            <button class="tab-btn" id="rotR" title="Sağa döndür">⟳</button>
+          </span>
           <span class="badge" id="seedBadge">—</span>
         </div>
         <div class="canvas-host" id="canvasHost">
@@ -1156,7 +1160,12 @@ function viewKutle(C){
   const pp=Math.min(1.0, modelH*0.06)+0.4; // parapet/çatı kalkanı
 
   const a=Math.PI/6, cosA=Math.cos(a), sinA=Math.sin(a);
-  const u=(x,y,z)=>[(x-y)*cosA, (x+y)*sinA - z];
+  // görüş açısı (yatay döndürme)
+  const rad=((state.kutleAngle||0))*Math.PI/180, rcA=Math.cos(rad), rsA=Math.sin(rad);
+  const ccx=cw/2, ccy=cd/2;
+  const rot=(x,y)=>[ccx+(x-ccx)*rcA-(y-ccy)*rsA, ccy+(x-ccx)*rsA+(y-ccy)*rcA];
+  const rotV=(dx,dy)=>[dx*rcA-dy*rsA, dx*rsA+dy*rcA];
+  const u=(x,y,z)=>{ const r=rot(x,y); return [(r[0]-r[1])*cosA, (r[0]+r[1])*sinA - z]; };
   // otomatik sığdırma
   const probe=[[0,0,0],[cw,0,0],[cw,cd,0],[0,cd,0],
     [bx0,by1,hmax],[bx1,by0,hmax],[bx0,by0,0],[bx1,by1,modelH+pp]];
@@ -1196,82 +1205,70 @@ function viewKutle(C){
 
   // --- kütle(ler) ---
   const fh=modelH/C.katAdet;
-  // Tek dikdörtgen blok çizici (x0,y0)-(x1,y1)
-  function drawRectMass(x0,y0,x1,y1,withDoor){
-    const w=x1-x0, dd=y1-y0; let g='';
-    g+=`<polygon points="${quad([x1,y0,0],[x1,y1,0],[x1,y1,modelH],[x1,y0,modelH])}" fill="${bd}"/>`;
-    g+=`<polygon points="${quad([x0,y1,0],[x1,y1,0],[x1,y1,modelH],[x0,y1,modelH])}" fill="${brand}"/>`;
-    for(let f=1; f<C.katAdet; f++){ const z=f*fh;
-      g+=`<line x1="${P(x0,y1,z)[0]}" y1="${P(x0,y1,z)[1]}" x2="${P(x1,y1,z)[0]}" y2="${P(x1,y1,z)[1]}" stroke="${bd}" stroke-width=".4" opacity=".45"/>`;
-      g+=`<line x1="${P(x1,y1,z)[0]}" y1="${P(x1,y1,z)[1]}" x2="${P(x1,y0,z)[0]}" y2="${P(x1,y0,z)[1]}" stroke="#000" stroke-width=".4" opacity=".28"/>`;
-    }
-    const nx=Math.max(1,Math.round(w/3)), ny=Math.max(1,Math.round(dd/3));
-    for(let f=0; f<C.katAdet; f++){
-      const z0=f*fh, wz0=z0+fh*0.28, wz1=z0+fh*0.82;
-      const gc=(f===0 && (C.inp.kullanim==='ofis'||C.inp.kullanim==='karma'));
-      for(let i=0;i<nx;i++){ const cw1=w/nx, a0=x0+i*cw1+cw1*0.20, a1=x0+i*cw1+cw1*0.80;
-        const zz0= gc? z0+fh*0.12 : wz0, zz1= gc? z0+fh*0.88 : wz1;
-        g+=`<polygon points="${quad([a0,y1,zz0],[a1,y1,zz0],[a1,y1,zz1],[a0,y1,zz1])}" fill="${glass}" stroke="${frame}" stroke-width=".4"/>`; }
-      for(let j=0;j<ny;j++){ const cd1=dd/ny, b0=y0+j*cd1+cd1*0.22, b1=y0+j*cd1+cd1*0.78;
-        g+=`<polygon points="${quad([x1,b0,wz0],[x1,b1,wz0],[x1,b1,wz1],[x1,b0,wz1])}" fill="${glass}" stroke="${frame}" stroke-width=".4" opacity=".9"/>`; }
-    }
-    if(withDoor && C.inp.kullanim!=='ofis'){ const dcx=x0+w*0.5, dw2=Math.min(1.8,w*0.16);
-      g+=`<polygon points="${quad([dcx-dw2/2,y1,0],[dcx+dw2/2,y1,0],[dcx+dw2/2,y1,fh*0.7],[dcx-dw2/2,y1,fh*0.7])}" fill="${isDark?'#091210':'#22302b'}" stroke="${accent}" stroke-width="1"/>`; }
-    g+=`<polygon points="${quad([x0,y1,modelH],[x1,y1,modelH],[x1,y1,modelH+pp],[x0,y1,modelH+pp])}" fill="${brand}" opacity=".92"/>`;
-    g+=`<polygon points="${quad([x1,y0,modelH],[x1,y1,modelH],[x1,y1,modelH+pp],[x1,y0,modelH+pp])}" fill="${bd}"/>`;
-    g+=`<polygon points="${quad([x0,y0,modelH+pp],[x1,y0,modelH+pp],[x1,y1,modelH+pp],[x0,y1,modelH+pp])}" fill="url(#mttop)" stroke="${bd}" stroke-width=".8"/>`;
-    return g;
-  }
-  // Poligon prizma çizici (forma uygun tek kütle)
-  function drawPolyPrism(ring){
-    const cen=polyCentroid(ring), n=ring.length; let g='';
+  // Genel prizma çizici (dikdörtgen veya poligon); döndürmeye duyarlı, balkon+kapı opsiyonel
+  function drawPrism(ring, opt){
+    opt=opt||{}; const cen=polyCentroid(ring), n=ring.length; let g='';
     const edges=[];
     for(let i=0;i<n;i++){ const A=ring[i], B=ring[(i+1)%n];
       const mid=[(A[0]+B[0])/2,(A[1]+B[1])/2];
       let ex=B[1]-A[1], ey=-(B[0]-A[0]); const nl=Math.hypot(ex,ey)||1; ex/=nl; ey/=nl;
       if((mid[0]-cen[0])*ex+(mid[1]-cen[1])*ey<0){ ex=-ex; ey=-ey; }
-      edges.push({A,B,depth:mid[0]+mid[1],nx:ex,ny:ey});
+      const rn=rotV(ex,ey), rm=rot(mid[0],mid[1]);
+      edges.push({A,B,ex,ey,vis:rn[0]+rn[1],rnx:rn[0],rny:rn[1],depth:rm[0]+rm[1]});
     }
     edges.sort((p,q)=>p.depth-q.depth);
+    // ön kapı için en öne bakan görünür kenar
+    let frontEdge=null; edges.forEach(e=>{ if(e.vis>-0.05 && (!frontEdge||e.vis>frontEdge.vis)) frontEdge=e; });
     edges.forEach(e=>{
-      if(e.nx+e.ny < -0.05) return;
-      const shade=Math.max(0,Math.min(1,(e.nx*0.45+e.ny*0.9+1)/2));
-      g+=`<polygon points="${quad([e.A[0],e.A[1],0],[e.B[0],e.B[1],0],[e.B[0],e.B[1],modelH],[e.A[0],e.A[1],modelH])}" fill="${lerpHex(bd,soft,0.25+0.6*shade)}" stroke="${bd}" stroke-width=".4"/>`;
+      if(e.vis < -0.05) return;
+      const shade=Math.max(0,Math.min(1,(e.rnx*0.45+e.rny*0.9+1)/2));
+      g+=`<polygon points="${quad([e.A[0],e.A[1],0],[e.B[0],e.B[1],0],[e.B[0],e.B[1],modelH],[e.A[0],e.A[1],modelH])}" fill="${lerpHex(bd,soft,0.22+0.62*shade)}" stroke="${bd}" stroke-width=".4"/>`;
       for(let f=1;f<C.katAdet;f++){ const z=f*fh, p0=P(e.A[0],e.A[1],z), p1=P(e.B[0],e.B[1],z);
         g+=`<line x1="${p0[0]}" y1="${p0[1]}" x2="${p1[0]}" y2="${p1[1]}" stroke="${bd}" stroke-width=".4" opacity=".4"/>`; }
       const len=Math.hypot(e.B[0]-e.A[0],e.B[1]-e.A[1]), nw=Math.max(1,Math.round(len/3));
-      for(let f=0;f<C.katAdet;f++){ const wz0=f*fh+fh*0.3, wz1=f*fh+fh*0.82;
-        for(let i=0;i<nw;i++){ const t0=(i+0.24)/nw, t1=(i+0.76)/nw;
-          const ax=e.A[0]+(e.B[0]-e.A[0])*t0, ay=e.A[1]+(e.B[1]-e.A[1])*t0;
-          const bx_=e.A[0]+(e.B[0]-e.A[0])*t1, by_=e.A[1]+(e.B[1]-e.A[1])*t1;
-          g+=`<polygon points="${quad([ax,ay,wz0],[bx_,by_,wz0],[bx_,by_,wz1],[ax,ay,wz1])}" fill="${glass}" stroke="${frame}" stroke-width=".35"/>`; }
+      const ptOn=(t)=>[e.A[0]+(e.B[0]-e.A[0])*t, e.A[1]+(e.B[1]-e.A[1])*t];
+      for(let f=0;f<C.katAdet;f++){ const gc=(f===0&&(C.inp.kullanim==='ofis'||C.inp.kullanim==='karma')); const wz0=gc?f*fh+fh*0.12:f*fh+fh*0.3, wz1=gc?f*fh+fh*0.88:f*fh+fh*0.82;
+        for(let i=0;i<nw;i++){ const p0=ptOn((i+0.24)/nw), p1=ptOn((i+0.76)/nw);
+          g+=`<polygon points="${quad([p0[0],p0[1],wz0],[p1[0],p1[1],wz0],[p1[0],p1[1],wz1],[p0[0],p0[1],wz1])}" fill="${glass}" stroke="${frame}" stroke-width=".35"/>`; }
+      }
+      // balkonlar (konut, öne bakan yüz)
+      if(opt.balcony && C.inp.kullanim!=='ofis' && e.rny>0.2 && e!==frontEdge){
+        const bp=1.1, ox2=e.ex*bp, oy2=e.ey*bp;
+        for(let f=1;f<C.katAdet;f++){ const z=f*fh, p0=ptOn(0.16), p1=ptOn(0.84);
+          g+=`<polygon points="${quad([p0[0],p0[1],z],[p1[0],p1[1],z],[p1[0]+ox2,p1[1]+oy2,z],[p0[0]+ox2,p0[1]+oy2,z])}" fill="${lerpHex(bd,soft,0.55)}" stroke="${bd}" stroke-width=".3"/>`;
+          g+=`<polygon points="${quad([p0[0]+ox2,p0[1]+oy2,z],[p1[0]+ox2,p1[1]+oy2,z],[p1[0]+ox2,p1[1]+oy2,z+1.0],[p0[0]+ox2,p0[1]+oy2,z+1.0])}" fill="${glass}" opacity=".5" stroke="${frame}" stroke-width=".3"/>`; }
       }
     });
-    g+=`<polygon points="${ring.map(p=>PS(p[0],p[1],modelH+pp*0.5)).join(' ')}" fill="url(#mttop)" stroke="${bd}" stroke-width=".8"/>`;
+    // çatı
+    g+=`<polygon points="${ring.map(p=>PS(p[0],p[1],modelH)).join(' ')}" fill="url(#mttop)" stroke="${bd}" stroke-width=".8"/>`;
+    // parapet (görünür kenarlarda)
+    edges.forEach(e=>{ if(e.vis< -0.05) return; g+=`<polygon points="${quad([e.A[0],e.A[1],modelH],[e.B[0],e.B[1],modelH],[e.B[0],e.B[1],modelH+pp],[e.A[0],e.A[1],modelH+pp])}" fill="${lerpHex(bd,soft,0.2)}" stroke="${bd}" stroke-width=".3"/>`; });
+    // giriş kapısı
+    if(opt.door && frontEdge && C.inp.kullanim!=='ofis'){ const e=frontEdge, pa=[e.A[0]+(e.B[0]-e.A[0])*0.43,e.A[1]+(e.B[1]-e.A[1])*0.43], pb=[e.A[0]+(e.B[0]-e.A[0])*0.57,e.A[1]+(e.B[1]-e.A[1])*0.57];
+      g+=`<polygon points="${quad([pa[0],pa[1],0],[pb[0],pb[1],0],[pb[0],pb[1],fh*0.7],[pa[0],pa[1],fh*0.7])}" fill="${isDark?'#091210':'#22302b'}" stroke="${accent}" stroke-width="1"/>`; }
     return g;
   }
 
-  // oturum listesi: çok bloklu / forma uygun poligon / tek dikdörtgen
+  // oturum listesi
   let masses;
-  if(C.blocks && C.blocks.length>1){ masses=C.blocks.map(b=>({x0:b.x,y0:b.y,x1:b.x+b.w,y1:b.y+b.h})); }
-  else if(C.footprintPoly){ masses=[{poly:C.footprintPoly}]; }
-  else { masses=[{x0:bx0,y0:by0,x1:bx1,y1:by1,door:true}]; }
-  const massCen=m=>m.poly?polyCentroid(m.poly):[(m.x0+m.x1)/2,(m.y0+m.y1)/2];
-  masses.sort((p,q)=>{const cp=massCen(p),cq=massCen(q);return (cp[0]+cp[1])-(cq[0]+cq[1]);});
+  if(C.blocks && C.blocks.length>1){ masses=C.blocks.map(b=>({ring:[[b.x,b.y],[b.x+b.w,b.y],[b.x+b.w,b.y+b.h],[b.x,b.y+b.h]],door:true})); }
+  else if(C.footprintPoly){ masses=[{ring:C.footprintPoly,door:true}]; }
+  else { masses=[{ring:[[bx0,by0],[bx1,by0],[bx1,by1],[bx0,by1]],door:true}]; }
+  const ringCen=r=>{const c=polyCentroid(r),rc2=rot(c[0],c[1]);return rc2[0]+rc2[1];};
+  masses.sort((p,q)=>ringCen(p.ring)-ringCen(q.ring));
   // gölgeler (önce)
   for(const m of masses){
-    const foot=m.poly?m.poly:[[m.x0,m.y0],[m.x1,m.y0],[m.x1,m.y1],[m.x0,m.y1]];
     if(C.sun && C.sun.alt>0.05){
       const d=modelH/Math.tan(C.sun.alt);
-      const sh=foot.map(p=>[p[0]-Math.sin(C.sun.az)*d, p[1]-Math.cos(C.sun.az)*d]);
-      s+=`<polygon points="${convexHull(foot.concat(sh)).map(p=>PS(p[0],p[1],0)).join(' ')}" fill="${shadowCol}" opacity=".15"/>`;
+      const sh=m.ring.map(p=>[p[0]-Math.sin(C.sun.az)*d, p[1]-Math.cos(C.sun.az)*d]);
+      s+=`<polygon points="${convexHull(m.ring.concat(sh)).map(p=>PS(p[0],p[1],0)).join(' ')}" fill="${shadowCol}" opacity=".15"/>`;
     } else {
       const sdx=-modelH*0.30, sdy=modelH*0.42;
-      s+=`<polygon points="${foot.map(p=>PS(p[0]+sdx,p[1]+sdy,0)).join(' ')}" fill="${shadowCol}" opacity=".12"/>`;
+      s+=`<polygon points="${m.ring.map(p=>PS(p[0]+sdx,p[1]+sdy,0)).join(' ')}" fill="${shadowCol}" opacity=".12"/>`;
     }
   }
   // kütleler (arkadan öne)
-  for(const m of masses){ s+= m.poly ? drawPolyPrism(m.poly) : drawRectMass(m.x0,m.y0,m.x1,m.y1,m.door); }
+  for(const m of masses){ s+= drawPrism(m.ring, {balcony:true, door:m.door}); }
 
   // ön ağaçlar (yüksek y)
   if(cd-by1>2){ s+=tree(cw*0.18,(by1+cd)/2)+tree(cw*0.82,(by1+cd)/2+1); }
@@ -1295,6 +1292,7 @@ function render(view){
   const C=state.last; if(!C) return;
   state.activeView=view;
   $('viewTabs').querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  $('rotCtl').style.display = view==='kutle' ? 'inline-flex' : 'none';
   let html;
   if(view==='vaziyet') html=viewVaziyet(C);
   else if(view==='kat') html=viewKat(C);
@@ -1363,6 +1361,8 @@ $('genBtn').onclick = () => {
 
 /* ---------- Görünüm sekmeleri ---------- */
 $('viewTabs').querySelectorAll('.tab-btn').forEach(b=> b.onclick=()=>{ if(state.last) render(b.dataset.view); });
+$('rotL').onclick=()=>{ state.kutleAngle=((state.kutleAngle||0)-30); if(state.last) render('kutle'); };
+$('rotR').onclick=()=>{ state.kutleAngle=((state.kutleAngle||0)+30); if(state.last) render('kutle'); };
 
 /* ---------- SVG indir ---------- */
 $('dlBtn').onclick = () => {
