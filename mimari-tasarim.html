@@ -443,6 +443,14 @@
           </select>
         </label>
         <label class="field">
+          <span class="lbl"><span>Çatı tipi</span></span>
+          <select id="catiTipi">
+            <option value="teras">Teras (parapet)</option>
+            <option value="duz">Düz</option>
+            <option value="kirma">Kırma (eğimli)</option>
+          </select>
+        </label>
+        <label class="field">
           <span class="lbl"><span>☀︎ Güneş / gölge analizi</span><span class="hint"><input type="checkbox" id="sunOn" style="vertical-align:middle"> aç</span></span>
         </label>
         <div id="sunControls" style="display:none">
@@ -908,6 +916,7 @@ function gather(){
     kullanim:$('kullanim').value,
     daireTip:$('daireTip').value,
     oturum:$('oturum').value,
+    catiTipi:$('catiTipi').value,
     lat: parseFloat(($('lat').value||'').trim()) || (state.realParcel?.centroid?.lat) || 41.0,
     sunOn: $('sunOn').checked,
     sunAy: parseInt($('sunAy').value),
@@ -1388,10 +1397,18 @@ function viewKutle(C){
           g+=`<polygon points="${quad([p0[0]+ox2,p0[1]+oy2,z],[p1[0]+ox2,p1[1]+oy2,z],[p1[0]+ox2,p1[1]+oy2,z+1.0],[p0[0]+ox2,p0[1]+oy2,z+1.0])}" fill="${glass}" opacity=".5" stroke="${frame}" stroke-width=".3"/>`; }
       }
     });
-    // çatı
-    g+=`<polygon points="${ring.map(p=>PS(p[0],p[1],modelH)).join(' ')}" fill="url(#mttop)" stroke="${bd}" stroke-width=".8"/>`;
-    // parapet (görünür kenarlarda)
-    edges.forEach(e=>{ if(e.vis< -0.05) return; g+=`<polygon points="${quad([e.A[0],e.A[1],modelH],[e.B[0],e.B[1],modelH],[e.B[0],e.B[1],modelH+pp],[e.A[0],e.A[1],modelH+pp])}" fill="${lerpHex(bd,soft,0.2)}" stroke="${bd}" stroke-width=".3"/>`; });
+    // çatı (tipe göre)
+    const cati=C.inp.catiTipi||'teras';
+    if(cati==='kirma'){
+      let mnx=1e9,mxx=-1e9,mny=1e9,mxy=-1e9; ring.forEach(p=>{mnx=Math.min(mnx,p[0]);mxx=Math.max(mxx,p[0]);mny=Math.min(mny,p[1]);mxy=Math.max(mxy,p[1]);});
+      const rh=Math.max(1.6, Math.min(5, 0.32*Math.min(mxx-mnx,mxy-mny)));
+      edges.forEach(e=>{ if(e.vis< -0.05) return;
+        const shade=Math.max(0,Math.min(1,(e.rnx*0.4+e.rny*0.9+1)/2));
+        g+=`<polygon points="${PS(e.A[0],e.A[1],modelH)} ${PS(e.B[0],e.B[1],modelH)} ${PS(cen[0],cen[1],modelH+rh)}" fill="${lerpHex('8a5a3a','e0b48a',0.2+0.55*shade)}" stroke="${bd}" stroke-width=".4"/>`; });
+    } else {
+      g+=`<polygon points="${ring.map(p=>PS(p[0],p[1],modelH)).join(' ')}" fill="url(#mttop)" stroke="${bd}" stroke-width=".8"/>`;
+      if(cati==='teras') edges.forEach(e=>{ if(e.vis< -0.05) return; g+=`<polygon points="${quad([e.A[0],e.A[1],modelH],[e.B[0],e.B[1],modelH],[e.B[0],e.B[1],modelH+pp],[e.A[0],e.A[1],modelH+pp])}" fill="${lerpHex(bd,soft,0.2)}" stroke="${bd}" stroke-width=".3"/>`; });
+    }
     // giriş kapısı
     if(opt.door && frontEdge && C.inp.kullanim!=='ofis'){ const e=frontEdge, pa=[e.A[0]+(e.B[0]-e.A[0])*0.43,e.A[1]+(e.B[1]-e.A[1])*0.43], pb=[e.A[0]+(e.B[0]-e.A[0])*0.57,e.A[1]+(e.B[1]-e.A[1])*0.57];
       g+=`<polygon points="${quad([pa[0],pa[1],0],[pb[0],pb[1],0],[pb[0],pb[1],fh*0.7],[pa[0],pa[1],fh*0.7])}" fill="${isDark?'#091210':'#22302b'}" stroke="${accent}" stroke-width="1"/>`; }
@@ -1480,8 +1497,10 @@ async function viewThree(C){
   try{ const sh=new THREE.Shape(par.map(p=>new THREE.Vector2(p[0],p[1]))); const pg=new THREE.ShapeGeometry(sh); const pm=new THREE.Mesh(pg, new THREE.MeshLambertMaterial({color:0xb7c8c0})); pm.rotation.x=-Math.PI/2; pm.position.y=0.05; pm.receiveShadow=true; sc.add(pm); }catch(e){}
   // bina kütleleri
   const wallMat=new THREE.MeshLambertMaterial({color:0x2f7d68}); const roofMat=new THREE.MeshLambertMaterial({color:isDark?0x35564a:0xcfe2da});
-  function addBox(x0,y0,x1,y1){ const w=Math.max(0.5,x1-x0), d=Math.max(0.5,y1-y0); const m=new THREE.Mesh(new THREE.BoxGeometry(w,Hb,d),[wallMat,wallMat,roofMat,wallMat,wallMat,wallMat]); m.castShadow=true; m.receiveShadow=true; m.position.set((x0+x1)/2,Hb/2,(y0+y1)/2); sc.add(m);
-    const edg=new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({color:0x123a30,transparent:true,opacity:0.35})); edg.position.copy(m.position); sc.add(edg); }
+  const roofPitchMat=new THREE.MeshLambertMaterial({color:0xa9714b});
+  function addBox(x0,y0,x1,y1){ const w=Math.max(0.5,x1-x0), d=Math.max(0.5,y1-y0); const cx=(x0+x1)/2, cz=(y0+y1)/2; const m=new THREE.Mesh(new THREE.BoxGeometry(w,Hb,d),[wallMat,wallMat,roofMat,wallMat,wallMat,wallMat]); m.castShadow=true; m.receiveShadow=true; m.position.set(cx,Hb/2,cz); sc.add(m);
+    const edg=new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({color:0x123a30,transparent:true,opacity:0.35})); edg.position.copy(m.position); sc.add(edg);
+    if((C.inp.catiTipi||'teras')==='kirma'){ const rh=Math.max(1.6,Math.min(5,0.32*Math.min(w,d))); const rf=new THREE.Mesh(new THREE.ConeGeometry(Math.max(w,d)*0.72, rh, 4), roofPitchMat); rf.rotation.y=Math.PI/4; rf.position.set(cx, Hb+rh/2, cz); rf.castShadow=true; rf.scale.set(w/Math.max(w,d),1,d/Math.max(w,d)); sc.add(rf); } }
   function bbox(ring){ let a=1e9,b=1e9,c=-1e9,d=-1e9; ring.forEach(p=>{a=Math.min(a,p[0]);b=Math.min(b,p[1]);c=Math.max(c,p[0]);d=Math.max(d,p[1]);}); return [a,b,c,d]; }
   if(C.blocks && C.blocks.length>1) C.blocks.forEach(bk=>addBox(bk.x,bk.y,bk.x+bk.w,bk.y+bk.h));
   else if(C.footprintPoly){ const bb=bbox(C.footprintPoly); addBox(bb[0],bb[1],bb[2],bb[3]); }
@@ -1950,7 +1969,7 @@ function exportJSON(){
 $('expDXF').onclick=exportDXF; $('expOBJ').onclick=exportOBJ; $('expKML').onclick=exportKML; $('expJSON').onclick=exportJSON;
 
 /* ---------- Kaydet & Paylaş (localStorage + URL) ---------- */
-const SAVE_FIELDS=['lat','lng','ilce','ada','parsel','adaT','parselT','cephe','derinlik','yolYon','nizam','taks','kaks','katAdet','katH','onCekme','yanCekme','arkaCekme','kullanim','daireTip','oturum','imarNot','costBuild','costSale','costLand'];
+const SAVE_FIELDS=['lat','lng','ilce','ada','parsel','adaT','parselT','cephe','derinlik','yolYon','nizam','taks','kaks','katAdet','katH','onCekme','yanCekme','arkaCekme','kullanim','daireTip','oturum','catiTipi','imarNot','costBuild','costSale','costLand'];
 function collectState(){
   const o={v:1};
   SAVE_FIELDS.forEach(id=>{ const el=$(id); if(el) o[id]=el.value; });
