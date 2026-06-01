@@ -327,6 +327,7 @@
             <button class="btn" id="sorguBtn">🔎 TKGM'den Parsel Sorgula</button>
             <div class="note" id="tkgmStatus"></div>
             <div class="metric" id="parselInfo" style="display:none; margin-top:10px"></div>
+            <button class="btn ghost" id="komsuBtn" style="display:none; margin-top:8px">🏘️ Komşu parselleri getir (bağlam)</button>
             <details style="margin-top:10px">
               <summary class="note" style="cursor:pointer">⚙︎ Bağlantı ayarları (CORS)</summary>
               <label class="field" style="margin-top:8px"><span class="lbl"><span>Özel CORS proxy</span><span class="hint">opsiyonel</span></span>
@@ -889,7 +890,30 @@ function applyParcelFeature(feat, ada, parsel){
     <div class="u">Alan: ${fmt(alan)} m² · Nitelik: ${props.nitelik||'—'}<br>
     Yönlü dikdörtgen ≈ ${cephe.toFixed(1)} × ${derinlik.toFixed(1)} m · Mevkii: ${props.mevkii||'—'}</div>`;
   state.locLabel=`🗺️ ${props.ilceAd||''} · Ada ${props.adaNo||ada}/${props.parselNo||parsel}`;
+  state.neighbors=null;
+  if($('komsuBtn')) $('komsuBtn').style.display='';
   showParcelOnMap(ring, {lat:m.lat0,lng:m.lng0});
+}
+// Komşu parselleri (aynı mahallede ada/parsel komşuları) çek ve haritaya çiz
+async function fetchNeighbors(){
+  const mahId=$('mahSel').value, adaN=parseInt(($('adaT').value||'').trim()), parN=parseInt(($('parselT').value||'').trim());
+  if(!mahId || !isFinite(adaN) || !isFinite(parN)){ tkgmStatus('Önce bir parsel sorgulayın.','err'); return; }
+  $('komsuBtn').disabled=true; tkgmStatus('🏘️ Komşu parseller aranıyor…');
+  // aday komşular: aynı ada, parsel ±, ve komşu ada
+  const adaylar=[];
+  for(let dp=-5; dp<=5; dp++){ if(dp!==0 && parN+dp>0) adaylar.push([adaN, parN+dp]); }
+  for(let da=-1; da<=1; da++){ for(let pp=1; pp<=3; pp++){ if(da!==0 && adaN+da>0) adaylar.push([adaN+da, pp]); } }
+  let found=[], i=0, done=0;
+  async function worker(){ while(i<adaylar.length){ const idx=i++; const [a,p]=adaylar[idx];
+    const feat=await quickParsel(mahId, a, p); done++;
+    tkgmStatus(`🏘️ Komşu aranıyor… ${done}/${adaylar.length} · ${found.length} bulundu`);
+    if(feat){ const ring=outerRing(feat.geometry); if(ring&&ring.length>=3) found.push({ring, props:feat.properties||{}}); } } }
+  await Promise.all(Array.from({length:6},()=>worker()));
+  $('komsuBtn').disabled=false;
+  if(!found.length){ tkgmStatus('Komşu parsel bulunamadı (numara aralığı tutmamış olabilir).','err'); return; }
+  state.neighbors=found;
+  drawNeighborsOnMap(found);
+  tkgmStatus(`✓ ${found.length} komşu parsel haritada gösterildi. Uydu katmanında çevreyi görebilirsiniz.`,'ok');
 }
 
 async function sorgulaParsel(){
@@ -2159,7 +2183,24 @@ async function showParcelOnMap(geoRing, centroid){
     setTimeout(()=>mtMap.invalidateSize(),200);
   }catch(e){ /* harita yüklenemezse sessiz geç */ }
 }
+let mtNeighbors=null;
+async function drawNeighborsOnMap(list){
+  try{
+    if(!$('mapWrap').open) $('mapWrap').open=true;
+    await ensureMap();
+    if(mtNeighbors) mtMap.removeLayer(mtNeighbors);
+    mtNeighbors=L.layerGroup();
+    list.forEach(nb=>{
+      const ll=nb.ring.map(p=>[p[1],p[0]]);
+      const poly=L.polygon(ll,{color:'#d98a3c',weight:1.4,fillColor:'#d98a3c',fillOpacity:0.10,dashArray:'4 3'});
+      poly.bindTooltip(`Ada ${nb.props.adaNo||'?'}/${nb.props.parselNo||'?'} · ${fmt(parseFloat(nb.props.alan)||0)} m²`,{sticky:true});
+      mtNeighbors.addLayer(poly);
+    });
+    mtNeighbors.addTo(mtMap);
+  }catch(e){}
+}
 $('mapWrap').addEventListener('toggle', ()=>{ if($('mapWrap').open) ensureMap().catch(()=>{}); });
+$('komsuBtn').onclick=fetchNeighbors;
 
 /* ---------- Dışa aktarma: DXF / OBJ / KML / JSON ---------- */
 function downloadFile(name, content, mime){
