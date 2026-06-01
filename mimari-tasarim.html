@@ -282,6 +282,7 @@
         <div class="brand-title">⌖ Mimari Tasarım Üretici</div>
         <div class="brand-sub">Koordinat veya Ada/Parsel girin · otomatik vaziyet planı, kat planı ve kütle</div>
       </div>
+      <button class="icon-btn" id="langBtn" title="Language / Dil" style="width:auto;padding:0 12px;font-size:13px;font-weight:700">EN</button>
       <button class="icon-btn" id="helpBtn" title="Yardım">❔</button>
       <button class="icon-btn" id="themeBtn" title="Tema">◐</button>
     </div>
@@ -1889,6 +1890,49 @@ $('helpModal').addEventListener('click', e=>{ if(e.target===$('helpModal')) clos
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeHelp(); });
 $('helpDemo').onclick=runDemo;
 { const b2=$('helpBtn2'); if(b2) b2.onclick=openHelp; const db=$('demoBtn'); if(db) db.onclick=runDemo; }
+
+/* ---------- Dil (TR/EN) ---------- */
+const EN={
+  '⌖ Mimari Tasarım Üretici':'⌖ Architectural Design Generator',
+  'Koordinat veya Ada/Parsel girin · otomatik vaziyet planı, kat planı ve kütle':'Enter coordinates or block/parcel · auto site plan, floor plan & massing',
+  '1 · Konum':'1 · Location','2 · Parsel Geometrisi':'2 · Parcel Geometry','3 · İmar Durumu':'3 · Zoning',
+  '3b · Plan Notu / İmar Durumu — Otomatik Yorumla':'3b · Plan Notes / Zoning — Auto-interpret','4 · Program':'4 · Program',
+  'Tasarım Özeti':'Design Summary','Mahal Listesi':'Room Schedule','💰 Fizibilite & Maliyet':'💰 Feasibility & Cost',
+  '📊 Senaryo Karşılaştırma':'📊 Scenario Comparison','📈 Nakit Akışı & Finansman':'📈 Cash Flow & Financing',
+  'Vaziyet Planı':'Site Plan','Kat Planı':'Floor Plan','3B Kütle':'3D Massing','🧊 Gerçek 3D':'🧊 Real 3D',
+  'Koordinat':'Coordinates','Ada / Parsel':'Block / Parcel',"TKGM'den çek (gerçek)":'Fetch from TKGM (real)','Manuel':'Manual',
+  '⚡ Tasarımı Oluştur':'⚡ Generate Design','🎲 Örnek doldur':'🎲 Fill example','⬇︎ SVG':'⬇︎ SVG','🖼️ PNG indir':'🖼️ PNG',
+  '📄 PDF / Pafta oluştur':'📄 PDF / Report','🔗 Bağlantı oluştur (kaydet & paylaş)':'🔗 Share link (save & share)',
+  "🔎 TKGM'den Parsel Sorgula":'🔎 Query parcel from TKGM','🏘️ Komşu parselleri getir (bağlam)':'🏘️ Fetch neighbor parcels',
+  '🧠 Yorumla ve Otomatik Doldur':'🧠 Interpret & auto-fill','📷 İmar belgesi fotoğrafı yükle (OCR)':'📷 Upload zoning doc photo (OCR)',
+  '📊 Kat senaryolarını karşılaştır':'📊 Compare floor scenarios','📈 Nakit akışını hesapla':'📈 Compute cash flow',
+  '📐 DXF (AutoCAD)':'📐 DXF (AutoCAD)','🧱 OBJ (3B)':'🧱 OBJ (3D)','🌍 KML (Earth)':'🌍 KML (Earth)','🗂 Proje JSON':'🗂 Project JSON',
+  'Enlem':'Latitude','Boylam':'Longitude','Cephe (yol)':'Frontage (road)','Derinlik':'Depth','Yol cephesi':'Road side',
+  'Yapı nizamı':'Building order','İmar profili':'Zoning preset','TAKS (taban alanı kat.)':'Site coverage (TAKS)','KAKS / Emsal':'FAR / KAKS',
+  'Kat adedi':'Number of floors','Kat yüksekliği':'Floor height','Kullanım':'Use','Daire tipi (kat başına)':'Unit type (per floor)',
+  'Yapı oturumu':'Building footprint','Çatı tipi':'Roof type','İl':'Province','İlçe':'District','Mahalle':'Neighborhood','Ada':'Block','Parsel':'Parcel',
+  '🗲':'🗲','Zemin':'Ground','Tip kat':'Typical','⌖ Mimari Tasarım Üretici':'⌖ Architectural Design Generator',
+  '🎲 Örnek tasarımla başla':'🎲 Start with a sample','❔ Nasıl çalışır?':'❔ How it works?'
+};
+function applyLang(lang){
+  const sel='.brand-title,.brand-sub,.card h2,.tab-btn,.seg button,.btn:not(.icon-btn),.fab button,summary,.lbl>span';
+  document.querySelectorAll(sel).forEach(el=>{
+    if(el.classList.contains('hint')) return;
+    if(el.dataset.tr0===undefined){ /* henüz kaydetmedik */ }
+    const cur=el.textContent.trim();
+    if(lang==='en'){
+      if(EN[cur]!==undefined){ if(el.dataset.tr0===undefined) el.dataset.tr0=el.textContent; el.textContent=EN[cur]; }
+    } else {
+      if(el.dataset.tr0!==undefined){ el.textContent=el.dataset.tr0; }
+    }
+  });
+  $('langBtn').textContent = lang==='en' ? 'TR' : 'EN';
+  document.documentElement.lang = lang;
+  try{ localStorage.setItem('mt-lang', lang); }catch(e){}
+  state.lang=lang;
+}
+$('langBtn').onclick=()=>applyLang(state.lang==='en'?'tr':'en');
+try{ const sl=localStorage.getItem('mt-lang'); if(sl==='en') applyLang('en'); }catch(e){}
 
 /* ---------- Görünüm sekmeleri ---------- */
 $('viewTabs').querySelectorAll('.tab-btn').forEach(b=> b.onclick=()=>{ if(state.last) render(b.dataset.view); });
