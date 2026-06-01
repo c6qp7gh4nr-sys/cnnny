@@ -256,6 +256,22 @@
   .modal h3{ color:var(--brand); margin-bottom:4px; font-size:17px; }
   .modal ol{ margin:12px 0; padding-left:18px; } .modal li{ margin-bottom:8px; font-size:13.5px; }
   .modal .x{ float:right; border:none; background:var(--bg); width:34px; height:34px; border-radius:10px; cursor:pointer; color:var(--fg); font-size:15px; }
+
+  /* Animasyonlar */
+  @keyframes mtIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
+  @keyframes mtPop{ from{ opacity:0; transform:scale(.96); } to{ opacity:1; transform:none; } }
+  .grid2 > div > .card{ animation:mtIn .42s cubic-bezier(.2,.7,.2,1) both; }
+  .grid2 > div:first-child > .card:nth-child(2){ animation-delay:.04s }
+  .grid2 > div:first-child > .card:nth-child(3){ animation-delay:.08s }
+  .grid2 > div:first-child > .card:nth-child(4){ animation-delay:.12s }
+  .canvas-host svg, #three3d, #map{ animation:mtPop .4s ease both; }
+  #metrics .metric, #feasMetrics .metric, #cfBody .metric{ animation:mtIn .34s ease both; }
+  #metrics .metric:nth-child(2){animation-delay:.03s} #metrics .metric:nth-child(3){animation-delay:.06s}
+  #metrics .metric:nth-child(4){animation-delay:.09s} #metrics .metric:nth-child(5){animation-delay:.12s}
+  #metrics .metric:nth-child(6){animation-delay:.15s} #metrics .metric:nth-child(n+7){animation-delay:.18s}
+  .modal-bg.show .modal{ animation:mtPop .3s ease both; }
+  .tab-btn,.btn,.seg button,.metric,.card,.icon-btn{ will-change:auto; }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
 </style>
 </head>
 <body>
@@ -1795,7 +1811,8 @@ function renderCashFlow(){
     `</div><div class="note">İnşaat harcaması S-eğrisiyle dağıtılır; ön satış inşaat boyunca, kalan gelir teslimle başlar. <b>Azami finansman</b> = en düşük kümülatif (kırmızı nokta). Kaba tahmindir.</div>`;
 }
 $('cfBtn').onclick=renderCashFlow;
-['cfBuild','cfSale','cfPre'].forEach(id=>$(id).addEventListener('input',()=>{ if($('cfCard').style.display!=='none' && state.last) renderCashFlow(); }));
+let cfTimer=null;
+['cfBuild','cfSale','cfPre'].forEach(id=>$(id).addEventListener('input',()=>{ clearTimeout(cfTimer); cfTimer=setTimeout(()=>{ if($('cfCard').style.display!=='none' && state.last) renderCashFlow(); },300); }));
 
 /* ---------- Oluştur ---------- */
 $('genBtn').onclick = () => {
