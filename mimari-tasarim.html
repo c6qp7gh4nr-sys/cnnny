@@ -744,6 +744,7 @@ function compute(inp, realParcel){
   let bw = inp.cephe - setX0 - setX1;
   let bd = inp.derinlik - setY0 - setY1;
   bw = Math.max(3, bw); bd = Math.max(3, bd);
+  const bwFull=bw, bdFull=bd; // çok-bloklu yerleşim için tam inşa alanı
 
   // TAKS sınırı: taban alanı <= parsel * TAKS
   const maxTaban = parselAlan * inp.taks;
@@ -795,19 +796,48 @@ function compute(inp, realParcel){
   const hmaxFloors = Math.max(1, Math.floor((hmax - 3.50) / 3.00)); // hmax'tan türetilen yençok kat
   const onerilenKaks = inp.taks * katAdet; // TAKS x kat ilişkisi (referans emsal)
 
+  // --- Çok bloklu yerleşim: büyük taban alanını gerçekçi bloklara böl ---
+  const maxBlok = inp.kullanim==='ofis' ? 1500 : 800; // blok başına makul taban (m²)
+  const nBlok = clamp(Math.ceil(tabanAlan / maxBlok), 1, 12);
+  const blocks = (nBlok>1)
+    ? layoutBlocks(setX0, setY0, bwFull, bdFull, tabanAlan, nBlok)
+    : [{x:setX0, y:setY0, w:bw, h:bd, single:true}];
+  // tip kat planı için oturum (çok bloklu ise tek bloğun ölçüsü)
+  const planW = (nBlok>1) ? blocks[0].w : bw;
+  const planD = (nBlok>1) ? blocks[0].h : bd;
+
   return {
-    inp, parselAlan, setX0,setX1,setY0,setY1, bw, bd, tabanAlan, maxTaban,
+    inp, parselAlan, setX0,setX1,setY0,setY1, bw, bd, bwFull, bdFull, tabanAlan, maxTaban,
     maxToplam, katAdet, katKaks: katFromKaks, toplamInsaat, emsalKullanim, kaksUyari,
     daireKat, toplamDaire, unitArea, yukseklik, netKat, hmax, hmaxFloors, onerilenKaks,
-    footprintPoly, footprintMode,
+    footprintPoly, footprintMode, blocks, nBlok, planW, planD,
   };
+}
+
+// Büyük taban alanını W×D inşa alanına gerçekçi bloklar halinde yerleştir
+function layoutBlocks(x0,y0,W,D,totalArea,n){
+  let cols=clamp(Math.round(Math.sqrt(n*W/Math.max(1,D))),1,n);
+  let rows=Math.ceil(n/cols);
+  const cellW=W/cols, cellD=D/rows;
+  const blockArea=totalArea/n;
+  let bw0=Math.sqrt(blockArea*cellW/Math.max(0.1,cellD)), bd0=blockArea/bw0;
+  const maxW=cellW*0.84, maxD=cellD*0.84;
+  if(bw0>maxW){ bw0=maxW; bd0=blockArea/bw0; }
+  if(bd0>maxD){ bd0=maxD; bw0=Math.min(maxW, blockArea/bd0); }
+  const out=[]; let cnt=0;
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    if(cnt>=n) break; cnt++;
+    const cx=x0+(c+0.5)*cellW, cy=y0+(r+0.5)*cellD;
+    out.push({x:cx-bw0/2, y:cy-bd0/2, w:bw0, h:bd0});
+  }
+  return out;
 }
 
 /* ---------- Mahal (oda) üretimi: kat planı ---------- */
 function genRooms(C, rnd){
-  // Bina oturumu bw x bd. İçeride mahalleri yerleştir.
+  // Tip kat oturumu (çok bloklu ise tek blok). İçeride mahalleri yerleştir.
   const rooms=[];
-  const W=C.bw, D=C.bd;
+  const W=C.planW||C.bw, D=C.planD||C.bd;
   const u = C.inp.kullanim;
 
   if(u==='ofis'){
@@ -944,26 +974,32 @@ function viewVaziyet(C){
   s+=roadLine;
   // ---- bina oturumu (metre y-up -> ekran) ----
   const toScr=(x,y)=>[ox+x*scale, oy+PD-y*scale];
-  let footScr, cxL, cyL;
-  if(C.footprintPoly){
-    footScr=C.footprintPoly.map(p=>toScr(p[0],p[1]));
-    const c=polyCentroid(C.footprintPoly), cc=toScr(c[0],c[1]); cxL=cc[0]; cyL=cc[1];
+  let foots=[]; // her oturum: ekran nokta dizisi
+  if(C.blocks && C.blocks.length>1){
+    foots=C.blocks.map(b=>[toScr(b.x,b.y+b.h),toScr(b.x+b.w,b.y+b.h),toScr(b.x+b.w,b.y),toScr(b.x,b.y)]);
+  } else if(C.footprintPoly){
+    foots=[C.footprintPoly.map(p=>toScr(p[0],p[1]))];
   } else {
     const x0=C.setX0, x1=C.setX0+C.bw, yT=C.inp.derinlik-C.setY0, yB=yT-C.bd;
-    footScr=[toScr(x0,yT),toScr(x1,yT),toScr(x1,yB),toScr(x0,yB)];
-    cxL=(footScr[0][0]+footScr[2][0])/2; cyL=(footScr[0][1]+footScr[2][1])/2;
+    foots=[[toScr(x0,yT),toScr(x1,yT),toScr(x1,yB),toScr(x0,yB)]];
   }
-  // güneş gölgesi (zeminde)
+  // güneş gölgesi
   if(C.sun && C.sun.alt>0.05){
     const d=C.yukseklik/Math.tan(C.sun.alt);
     const dx=-Math.sin(C.sun.az)*d*scale, dy=Math.cos(C.sun.az)*d*scale;
-    const hull=convexHull(footScr.concat(footScr.map(p=>[p[0]+dx,p[1]+dy])));
-    s+=`<polygon points="${hull.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="#1a3a30" opacity="0.16"/>`;
+    for(const fp of foots){
+      const hull=convexHull(fp.concat(fp.map(p=>[p[0]+dx,p[1]+dy])));
+      s+=`<polygon points="${hull.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="#1a3a30" opacity="0.16"/>`;
+    }
   }
-  // bina
-  s+=`<polygon points="${footScr.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="${brand}" opacity="0.92" stroke="${cssvar('--brand-deep')}" stroke-width="1.5"/>`;
-  s+=`<text x="${cxL.toFixed(0)}" y="${(cyL-2).toFixed(0)}" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">BİNA</text>`;
-  s+=`<text x="${cxL.toFixed(0)}" y="${(cyL+13).toFixed(0)}" text-anchor="middle" font-size="10" fill="#eef">${fmt(C.tabanAlan)} m²${C.footprintMode==='poly'?' · forma uygun':''}</text>`;
+  // bina blok(lar)ı
+  for(const fp of foots){
+    s+=`<polygon points="${fp.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="${brand}" opacity="0.92" stroke="${cssvar('--brand-deep')}" stroke-width="1.4"/>`;
+  }
+  const cAll=foots.reduce((a,fp)=>{const c=fp.reduce((q,p)=>[q[0]+p[0],q[1]+p[1]],[0,0]);return [a[0]+c[0]/fp.length,a[1]+c[1]/fp.length];},[0,0]);
+  const cxL=cAll[0]/foots.length, cyL=cAll[1]/foots.length;
+  const lbl=(C.blocks&&C.blocks.length>1)?`${C.blocks.length} blok · ${fmt(C.tabanAlan)} m²`:`${fmt(C.tabanAlan)} m²${C.footprintMode==='poly'?' · forma uygun':''}`;
+  s+=`<text x="${cxL.toFixed(0)}" y="${cyL.toFixed(0)}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" paint-order="stroke" stroke="${cssvar('--brand-deep')}" stroke-width="2.5">${lbl}</text>`;
   if(C.sun){ s+=`<text x="10" y="16" font-size="10" fill="${muted}">☀︎ ${AYLAR[C.inp.sunAy-1]} ${fmt(C.inp.sunSaat,1)}h · α=${fmt(C.sun.altDeg,0)}° az=${fmt(C.sun.azDeg,0)}°${C.sun.alt>0.05?` · gölge ${fmt(C.yukseklik/Math.tan(C.sun.alt),1)} m`:' · güneş ufuk altı'}</text>`; }
   // parsel ölçüleri
   s+=`<text x="${ox+PW/2}" y="${oy-10}" text-anchor="middle" font-size="11" fill="${fg}">${fmt(C.inp.cephe,1)} m</text>`;
@@ -979,8 +1015,9 @@ function viewVaziyet(C){
 function viewKat(C){
   const rnd=mulberry32(hashStr(C.inp.key+'-plan'));
   const rooms=genRooms(C,rnd);
-  const pad=40, scale=Math.min(620/C.bw, 460/C.bd);
-  const PW=C.bw*scale, PD=C.bd*scale, W=PW+pad*2, H=PD+pad*2+24;
+  const PW0=C.planW||C.bw, PD0=C.planD||C.bd;
+  const pad=40, scale=Math.min(620/PW0, 460/PD0);
+  const PW=PW0*scale, PD=PD0*scale, W=PW+pad*2, H=PD+pad*2+24;
   const wall=cssvar('--wall'), fg=cssvar('--fg'), muted=cssvar('--muted');
   const colors={ living:'#8ec9b8', kitchen:'#f0c987', bed:'#a8c8e8', wet:'#9fd0d8', hall:'#e3e0d4', core:'#c9c0d8', open:'#d8e8e0', room:'#bcd9c8' };
   const labels={ living:'🛋️', kitchen:'🍳', bed:'🛏️', wet:'🚿', hall:'', core:'⬍', open:'', room:'' };
@@ -1000,7 +1037,7 @@ function viewKat(C){
     }
   });
   // kapı (yol cephesine giriş)
-  s+=`<text x="${W/2}" y="${H-6}" text-anchor="middle" font-size="11" fill="${muted}">Tip kat planı · oturum ${fmt(C.bw,1)} × ${fmt(C.bd,1)} m · ${fmt(C.tabanAlan)} m² (brüt)</text>`;
+  s+=`<text x="${W/2}" y="${H-6}" text-anchor="middle" font-size="11" fill="${muted}">${(C.blocks&&C.blocks.length>1)?'Tip blok kat planı ('+C.blocks.length+' blok)':'Tip kat planı'} · oturum ${fmt(PW0,1)} × ${fmt(PD0,1)} m · ${fmt(PW0*PD0)} m²</text>`;
   s+=`</svg>`;
   state.lastRooms=rooms;
   return s;
@@ -1045,31 +1082,46 @@ function viewKutle(C){
   if(C.realParcel && C.realParcel.polyNorm){ gp=C.realParcel.polyNorm.map(p=>PS(p[0],p[1],0)).join(' '); }
   else { gp=[PS(0,0,0),PS(cw,0,0),PS(cw,cd,0),PS(0,cd,0)].join(' '); }
   s+=`<polygon points="${gp}" fill="${plot}" opacity=".6" stroke="${muted}" stroke-width="1.2"/>`;
-  // çekme/bahçe sınırı (bina oturumu izi)
-  s+=`<polygon points="${quad([bx0,by0,0],[bx1,by0,0],[bx1,by1,0],[bx0,by1,0])}" fill="none" stroke="${accent}" stroke-width="1" stroke-dasharray="4 3" opacity=".7"/>`;
+  // çekme/bahçe sınırı (inşa edilebilir zarf)
+  const bx1F=C.setX0+(C.bwFull||C.bw), by1F=C.setY0+(C.bdFull||C.bd);
+  s+=`<polygon points="${quad([bx0,by0,0],[bx1F,by0,0],[bx1F,by1F,0],[bx0,by1F,0])}" fill="none" stroke="${accent}" stroke-width="1" stroke-dasharray="4 3" opacity=".7"/>`;
 
   // arka ağaçlar (bina arkasında: düşük y)
   function tree(x,y){ const b=P(x,y,0), t=P(x,y,3.4), r=Math.max(6,Math.min(15,1.3*k));
     return `<line x1="${b[0]}" y1="${b[1]}" x2="${t[0]}" y2="${t[1]}" stroke="${isDark?'#4a3a22':'#6b4f2a'}" stroke-width="2.2"/><circle cx="${t[0]}" cy="${t[1]}" r="${r}" fill="${isDark?'#2f5b40':'#4f8f63'}" opacity=".9"/>`; }
   if(by0>2){ s+=tree(cw*0.12,by0*0.5)+tree(cw*0.85,by0*0.45); }
 
-  // --- gölge (güneş açısına göre veya temsili) ---
+  // --- kütle(ler) ---
   const fh=modelH/C.katAdet;
-  const footM = C.footprintPoly ? C.footprintPoly : [[bx0,by0],[bx1,by0],[bx1,by1],[bx0,by1]];
-  if(C.sun && C.sun.alt>0.05){
-    const d=modelH/Math.tan(C.sun.alt);
-    const sh=footM.map(p=>[p[0]-Math.sin(C.sun.az)*d, p[1]-Math.cos(C.sun.az)*d]);
-    const hull=convexHull(footM.concat(sh));
-    s+=`<polygon points="${hull.map(p=>PS(p[0],p[1],0)).join(' ')}" fill="${shadowCol}" opacity=".18"/>`;
-  } else {
-    const sdx=-modelH*0.32, sdy=modelH*0.46;
-    s+=`<polygon points="${footM.map(p=>PS(p[0]+sdx,p[1]+sdy,0)).join(' ')}" fill="${shadowCol}" opacity=".14"/>`;
+  // Tek dikdörtgen blok çizici (x0,y0)-(x1,y1)
+  function drawRectMass(x0,y0,x1,y1,withDoor){
+    const w=x1-x0, dd=y1-y0; let g='';
+    g+=`<polygon points="${quad([x1,y0,0],[x1,y1,0],[x1,y1,modelH],[x1,y0,modelH])}" fill="${bd}"/>`;
+    g+=`<polygon points="${quad([x0,y1,0],[x1,y1,0],[x1,y1,modelH],[x0,y1,modelH])}" fill="${brand}"/>`;
+    for(let f=1; f<C.katAdet; f++){ const z=f*fh;
+      g+=`<line x1="${P(x0,y1,z)[0]}" y1="${P(x0,y1,z)[1]}" x2="${P(x1,y1,z)[0]}" y2="${P(x1,y1,z)[1]}" stroke="${bd}" stroke-width=".4" opacity=".45"/>`;
+      g+=`<line x1="${P(x1,y1,z)[0]}" y1="${P(x1,y1,z)[1]}" x2="${P(x1,y0,z)[0]}" y2="${P(x1,y0,z)[1]}" stroke="#000" stroke-width=".4" opacity=".28"/>`;
+    }
+    const nx=Math.max(1,Math.round(w/3)), ny=Math.max(1,Math.round(dd/3));
+    for(let f=0; f<C.katAdet; f++){
+      const z0=f*fh, wz0=z0+fh*0.28, wz1=z0+fh*0.82;
+      const gc=(f===0 && (C.inp.kullanim==='ofis'||C.inp.kullanim==='karma'));
+      for(let i=0;i<nx;i++){ const cw1=w/nx, a0=x0+i*cw1+cw1*0.20, a1=x0+i*cw1+cw1*0.80;
+        const zz0= gc? z0+fh*0.12 : wz0, zz1= gc? z0+fh*0.88 : wz1;
+        g+=`<polygon points="${quad([a0,y1,zz0],[a1,y1,zz0],[a1,y1,zz1],[a0,y1,zz1])}" fill="${glass}" stroke="${frame}" stroke-width=".4"/>`; }
+      for(let j=0;j<ny;j++){ const cd1=dd/ny, b0=y0+j*cd1+cd1*0.22, b1=y0+j*cd1+cd1*0.78;
+        g+=`<polygon points="${quad([x1,b0,wz0],[x1,b1,wz0],[x1,b1,wz1],[x1,b0,wz1])}" fill="${glass}" stroke="${frame}" stroke-width=".4" opacity=".9"/>`; }
+    }
+    if(withDoor && C.inp.kullanim!=='ofis'){ const dcx=x0+w*0.5, dw2=Math.min(1.8,w*0.16);
+      g+=`<polygon points="${quad([dcx-dw2/2,y1,0],[dcx+dw2/2,y1,0],[dcx+dw2/2,y1,fh*0.7],[dcx-dw2/2,y1,fh*0.7])}" fill="${isDark?'#091210':'#22302b'}" stroke="${accent}" stroke-width="1"/>`; }
+    g+=`<polygon points="${quad([x0,y1,modelH],[x1,y1,modelH],[x1,y1,modelH+pp],[x0,y1,modelH+pp])}" fill="${brand}" opacity=".92"/>`;
+    g+=`<polygon points="${quad([x1,y0,modelH],[x1,y1,modelH],[x1,y1,modelH+pp],[x1,y0,modelH+pp])}" fill="${bd}"/>`;
+    g+=`<polygon points="${quad([x0,y0,modelH+pp],[x1,y0,modelH+pp],[x1,y1,modelH+pp],[x0,y1,modelH+pp])}" fill="url(#mttop)" stroke="${bd}" stroke-width=".8"/>`;
+    return g;
   }
-
-  // --- bina kütlesi ---
-  if(C.footprintPoly){
-    // poligon prizma: kenarları arkadan öne sırala, dışa bakanları çiz
-    const ring=C.footprintPoly, cen=polyCentroid(ring), n=ring.length;
+  // Poligon prizma çizici (forma uygun tek kütle)
+  function drawPolyPrism(ring){
+    const cen=polyCentroid(ring), n=ring.length; let g='';
     const edges=[];
     for(let i=0;i<n;i++){ const A=ring[i], B=ring[(i+1)%n];
       const mid=[(A[0]+B[0])/2,(A[1]+B[1])/2];
@@ -1079,45 +1131,44 @@ function viewKutle(C){
     }
     edges.sort((p,q)=>p.depth-q.depth);
     edges.forEach(e=>{
-      if(e.nx+e.ny < -0.05) return;                       // arka yüz gizli
+      if(e.nx+e.ny < -0.05) return;
       const shade=Math.max(0,Math.min(1,(e.nx*0.45+e.ny*0.9+1)/2));
-      const col=lerpHex(bd, soft, 0.25+0.6*shade);
-      s+=`<polygon points="${quad([e.A[0],e.A[1],0],[e.B[0],e.B[1],0],[e.B[0],e.B[1],modelH],[e.A[0],e.A[1],modelH])}" fill="${col}" stroke="${bd}" stroke-width=".4"/>`;
+      g+=`<polygon points="${quad([e.A[0],e.A[1],0],[e.B[0],e.B[1],0],[e.B[0],e.B[1],modelH],[e.A[0],e.A[1],modelH])}" fill="${lerpHex(bd,soft,0.25+0.6*shade)}" stroke="${bd}" stroke-width=".4"/>`;
       for(let f=1;f<C.katAdet;f++){ const z=f*fh, p0=P(e.A[0],e.A[1],z), p1=P(e.B[0],e.B[1],z);
-        s+=`<line x1="${p0[0]}" y1="${p0[1]}" x2="${p1[0]}" y2="${p1[1]}" stroke="${bd}" stroke-width=".4" opacity=".4"/>`; }
+        g+=`<line x1="${p0[0]}" y1="${p0[1]}" x2="${p1[0]}" y2="${p1[1]}" stroke="${bd}" stroke-width=".4" opacity=".4"/>`; }
       const len=Math.hypot(e.B[0]-e.A[0],e.B[1]-e.A[1]), nw=Math.max(1,Math.round(len/3));
       for(let f=0;f<C.katAdet;f++){ const wz0=f*fh+fh*0.3, wz1=f*fh+fh*0.82;
         for(let i=0;i<nw;i++){ const t0=(i+0.24)/nw, t1=(i+0.76)/nw;
           const ax=e.A[0]+(e.B[0]-e.A[0])*t0, ay=e.A[1]+(e.B[1]-e.A[1])*t0;
           const bx_=e.A[0]+(e.B[0]-e.A[0])*t1, by_=e.A[1]+(e.B[1]-e.A[1])*t1;
-          s+=`<polygon points="${quad([ax,ay,wz0],[bx_,by_,wz0],[bx_,by_,wz1],[ax,ay,wz1])}" fill="${glass}" stroke="${frame}" stroke-width=".35"/>`; }
+          g+=`<polygon points="${quad([ax,ay,wz0],[bx_,by_,wz0],[bx_,by_,wz1],[ax,ay,wz1])}" fill="${glass}" stroke="${frame}" stroke-width=".35"/>`; }
       }
     });
-    s+=`<polygon points="${ring.map(p=>PS(p[0],p[1],modelH+pp*0.5)).join(' ')}" fill="url(#mttop)" stroke="${bd}" stroke-width=".8"/>`;
-  } else {
-    // dikdörtgen kütle
-    s+=`<polygon points="${quad([bx1,by0,0],[bx1,by1,0],[bx1,by1,modelH],[bx1,by0,modelH])}" fill="${bd}"/>`;
-    s+=`<polygon points="${quad([bx0,by1,0],[bx1,by1,0],[bx1,by1,modelH],[bx0,by1,modelH])}" fill="${brand}"/>`;
-    for(let f=1; f<C.katAdet; f++){ const z=f*fh;
-      s+=`<line x1="${P(bx0,by1,z)[0]}" y1="${P(bx0,by1,z)[1]}" x2="${P(bx1,by1,z)[0]}" y2="${P(bx1,by1,z)[1]}" stroke="${bd}" stroke-width=".6" opacity=".5"/>`;
-      s+=`<line x1="${P(bx1,by1,z)[0]}" y1="${P(bx1,by1,z)[1]}" x2="${P(bx1,by0,z)[0]}" y2="${P(bx1,by0,z)[1]}" stroke="#000" stroke-width=".6" opacity=".3"/>`;
-    }
-    const nx=Math.max(1,Math.round(C.bw/3)), ny=Math.max(1,Math.round(C.bd/3));
-    for(let f=0; f<C.katAdet; f++){
-      const z0=f*fh, wz0=z0+fh*0.28, wz1=z0+fh*0.82;
-      const gc=(f===0 && (C.inp.kullanim==='ofis'||C.inp.kullanim==='karma'));
-      for(let i=0;i<nx;i++){ const cw1=C.bw/nx, a0=bx0+i*cw1+cw1*0.20, a1=bx0+i*cw1+cw1*0.80;
-        const zz0= gc? z0+fh*0.12 : wz0, zz1= gc? z0+fh*0.88 : wz1;
-        s+=`<polygon points="${quad([a0,by1,zz0],[a1,by1,zz0],[a1,by1,zz1],[a0,by1,zz1])}" fill="${glass}" stroke="${frame}" stroke-width=".5"/>`; }
-      for(let j=0;j<ny;j++){ const cd1=C.bd/ny, b0=by0+j*cd1+cd1*0.22, b1=by0+j*cd1+cd1*0.78;
-        s+=`<polygon points="${quad([bx1,b0,wz0],[bx1,b1,wz0],[bx1,b1,wz1],[bx1,b0,wz1])}" fill="${glass}" stroke="${frame}" stroke-width=".5" opacity=".9"/>`; }
-    }
-    if(C.inp.kullanim!=='ofis'){ const dcx=bx0+C.bw*0.5, dw=Math.min(1.8,C.bw*0.16);
-      s+=`<polygon points="${quad([dcx-dw/2,by1,0],[dcx+dw/2,by1,0],[dcx+dw/2,by1,fh*0.7],[dcx-dw/2,by1,fh*0.7])}" fill="${isDark?'#091210':'#22302b'}" stroke="${accent}" stroke-width="1"/>`; }
-    s+=`<polygon points="${quad([bx0,by1,modelH],[bx1,by1,modelH],[bx1,by1,modelH+pp],[bx0,by1,modelH+pp])}" fill="${brand}" opacity=".92"/>`;
-    s+=`<polygon points="${quad([bx1,by0,modelH],[bx1,by1,modelH],[bx1,by1,modelH+pp],[bx1,by0,modelH+pp])}" fill="${bd}"/>`;
-    s+=`<polygon points="${quad([bx0,by0,modelH+pp],[bx1,by0,modelH+pp],[bx1,by1,modelH+pp],[bx0,by1,modelH+pp])}" fill="url(#mttop)" stroke="${bd}" stroke-width=".8"/>`;
+    g+=`<polygon points="${ring.map(p=>PS(p[0],p[1],modelH+pp*0.5)).join(' ')}" fill="url(#mttop)" stroke="${bd}" stroke-width=".8"/>`;
+    return g;
   }
+
+  // oturum listesi: çok bloklu / forma uygun poligon / tek dikdörtgen
+  let masses;
+  if(C.blocks && C.blocks.length>1){ masses=C.blocks.map(b=>({x0:b.x,y0:b.y,x1:b.x+b.w,y1:b.y+b.h})); }
+  else if(C.footprintPoly){ masses=[{poly:C.footprintPoly}]; }
+  else { masses=[{x0:bx0,y0:by0,x1:bx1,y1:by1,door:true}]; }
+  const massCen=m=>m.poly?polyCentroid(m.poly):[(m.x0+m.x1)/2,(m.y0+m.y1)/2];
+  masses.sort((p,q)=>{const cp=massCen(p),cq=massCen(q);return (cp[0]+cp[1])-(cq[0]+cq[1]);});
+  // gölgeler (önce)
+  for(const m of masses){
+    const foot=m.poly?m.poly:[[m.x0,m.y0],[m.x1,m.y0],[m.x1,m.y1],[m.x0,m.y1]];
+    if(C.sun && C.sun.alt>0.05){
+      const d=modelH/Math.tan(C.sun.alt);
+      const sh=foot.map(p=>[p[0]-Math.sin(C.sun.az)*d, p[1]-Math.cos(C.sun.az)*d]);
+      s+=`<polygon points="${convexHull(foot.concat(sh)).map(p=>PS(p[0],p[1],0)).join(' ')}" fill="${shadowCol}" opacity=".15"/>`;
+    } else {
+      const sdx=-modelH*0.30, sdy=modelH*0.42;
+      s+=`<polygon points="${foot.map(p=>PS(p[0]+sdx,p[1]+sdy,0)).join(' ')}" fill="${shadowCol}" opacity=".12"/>`;
+    }
+  }
+  // kütleler (arkadan öne)
+  for(const m of masses){ s+= m.poly ? drawPolyPrism(m.poly) : drawRectMass(m.x0,m.y0,m.x1,m.y1,m.door); }
 
   // ön ağaçlar (yüksek y)
   if(cd-by1>2){ s+=tree(cw*0.18,(by1+cd)/2)+tree(cw*0.82,(by1+cd)/2+1); }
@@ -1130,7 +1181,8 @@ function viewKutle(C){
   s+=`<text x="${cM[0]-12}" y="${cM[1]+4}" text-anchor="end" font-size="10" fill="${muted}">bina ${fmt(modelH,1)} m</text>`;
 
   if(C.sun){ s+=`<text x="12" y="20" font-size="10.5" fill="${fg}">☀︎ ${AYLAR[C.inp.sunAy-1]} ${fmt(C.inp.sunSaat,1)}h · yükseklik ${fmt(C.sun.altDeg,0)}° · azimut ${fmt(C.sun.azDeg,0)}°${C.sun.alt>0.05?` · gölge ${fmt(modelH/Math.tan(C.sun.alt),1)} m`:' · güneş ufkun altında'}</text>`; }
-  s+=`<text x="${W/2}" y="${H-12}" text-anchor="middle" font-size="12" fill="${fg}">${C.katAdet} kat · Hmax ${fmt(hmax,2)} m · Emsal ${C.emsalKullanim.toFixed(2)} · ${fmt(C.toplamInsaat)} m²${C.footprintMode==='poly'?' · forma uygun oturum':''}${C.realParcel?' · gerçek parsel':''}</text>`;
+  const blokTxt=(C.blocks&&C.blocks.length>1)?` · ${C.blocks.length} blok`:(C.footprintMode==='poly'?' · forma uygun':'');
+  s+=`<text x="${W/2}" y="${H-12}" text-anchor="middle" font-size="12" fill="${fg}">${C.katAdet} kat · Hmax ${fmt(hmax,2)} m · Emsal ${C.emsalKullanim.toFixed(2)} · ${fmt(C.toplamInsaat)} m²${blokTxt}${C.realParcel?' · gerçek parsel':''}</text>`;
   s+=`</svg>`;
   return s;
 }
@@ -1176,7 +1228,8 @@ function metricRows(C){
     ['Kullanılan Emsal', C.emsalKullanim.toFixed(2), `/ ${C.inp.kaks.toFixed(2)}`],
     ['Maks. Kat (KAKS)', C.katKaks, 'kat'],
     ['Tahmini Birim', C.toplamDaire, C.inp.kullanim==='ofis'?'birim':'daire'],
-    ['Oturum', C.footprintMode==='poly'?'forma uygun':`${fmt(C.bw,1)}×${fmt(C.bd,1)} m`, ''],
+    ['Blok Adedi', (C.blocks?C.blocks.length:1), (C.blocks&&C.blocks.length>1)?`~${fmt(C.planW*C.planD)} m²/blok`:'tek kütle'],
+    ['Oturum', C.footprintMode==='poly'?'forma uygun':`${fmt(C.planW||C.bw,0)}×${fmt(C.planD||C.bd,0)} m`, ''],
   ];
 }
 function showMetrics(C){
@@ -1303,9 +1356,11 @@ function parseImarNotes(raw){
 function imarOut(msg,kind){ const el=$('imarParseOut'); el.style.color=kind==='err'?'var(--danger)':kind==='ok'?'var(--brand)':'var(--muted)'; el.innerHTML=msg; }
 $('imarParseBtn').onclick=()=>{
   const f=parseImarNotes($('imarNot').value);
+  // TAKS verilmemiş ama emsal+kat varsa türet (örn. E:2.0 / 17 kat → TAKS≈0.12)
+  if(f.taks==null && f.kaks!=null && f.kat){ f.taks=Math.max(0.05,Math.min(0.6, f.kaks/f.kat)); f.taksDerived=true; }
   const applied=[];
   if(f.nizam){ $('nizam').value=f.nizam; applied.push('nizam: '+f.nizam); }
-  if(f.taks!=null && isFinite(f.taks)){ $('taks').value=clamp(f.taks,0.05,0.9); applied.push('TAKS '+f.taks); }
+  if(f.taks!=null && isFinite(f.taks)){ $('taks').value=clamp(f.taks,0.05,0.9); applied.push('TAKS '+(Math.round(f.taks*100)/100)+(f.taksDerived?' (emsal/kat)':'')); }
   if(f.kaks!=null && isFinite(f.kaks)){ $('kaks').value=clamp(f.kaks,0.1,6); applied.push('KAKS '+f.kaks); }
   if(f.kat!=null && isFinite(f.kat)){ $('katAdet').value=clamp(f.kat,1,12); applied.push('kat '+f.kat+(f.katFromH?' (Hmax≈'+f.hmaxM+'m)':'')); }
   if(f.on!=null){ $('onCekme').value=f.on; applied.push('ön '+f.on+'m'); }
