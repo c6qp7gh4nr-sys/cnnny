@@ -519,6 +519,10 @@
             <button class="tab-btn" id="rotL" title="Sola döndür">⟲</button>
             <button class="tab-btn" id="rotR" title="Sağa döndür">⟳</button>
           </span>
+          <span id="katFloorCtl" style="display:none;gap:4px">
+            <button class="tab-btn" id="kfZemin" title="Zemin (ticari)">Zemin</button>
+            <button class="tab-btn active" id="kfTip" title="Tip kat">Tip kat</button>
+          </span>
           <span class="badge" id="seedBadge">—</span>
         </div>
         <div class="canvas-host" id="canvasHost">
@@ -1127,8 +1131,16 @@ function layoutBlocks(x0,y0,W,D,totalArea,n){
 }
 
 /* ---------- Kat planı: tek daire mahal üretimi (yerel koord, ön=yol=alt) ---------- */
-function genApartment(W, H, beds, ku){
+function genApartment(W, H, beds, ku, shop){
   const R=[];
+  if(shop){
+    // zemin ticari dükkan: vitrin önde, depo + wc arkada
+    const frontH=H*0.66;
+    R.push({name:'Dükkan', x:0, y:H-frontH, w:W, h:frontH, t:'shop', furn:'shop'});
+    R.push({name:'Depo', x:0, y:0, w:W*0.62, h:H-frontH, t:'room'});
+    R.push({name:'WC', x:W*0.62, y:0, w:W*0.38, h:H-frontH, t:'wet', furn:'wc'});
+    return R;
+  }
   if(ku==='ofis'){
     const cw=Math.min(W*0.26,5.5), ch=Math.min(H*0.34,7);
     R.push({name:'Açık Ofis', x:0,y:0,w:W,h:H,t:'open',sub:true});
@@ -1157,8 +1169,14 @@ function genApartment(W, H, beds, ku){
   return R;
 }
 // Tip kat: bloğu daire(ler) + çekirdek olarak böl
-function genFloor(C){
+function genFloor(C, floorType){
   const W=C.planW||C.bw, H=C.planD||C.bd, ku=C.inp.kullanim;
+  // Zemin ticari (karma): dükkan dizisi
+  if(ku==='karma' && floorType==='zemin'){
+    const n=clamp(Math.round(W/6),1,8), cw=W/n, units=[];
+    for(let c=0;c<n;c++) units.push({x:c*cw,y:0,w:cw,h:H,beds:0,flip:false,shop:true});
+    return {W,H,units,core:null,zemin:true};
+  }
   if(ku==='ofis') return {W,H,units:[{x:0,y:0,w:W,h:H,beds:0,flip:false}],core:null};
   const ua=C.unitArea||90;
   const beds = ua>150?4:ua>110?3:ua>75?2:1;
@@ -1303,14 +1321,14 @@ function viewVaziyet(C){
 
 /* ---------- Görünüm: Kat Planı (gerçekçi) ---------- */
 function viewKat(C){
-  const F=genFloor(C);
+  const F=genFloor(C, (C.inp.kullanim==='karma')?state.katFloor:null);
   const W=F.W, H=F.H;
   const pad=56, scale=Math.min(600/W, 430/H);
   const PW=W*scale, PD=H*scale, SW=PW+pad*2, SH=PD+pad*2+26;
   const isDark=document.documentElement.getAttribute('data-theme')==='dark';
   const wall=cssvar('--wall'), fg=cssvar('--fg'), muted=cssvar('--muted'), card=cssvar('--card'), brand=cssvar('--brand');
   const glass=isDark?'#5f8aa4':'#9cc3de';
-  const colors={ living:'#e7f0ea', kitchen:'#f6ecd6', bed:'#e6eef8', wet:'#dceef0', hall:'#efeae0', core:'#e2dcec', open:'#e7f0ea', room:'#e3efe6', balcony:'#d4e3da' };
+  const colors={ living:'#e7f0ea', kitchen:'#f6ecd6', bed:'#e6eef8', wet:'#dceef0', hall:'#efeae0', core:'#e2dcec', open:'#e7f0ea', room:'#e3efe6', balcony:'#d4e3da', shop:'#fbe8d2' };
   if(isDark){ for(const k in colors) colors[k]=lerpHex(colors[k].replace('#',''), '203028', 0.6); }
   const ox=pad, oy=pad, X=x=>ox+x*scale, Y=y=>oy+y*scale;
 
@@ -1333,7 +1351,7 @@ function viewKat(C){
 
   let firstRooms=null;
   F.units.forEach((U,ui)=>{
-    const rooms=genApartment(U.w,U.h,U.beds,C.inp.kullanim);
+    const rooms=genApartment(U.w,U.h,U.beds,C.inp.kullanim,U.shop);
     if(ui===0) firstRooms=rooms;
     rooms.forEach(rm=>{
       if(rm.sub) return;
@@ -1344,7 +1362,7 @@ function viewKat(C){
       if(rm.t==='balcony'){ s+=`<rect x="${px+1}" y="${py+1}" width="${pw-2}" height="${ph-2}" fill="none" stroke="${muted}" stroke-width="0.8" stroke-dasharray="3 2"/>`; }
       s+=furn(rm.furn,ax,ay,aw,ah);
       // pencereler: blok çevresine değen yaşam mekânları
-      if(['living','bed','kitchen','room','open'].includes(rm.t)){
+      if(['living','bed','kitchen','room','open','shop'].includes(rm.t)){
         const segs=[];
         if(ax<=0.06) segs.push(['v',ax,ay,ah]);
         if(ax+aw>=W-0.06) segs.push(['v',ax+aw,ay,ah]);
@@ -1635,6 +1653,9 @@ function render(view){
   state.activeView=view;
   $('viewTabs').querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
   $('rotCtl').style.display = view==='kutle' ? 'inline-flex' : 'none';
+  $('katFloorCtl').style.display = (view==='kat' && C.inp.kullanim==='karma') ? 'inline-flex' : 'none';
+  $('kfZemin').classList.toggle('active', state.katFloor==='zemin');
+  $('kfTip').classList.toggle('active', state.katFloor!=='zemin');
   if(view!=='three') stopThree();
   if(view==='three'){ $('roomCard').style.display='none'; viewThree(C); return; }
   let html;
@@ -1873,6 +1894,8 @@ $('helpDemo').onclick=runDemo;
 $('viewTabs').querySelectorAll('.tab-btn').forEach(b=> b.onclick=()=>{ if(state.last) render(b.dataset.view); });
 $('rotL').onclick=()=>{ state.kutleAngle=((state.kutleAngle||0)-30); if(state.last) render('kutle'); };
 $('rotR').onclick=()=>{ state.kutleAngle=((state.kutleAngle||0)+30); if(state.last) render('kutle'); };
+$('kfZemin').onclick=()=>{ state.katFloor='zemin'; if(state.last) render('kat'); };
+$('kfTip').onclick=()=>{ state.katFloor='tip'; if(state.last) render('kat'); };
 
 /* ---------- SVG indir ---------- */
 $('dlBtn').onclick = () => {
