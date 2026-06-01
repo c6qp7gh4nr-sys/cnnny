@@ -301,12 +301,30 @@
             <option value="4+1">4+1</option>
           </select>
         </label>
+        <label class="field">
+          <span class="lbl"><span>Yapı oturumu</span></span>
+          <select id="oturum">
+            <option value="auto">Otomatik (parsel varsa forma uygun)</option>
+            <option value="rect">Dikdörtgen (OBB)</option>
+            <option value="poly">Parsel formuna uygun (içe ofset)</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="lbl"><span>☀︎ Güneş / gölge analizi</span><span class="hint"><input type="checkbox" id="sunOn" style="vertical-align:middle"> aç</span></span>
+        </label>
+        <div id="sunControls" style="display:none">
+          <label class="field"><span class="lbl"><span>Ay</span><span class="hint" id="ayHint">Haziran</span></span>
+            <div class="rng"><input type="range" id="sunAy" min="1" max="12" step="1" value="6"><span class="val" id="sunAyVal">6</span></div></label>
+          <label class="field"><span class="lbl"><span>Saat (güneş saati)</span><span class="hint" id="saatHint">12:00</span></span>
+            <div class="rng"><input type="range" id="sunSaat" min="6" max="20" step="0.5" value="12"><span class="val" id="sunSaatVal">12</span></div></label>
+        </div>
         <button class="btn" id="genBtn">⚡ Tasarımı Oluştur</button>
         <button class="btn ghost" id="randBtn" style="margin-top:10px">🎲 Örnek doldur</button>
         <div class="btn-row" style="margin-top:10px">
           <button class="btn ghost" id="dlBtn">⬇︎ SVG</button>
           <button class="btn ghost" id="pngBtn">🖼️ PNG indir</button>
         </div>
+        <button class="btn ghost" id="pdfBtn" style="margin-top:10px">📄 PDF / Pafta oluştur</button>
         <div class="note">Bu araç imar parametrelerine göre <b>kavramsal/şematik</b> bir tasarım üretir. Resmî projeler için yetkili mimar ve yerel imar yönetmeliği esastır. Veriler tarayıcıda işlenir, sunucuya gönderilmez.</div>
       </div>
     </div>
@@ -642,11 +660,16 @@ function gather(){
     arka:Math.max(0,parseFloat($('arkaCekme').value)||0),
     kullanim:$('kullanim').value,
     daireTip:$('daireTip').value,
+    oturum:$('oturum').value,
+    lat: parseFloat(($('lat').value||'').trim()) || (state.realParcel?.centroid?.lat) || 41.0,
+    sunOn: $('sunOn').checked,
+    sunAy: parseInt($('sunAy').value),
+    sunSaat: parseFloat($('sunSaat').value),
   };
 }
 
 /* ---------- Tasarım hesabı ---------- */
-function compute(inp){
+function compute(inp, realParcel){
   const parselAlan = inp.cephe * inp.derinlik;
 
   // Yol yönüne göre çekme: "ön" yol cephesinde uygulanır
@@ -670,6 +693,18 @@ function compute(inp){
   if(tabanAlan > maxTaban){
     const k = Math.sqrt(maxTaban / tabanAlan);
     bw *= k; bd *= k; tabanAlan = bw*bd;
+  }
+
+  // --- Yapı oturumu: parsel formuna uygun içe ofset ---
+  let footprintPoly=null, footprintMode='rect';
+  const want = inp.oturum==='auto' ? ((realParcel&&realParcel.polyNorm)?'poly':'rect') : inp.oturum;
+  if(want==='poly' && realParcel && realParcel.polyNorm){
+    let off=offsetPolygon(realParcel.polyNorm, Math.max(0,inp.yan));
+    if(off){
+      let aPoly=polyArea(off);
+      if(aPoly>maxTaban && aPoly>0){ const c=polyCentroid(off); off=scalePolyAbout(off,c,Math.sqrt(maxTaban/aPoly)); aPoly=polyArea(off); }
+      if(aPoly>=3){ footprintPoly=off; footprintMode='poly'; tabanAlan=aPoly; }
+    }
   }
 
   // KAKS sınırı: toplam inşaat <= parsel * KAKS -> izin verilen kat
@@ -706,6 +741,7 @@ function compute(inp){
     inp, parselAlan, setX0,setX1,setY0,setY1, bw, bd, tabanAlan, maxTaban,
     maxToplam, katAdet, katKaks: katFromKaks, toplamInsaat, emsalKullanim, kaksUyari,
     daireKat, toplamDaire, unitArea, yukseklik, netKat, hmax, hmaxFloors, onerilenKaks,
+    footprintPoly, footprintMode,
   };
 }
 
@@ -761,6 +797,58 @@ function genRooms(C, rnd){
 function cssvar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function svgEl(w,h){ return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Roboto,sans-serif">`; }
 
+/* ---------- Geometri: poligon ofset / alan / merkez / convex hull ---------- */
+function shoelaceSigned(p){ let a=0; for(let i=0,n=p.length;i<n;i++){const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n]; a+=x1*y2-x2*y1;} return a/2; }
+function polyArea(p){ return Math.abs(shoelaceSigned(p)); }
+function polyCentroid(p){ let cx=0,cy=0,A=0; for(let i=0,n=p.length;i<n;i++){const[x1,y1]=p[i],[x2,y2]=p[(i+1)%n]; const cr=x1*y2-x2*y1; A+=cr; cx+=(x1+x2)*cr; cy+=(y1+y2)*cr;} A*=0.5; if(Math.abs(A)<1e-9){ const m=p.reduce((s,q)=>[s[0]+q[0],s[1]+q[1]],[0,0]); return [m[0]/p.length,m[1]/p.length]; } return [cx/(6*A), cy/(6*A)]; }
+function scalePolyAbout(p, c, k){ return p.map(q=>[c[0]+(q[0]-c[0])*k, c[1]+(q[1]-c[1])*k]); }
+// İki doğrunun (nokta+yön) kesişimi
+function lineX(p1,d1,p2,d2){ const den=d1[0]*d2[1]-d1[1]*d2[0]; if(Math.abs(den)<1e-9) return p2; const t=((p2[0]-p1[0])*d2[1]-(p2[1]-p1[1])*d2[0])/den; return [p1[0]+t*d1[0], p1[1]+t*d1[1]]; }
+// Basit poligonu içe doğru `dist` kadar ötele (çekme mesafesi). Bozulursa null.
+function offsetPolygon(ring, dist){
+  let p=ring.slice(); if(p.length>2 && p[0][0]===p[p.length-1][0] && p[0][1]===p[p.length-1][1]) p.pop();
+  const n=p.length; if(n<3) return null;
+  const ccw = shoelaceSigned(p) > 0;        // saat yönü tersi mi
+  const offLines=[];
+  for(let i=0;i<n;i++){
+    const a=p[i], b=p[(i+1)%n];
+    let dx=b[0]-a[0], dy=b[1]-a[1]; const len=Math.hypot(dx,dy)||1; dx/=len; dy/=len;
+    // CCW için iç normal sola: (-dy,dx); CW için sağa
+    let nx = ccw ? -dy :  dy, ny = ccw ?  dx : -dx;
+    offLines.push({ p:[a[0]+nx*dist, a[1]+ny*dist], d:[dx,dy] });
+  }
+  const out=[];
+  for(let i=0;i<n;i++){ const L0=offLines[(i-1+n)%n], L1=offLines[i]; out.push(lineX(L0.p,L0.d,L1.p,L1.d)); }
+  if(polyArea(out) < 1e-3) return null;
+  // ofset yönü ters döndüyse (alan büyüdü) iptal
+  if(polyArea(out) > polyArea(p)) return null;
+  return out;
+}
+function convexHull(pts){
+  const p=pts.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  if(p.length<3) return p;
+  const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
+  const lo=[],up=[];
+  for(const q of p){ while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],q)<=0)lo.pop(); lo.push(q); }
+  for(let i=p.length-1;i>=0;i--){ const q=p[i]; while(up.length>=2&&cr(up[up.length-2],up[up.length-1],q)<=0)up.pop(); up.push(q); }
+  lo.pop(); up.pop(); return lo.concat(up);
+}
+function lerpHex(a,b,t){ a=a.replace('#','');b=b.replace('#',''); const pa=[0,2,4].map(i=>parseInt(a.substr(i,2),16)), pb=[0,2,4].map(i=>parseInt(b.substr(i,2),16)); return '#'+pa.map((v,i)=>Math.round(v+(pb[i]-v)*t).toString(16).padStart(2,'0')).join(''); }
+const AYLAR=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+/* ---------- Güneş konumu (basit astronomik model) ---------- */
+function solarPos(lat, month, hour){
+  const N=Math.round((month-0.5)*30.4)+1;                  // yılın günü (ay ortası)
+  const decl=23.45*Math.sin(2*Math.PI*(284+N)/365)*Math.PI/180;
+  const H=(hour-12)*15*Math.PI/180;                        // saat açısı
+  const phi=lat*Math.PI/180;
+  const sinAlt=Math.sin(phi)*Math.sin(decl)+Math.cos(phi)*Math.cos(decl)*Math.cos(H);
+  const alt=Math.asin(Math.max(-1,Math.min(1,sinAlt)));
+  let cosAz=(Math.sin(decl)-Math.sin(phi)*sinAlt)/(Math.cos(phi)*Math.cos(alt)||1e-6);
+  let az=Math.acos(Math.max(-1,Math.min(1,cosAz)));        // kuzeyden açı
+  if(H>0) az=2*Math.PI-az;                                  // öğleden sonra batıya
+  return { alt, az, altDeg:alt*180/Math.PI, azDeg:az*180/Math.PI };
+}
+
 /* ---------- Görünüm: Vaziyet Planı ---------- */
 function viewVaziyet(C){
   const pad=46, scale=Math.min(560/C.inp.cephe, 480/C.inp.derinlik);
@@ -796,11 +884,29 @@ function viewVaziyet(C){
     s+=`<rect x="${ox}" y="${oy}" width="${PW}" height="${PD}" fill="${garden}" opacity="0.28" stroke="${muted}" stroke-width="1.4" stroke-dasharray="6 4"/>`;
   }
   s+=roadLine;
+  // ---- bina oturumu (metre y-up -> ekran) ----
+  const toScr=(x,y)=>[ox+x*scale, oy+PD-y*scale];
+  let footScr, cxL, cyL;
+  if(C.footprintPoly){
+    footScr=C.footprintPoly.map(p=>toScr(p[0],p[1]));
+    const c=polyCentroid(C.footprintPoly), cc=toScr(c[0],c[1]); cxL=cc[0]; cyL=cc[1];
+  } else {
+    const x0=C.setX0, x1=C.setX0+C.bw, yT=C.inp.derinlik-C.setY0, yB=yT-C.bd;
+    footScr=[toScr(x0,yT),toScr(x1,yT),toScr(x1,yB),toScr(x0,yB)];
+    cxL=(footScr[0][0]+footScr[2][0])/2; cyL=(footScr[0][1]+footScr[2][1])/2;
+  }
+  // güneş gölgesi (zeminde)
+  if(C.sun && C.sun.alt>0.05){
+    const d=C.yukseklik/Math.tan(C.sun.alt);
+    const dx=-Math.sin(C.sun.az)*d*scale, dy=Math.cos(C.sun.az)*d*scale;
+    const hull=convexHull(footScr.concat(footScr.map(p=>[p[0]+dx,p[1]+dy])));
+    s+=`<polygon points="${hull.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="#1a3a30" opacity="0.16"/>`;
+  }
   // bina
-  s+=`<rect x="${bx}" y="${by}" width="${bbw}" height="${bbd}" rx="2" fill="${brand}" opacity="0.92"/>`;
-  s+=`<rect x="${bx}" y="${by}" width="${bbw}" height="${bbd}" rx="2" fill="none" stroke="${cssvar('--brand-deep')}" stroke-width="1.5"/>`;
-  s+=`<text x="${bx+bbw/2}" y="${by+bbd/2-4}" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">BİNA</text>`;
-  s+=`<text x="${bx+bbw/2}" y="${by+bbd/2+13}" text-anchor="middle" font-size="10" fill="#eef">${fmt(C.tabanAlan)} m² · ${C.katAdet} kat</text>`;
+  s+=`<polygon points="${footScr.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="${brand}" opacity="0.92" stroke="${cssvar('--brand-deep')}" stroke-width="1.5"/>`;
+  s+=`<text x="${cxL.toFixed(0)}" y="${(cyL-2).toFixed(0)}" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">BİNA</text>`;
+  s+=`<text x="${cxL.toFixed(0)}" y="${(cyL+13).toFixed(0)}" text-anchor="middle" font-size="10" fill="#eef">${fmt(C.tabanAlan)} m²${C.footprintMode==='poly'?' · forma uygun':''}</text>`;
+  if(C.sun){ s+=`<text x="10" y="16" font-size="10" fill="${muted}">☀︎ ${AYLAR[C.inp.sunAy-1]} ${fmt(C.inp.sunSaat,1)}h · α=${fmt(C.sun.altDeg,0)}° az=${fmt(C.sun.azDeg,0)}°${C.sun.alt>0.05?` · gölge ${fmt(C.yukseklik/Math.tan(C.sun.alt),1)} m`:' · güneş ufuk altı'}</text>`; }
   // parsel ölçüleri
   s+=`<text x="${ox+PW/2}" y="${oy-10}" text-anchor="middle" font-size="11" fill="${fg}">${fmt(C.inp.cephe,1)} m</text>`;
   s+=`<text x="${ox-10}" y="${oy+PD/2}" text-anchor="middle" font-size="11" fill="${fg}" transform="rotate(-90 ${ox-10} ${oy+PD/2})">${fmt(C.inp.derinlik,1)} m</text>`;
@@ -889,49 +995,71 @@ function viewKutle(C){
     return `<line x1="${b[0]}" y1="${b[1]}" x2="${t[0]}" y2="${t[1]}" stroke="${isDark?'#4a3a22':'#6b4f2a'}" stroke-width="2.2"/><circle cx="${t[0]}" cy="${t[1]}" r="${r}" fill="${isDark?'#2f5b40':'#4f8f63'}" opacity=".9"/>`; }
   if(by0>2){ s+=tree(cw*0.12,by0*0.5)+tree(cw*0.85,by0*0.45); }
 
-  // --- gölge ---
-  const sdx=-modelH*0.32, sdy=modelH*0.46;
-  s+=`<polygon points="${[ [bx0,by0],[bx1,by0],[bx1,by1],[bx0,by1] ].map(p=>PS(p[0]+sdx,p[1]+sdy,0)).join(' ')}" fill="${shadowCol}" opacity=".14"/>`;
+  // --- gölge (güneş açısına göre veya temsili) ---
+  const fh=modelH/C.katAdet;
+  const footM = C.footprintPoly ? C.footprintPoly : [[bx0,by0],[bx1,by0],[bx1,by1],[bx0,by1]];
+  if(C.sun && C.sun.alt>0.05){
+    const d=modelH/Math.tan(C.sun.alt);
+    const sh=footM.map(p=>[p[0]-Math.sin(C.sun.az)*d, p[1]-Math.cos(C.sun.az)*d]);
+    const hull=convexHull(footM.concat(sh));
+    s+=`<polygon points="${hull.map(p=>PS(p[0],p[1],0)).join(' ')}" fill="${shadowCol}" opacity=".18"/>`;
+  } else {
+    const sdx=-modelH*0.32, sdy=modelH*0.46;
+    s+=`<polygon points="${footM.map(p=>PS(p[0]+sdx,p[1]+sdy,0)).join(' ')}" fill="${shadowCol}" opacity=".14"/>`;
+  }
 
   // --- bina kütlesi ---
-  const fh=modelH/C.katAdet;
-  // sağ yan yüz (x=bx1) — en koyu
-  s+=`<polygon points="${quad([bx1,by0,0],[bx1,by1,0],[bx1,by1,modelH],[bx1,by0,modelH])}" fill="${bd}"/>`;
-  // ön yüz (y=by1)
-  s+=`<polygon points="${quad([bx0,by1,0],[bx1,by1,0],[bx1,by1,modelH],[bx0,by1,modelH])}" fill="${brand}"/>`;
-
-  // kat çizgileri (ön + yan)
-  for(let f=1; f<C.katAdet; f++){ const z=f*fh;
-    s+=`<line x1="${P(bx0,by1,z)[0]}" y1="${P(bx0,by1,z)[1]}" x2="${P(bx1,by1,z)[0]}" y2="${P(bx1,by1,z)[1]}" stroke="${bd}" stroke-width=".6" opacity=".5"/>`;
-    s+=`<line x1="${P(bx1,by1,z)[0]}" y1="${P(bx1,by1,z)[1]}" x2="${P(bx1,by0,z)[0]}" y2="${P(bx1,by0,z)[1]}" stroke="#000" stroke-width=".6" opacity=".3"/>`;
-  }
-  // pencere ızgarası — ön yüz
-  const nx=Math.max(1,Math.round(C.bw/3));
-  const ny=Math.max(1,Math.round(C.bd/3));
-  for(let f=0; f<C.katAdet; f++){
-    const z0=f*fh, wz0=z0+fh*0.28, wz1=z0+fh*0.82;
-    const groundCommercial=(f===0 && (C.inp.kullanim==='ofis'||C.inp.kullanim==='karma'));
-    for(let i=0;i<nx;i++){
-      const cw1=C.bw/nx, a0=bx0+i*cw1+cw1*0.20, a1=bx0+i*cw1+cw1*0.80;
-      const zz0= groundCommercial? z0+fh*0.12 : wz0, zz1= groundCommercial? z0+fh*0.88 : wz1;
-      s+=`<polygon points="${quad([a0,by1,zz0],[a1,by1,zz0],[a1,by1,zz1],[a0,by1,zz1])}" fill="${glass}" stroke="${frame}" stroke-width=".5"/>`;
+  if(C.footprintPoly){
+    // poligon prizma: kenarları arkadan öne sırala, dışa bakanları çiz
+    const ring=C.footprintPoly, cen=polyCentroid(ring), n=ring.length;
+    const edges=[];
+    for(let i=0;i<n;i++){ const A=ring[i], B=ring[(i+1)%n];
+      const mid=[(A[0]+B[0])/2,(A[1]+B[1])/2];
+      let ex=B[1]-A[1], ey=-(B[0]-A[0]); const nl=Math.hypot(ex,ey)||1; ex/=nl; ey/=nl;
+      if((mid[0]-cen[0])*ex+(mid[1]-cen[1])*ey<0){ ex=-ex; ey=-ey; }
+      edges.push({A,B,depth:mid[0]+mid[1],nx:ex,ny:ey});
     }
-    // yan yüz pencereleri
-    for(let j=0;j<ny;j++){
-      const cd1=C.bd/ny, b0=by0+j*cd1+cd1*0.22, b1=by0+j*cd1+cd1*0.78;
-      s+=`<polygon points="${quad([bx1,b0,wz0],[bx1,b1,wz0],[bx1,b1,wz1],[bx1,b0,wz1])}" fill="${glass}" stroke="${frame}" stroke-width=".5" opacity=".9"/>`;
+    edges.sort((p,q)=>p.depth-q.depth);
+    edges.forEach(e=>{
+      if(e.nx+e.ny < -0.05) return;                       // arka yüz gizli
+      const shade=Math.max(0,Math.min(1,(e.nx*0.45+e.ny*0.9+1)/2));
+      const col=lerpHex(bd, soft, 0.25+0.6*shade);
+      s+=`<polygon points="${quad([e.A[0],e.A[1],0],[e.B[0],e.B[1],0],[e.B[0],e.B[1],modelH],[e.A[0],e.A[1],modelH])}" fill="${col}" stroke="${bd}" stroke-width=".4"/>`;
+      for(let f=1;f<C.katAdet;f++){ const z=f*fh, p0=P(e.A[0],e.A[1],z), p1=P(e.B[0],e.B[1],z);
+        s+=`<line x1="${p0[0]}" y1="${p0[1]}" x2="${p1[0]}" y2="${p1[1]}" stroke="${bd}" stroke-width=".4" opacity=".4"/>`; }
+      const len=Math.hypot(e.B[0]-e.A[0],e.B[1]-e.A[1]), nw=Math.max(1,Math.round(len/3));
+      for(let f=0;f<C.katAdet;f++){ const wz0=f*fh+fh*0.3, wz1=f*fh+fh*0.82;
+        for(let i=0;i<nw;i++){ const t0=(i+0.24)/nw, t1=(i+0.76)/nw;
+          const ax=e.A[0]+(e.B[0]-e.A[0])*t0, ay=e.A[1]+(e.B[1]-e.A[1])*t0;
+          const bx_=e.A[0]+(e.B[0]-e.A[0])*t1, by_=e.A[1]+(e.B[1]-e.A[1])*t1;
+          s+=`<polygon points="${quad([ax,ay,wz0],[bx_,by_,wz0],[bx_,by_,wz1],[ax,ay,wz1])}" fill="${glass}" stroke="${frame}" stroke-width=".35"/>`; }
+      }
+    });
+    s+=`<polygon points="${ring.map(p=>PS(p[0],p[1],modelH+pp*0.5)).join(' ')}" fill="url(#mttop)" stroke="${bd}" stroke-width=".8"/>`;
+  } else {
+    // dikdörtgen kütle
+    s+=`<polygon points="${quad([bx1,by0,0],[bx1,by1,0],[bx1,by1,modelH],[bx1,by0,modelH])}" fill="${bd}"/>`;
+    s+=`<polygon points="${quad([bx0,by1,0],[bx1,by1,0],[bx1,by1,modelH],[bx0,by1,modelH])}" fill="${brand}"/>`;
+    for(let f=1; f<C.katAdet; f++){ const z=f*fh;
+      s+=`<line x1="${P(bx0,by1,z)[0]}" y1="${P(bx0,by1,z)[1]}" x2="${P(bx1,by1,z)[0]}" y2="${P(bx1,by1,z)[1]}" stroke="${bd}" stroke-width=".6" opacity=".5"/>`;
+      s+=`<line x1="${P(bx1,by1,z)[0]}" y1="${P(bx1,by1,z)[1]}" x2="${P(bx1,by0,z)[0]}" y2="${P(bx1,by0,z)[1]}" stroke="#000" stroke-width=".6" opacity=".3"/>`;
     }
+    const nx=Math.max(1,Math.round(C.bw/3)), ny=Math.max(1,Math.round(C.bd/3));
+    for(let f=0; f<C.katAdet; f++){
+      const z0=f*fh, wz0=z0+fh*0.28, wz1=z0+fh*0.82;
+      const gc=(f===0 && (C.inp.kullanim==='ofis'||C.inp.kullanim==='karma'));
+      for(let i=0;i<nx;i++){ const cw1=C.bw/nx, a0=bx0+i*cw1+cw1*0.20, a1=bx0+i*cw1+cw1*0.80;
+        const zz0= gc? z0+fh*0.12 : wz0, zz1= gc? z0+fh*0.88 : wz1;
+        s+=`<polygon points="${quad([a0,by1,zz0],[a1,by1,zz0],[a1,by1,zz1],[a0,by1,zz1])}" fill="${glass}" stroke="${frame}" stroke-width=".5"/>`; }
+      for(let j=0;j<ny;j++){ const cd1=C.bd/ny, b0=by0+j*cd1+cd1*0.22, b1=by0+j*cd1+cd1*0.78;
+        s+=`<polygon points="${quad([bx1,b0,wz0],[bx1,b1,wz0],[bx1,b1,wz1],[bx1,b0,wz1])}" fill="${glass}" stroke="${frame}" stroke-width=".5" opacity=".9"/>`; }
+    }
+    if(C.inp.kullanim!=='ofis'){ const dcx=bx0+C.bw*0.5, dw=Math.min(1.8,C.bw*0.16);
+      s+=`<polygon points="${quad([dcx-dw/2,by1,0],[dcx+dw/2,by1,0],[dcx+dw/2,by1,fh*0.7],[dcx-dw/2,by1,fh*0.7])}" fill="${isDark?'#091210':'#22302b'}" stroke="${accent}" stroke-width="1"/>`; }
+    s+=`<polygon points="${quad([bx0,by1,modelH],[bx1,by1,modelH],[bx1,by1,modelH+pp],[bx0,by1,modelH+pp])}" fill="${brand}" opacity=".92"/>`;
+    s+=`<polygon points="${quad([bx1,by0,modelH],[bx1,by1,modelH],[bx1,by1,modelH+pp],[bx1,by0,modelH+pp])}" fill="${bd}"/>`;
+    s+=`<polygon points="${quad([bx0,by0,modelH+pp],[bx1,by0,modelH+pp],[bx1,by1,modelH+pp],[bx0,by1,modelH+pp])}" fill="url(#mttop)" stroke="${bd}" stroke-width=".8"/>`;
   }
-  // giriş kapısı (konut: ön orta)
-  if(C.inp.kullanim!=='ofis'){
-    const dcx=bx0+C.bw*0.5, dw=Math.min(1.8,C.bw*0.16);
-    s+=`<polygon points="${quad([dcx-dw/2,by1,0],[dcx+dw/2,by1,0],[dcx+dw/2,by1,fh*0.7],[dcx-dw/2,by1,fh*0.7])}" fill="${isDark?'#091210':'#22302b'}" stroke="${accent}" stroke-width="1"/>`;
-  }
-  // parapet
-  s+=`<polygon points="${quad([bx0,by1,modelH],[bx1,by1,modelH],[bx1,by1,modelH+pp],[bx0,by1,modelH+pp])}" fill="${brand}" opacity=".92"/>`;
-  s+=`<polygon points="${quad([bx1,by0,modelH],[bx1,by1,modelH],[bx1,by1,modelH+pp],[bx1,by0,modelH+pp])}" fill="${bd}"/>`;
-  // çatı (üst yüz)
-  s+=`<polygon points="${quad([bx0,by0,modelH+pp],[bx1,by0,modelH+pp],[bx1,by1,modelH+pp],[bx0,by1,modelH+pp])}" fill="url(#mttop)" stroke="${bd}" stroke-width=".8"/>`;
 
   // ön ağaçlar (yüksek y)
   if(cd-by1>2){ s+=tree(cw*0.18,(by1+cd)/2)+tree(cw*0.82,(by1+cd)/2+1); }
@@ -943,7 +1071,8 @@ function viewKutle(C){
   s+=`<text x="${cH[0]-12}" y="${cH[1]+4}" text-anchor="end" font-size="11.5" font-weight="700" fill="${accent}">Hmax ${fmt(hmax,2)} m</text>`;
   s+=`<text x="${cM[0]-12}" y="${cM[1]+4}" text-anchor="end" font-size="10" fill="${muted}">bina ${fmt(modelH,1)} m</text>`;
 
-  s+=`<text x="${W/2}" y="${H-12}" text-anchor="middle" font-size="12" fill="${fg}">${C.katAdet} kat · Hmax ${fmt(hmax,2)} m · Emsal ${C.emsalKullanim.toFixed(2)} · ${fmt(C.toplamInsaat)} m² inşaat ${C.realParcel?'· gerçek parsel sınırı':''}</text>`;
+  if(C.sun){ s+=`<text x="12" y="20" font-size="10.5" fill="${fg}">☀︎ ${AYLAR[C.inp.sunAy-1]} ${fmt(C.inp.sunSaat,1)}h · yükseklik ${fmt(C.sun.altDeg,0)}° · azimut ${fmt(C.sun.azDeg,0)}°${C.sun.alt>0.05?` · gölge ${fmt(modelH/Math.tan(C.sun.alt),1)} m`:' · güneş ufkun altında'}</text>`; }
+  s+=`<text x="${W/2}" y="${H-12}" text-anchor="middle" font-size="12" fill="${fg}">${C.katAdet} kat · Hmax ${fmt(hmax,2)} m · Emsal ${C.emsalKullanim.toFixed(2)} · ${fmt(C.toplamInsaat)} m²${C.footprintMode==='poly'?' · forma uygun oturum':''}${C.realParcel?' · gerçek parsel':''}</text>`;
   s+=`</svg>`;
   return s;
 }
@@ -976,9 +1105,8 @@ function render(view){
 }
 
 /* ---------- Metrikler ---------- */
-function showMetrics(C){
-  $('metricCard').style.display='';
-  const m=[
+function metricRows(C){
+  return [
     ['Parsel Alanı', fmt(C.parselAlan), 'm²'],
     ['Taban Alanı', fmt(C.tabanAlan), 'm²'],
     ['Toplam İnşaat', fmt(C.toplamInsaat), 'm²'],
@@ -990,8 +1118,12 @@ function showMetrics(C){
     ['Kullanılan Emsal', C.emsalKullanim.toFixed(2), `/ ${C.inp.kaks.toFixed(2)}`],
     ['Maks. Kat (KAKS)', C.katKaks, 'kat'],
     ['Tahmini Birim', C.toplamDaire, C.inp.kullanim==='ofis'?'birim':'daire'],
-    ['Oturum', `${fmt(C.bw,1)}×${fmt(C.bd,1)}`, 'm'],
+    ['Oturum', C.footprintMode==='poly'?'forma uygun':`${fmt(C.bw,1)}×${fmt(C.bd,1)} m`, ''],
   ];
+}
+function showMetrics(C){
+  $('metricCard').style.display='';
+  const m=metricRows(C);
   $('metrics').innerHTML = m.map(x=>`<div class="metric"><div class="k">${x[0]}</div><div class="v">${x[1]} <span class="u">${x[2]}</span></div></div>`).join('') +
     `<div class="note" style="grid-column:1/-1">Hmax, Planlı Alanlar İmar Yönetmeliği'nin kat adedine göre azami yükseklik kuralından (3,00·kat+3,50 m) türetilmiştir. TAKS/KAKS değerleri parselin bağlı olduğu <b>imar planından</b> gelir; buradakiler girdiğiniz/temsili değerlerdir. Kesin değerler için ilgili belediyenin imar durumu belgesi esastır.</div>`;
 }
@@ -999,8 +1131,10 @@ function showMetrics(C){
 /* ---------- Oluştur ---------- */
 $('genBtn').onclick = () => {
   const inp=gather();
-  const C=compute(inp);
-  C.realParcel = (state.mode==='parsel' && state.dataSrc==='tkgm') ? state.realParcel : null;
+  const rp = (state.mode==='parsel' && state.dataSrc==='tkgm') ? state.realParcel : null;
+  const C=compute(inp, rp);
+  C.realParcel = rp;
+  C.sun = inp.sunOn ? solarPos(inp.lat, inp.sunAy, inp.sunSaat) : null;
   state.last=C;
   $('seedBadge').textContent = state.locLabel;
   $('legend').style.display='flex';
@@ -1069,6 +1203,53 @@ $('imarProfil').addEventListener('change', e=>{
   $('kullanim').value=p.kullanim;
   ['taks','kaks','katAdet'].forEach(id=>$(id).dispatchEvent(new Event('input')));
 });
+
+/* ---------- Güneş kontrolleri ---------- */
+$('sunOn').addEventListener('change', e=>{ $('sunControls').style.display = e.target.checked?'':'none'; });
+$('sunAy').addEventListener('input', e=>{ const v=+e.target.value; $('sunAyVal').textContent=v; $('ayHint').textContent=AYLAR[v-1]; });
+$('sunSaat').addEventListener('input', e=>{ const v=+e.target.value; $('sunSaatVal').textContent=v; const h=Math.floor(v), mm=v%1?'30':'00'; $('saatHint').textContent=`${String(h).padStart(2,'0')}:${mm}`; });
+
+/* ---------- PDF / Pafta ---------- */
+$('pdfBtn').onclick = () => {
+  const C=state.last; if(!C){ alert('Önce bir tasarım oluşturun.'); return; }
+  const v=viewVaziyet(C), kt=viewKat(C), r=viewKutle(C);
+  const rows=metricRows(C);
+  const tarih=new Date().toLocaleDateString('tr-TR');
+  const baslik=(state.locLabel||'Mimari Tasarım').replace(/[📍🗺️]/g,'').trim();
+  const metricHtml=rows.map(x=>`<tr><td>${x[0]}</td><td><b>${x[1]}</b> ${x[2]}</td></tr>`).join('');
+  const w=window.open('','_blank'); if(!w){ alert('Açılır pencere engellendi.'); return; }
+  w.document.write(`<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Mimari Pafta · ${baslik}</title>
+  <style>
+    @page{ size:A4 landscape; margin:8mm; }
+    *{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+    body{margin:0;color:#15201c;}
+    .sheet{padding:6mm;}
+    .hdr{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1f6f5c;padding-bottom:6px;margin-bottom:10px;}
+    .hdr h1{font-size:18px;margin:0;color:#134034;} .hdr .sub{font-size:11px;color:#5f6f68;}
+    .grid{display:grid;grid-template-columns:1.3fr 1fr;gap:10px;}
+    .cell{border:1px solid #dde5e1;border-radius:8px;padding:8px;}
+    .cell h3{margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#1f6f5c;}
+    .cell svg{width:100%;height:auto;max-height:118mm;}
+    .render{grid-column:1/-1;}
+    table{width:100%;border-collapse:collapse;font-size:11px;} td{padding:3px 5px;border-bottom:1px solid #eef;}
+    .foot{font-size:9px;color:#5f6f68;margin-top:8px;border-top:1px solid #dde5e1;padding-top:5px;}
+    @media print{ .noprint{display:none;} }
+  </style></head><body>
+  <div class="sheet">
+    <div class="hdr"><div><h1>Mimari Kavramsal Tasarım Paftası</h1><div class="sub">${baslik} · ${C.katAdet} kat · Hmax ${fmt(C.hmax,2)} m · Emsal ${C.emsalKullanim.toFixed(2)}</div></div><div class="sub">Tarih: ${tarih}</div></div>
+    <div class="grid">
+      <div class="cell"><h3>Vaziyet Planı</h3>${v}</div>
+      <div class="cell"><h3>Tip Kat Planı</h3>${kt}</div>
+      <div class="cell render"><h3>3B Temsili Render</h3>${r}</div>
+      <div class="cell" style="grid-column:1/-1"><h3>Tasarım & İmar Özeti</h3><table>${metricHtml}</table></div>
+    </div>
+    <div class="foot">Bu pafta kavramsal/şematiktir. Hmax, Planlı Alanlar İmar Yönetmeliği (3,00·kat+3,50 m) ile türetilmiştir; TAKS/KAKS imar planından gelir. Resmî projeler için yetkili mimar ve belediye imar durumu esastır.</div>
+    <button class="noprint" onclick="window.print()" style="margin-top:10px;padding:8px 16px;border:none;border-radius:8px;background:#1f6f5c;color:#fff;font-weight:700;cursor:pointer;">🖨️ Yazdır / PDF kaydet</button>
+  </div>
+  <script>setTimeout(()=>window.print(),400);<\/script>
+  </body></html>`);
+  w.document.close();
+};
 </script>
 </body>
 </html>
