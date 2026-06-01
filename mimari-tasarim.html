@@ -210,6 +210,12 @@
             <div class="note">Manuel modda parsel ölçülerini (cephe/derinlik) aşağıdaki bölümden kendiniz girersiniz.</div>
           </div>
         </div>
+
+        <details id="mapWrap" style="margin-top:12px">
+          <summary class="note" style="cursor:pointer">🗺️ Harita (uydu) — parseli göster / haritadan konum seç</summary>
+          <div id="map" style="height:300px;border-radius:12px;margin-top:8px;border:1px solid var(--line);background:var(--bg)"></div>
+          <div class="note" style="margin-top:6px">Haritaya dokunarak koordinat seçebilir, TKGM'den parsel çekince sınırı uydu üstünde görebilirsiniz.</div>
+        </details>
       </div>
 
       <div class="card">
@@ -690,6 +696,7 @@ function applyParcelFeature(feat, ada, parsel){
     <div class="u">Alan: ${fmt(alan)} m² · Nitelik: ${props.nitelik||'—'}<br>
     Yönlü dikdörtgen ≈ ${cephe.toFixed(1)} × ${derinlik.toFixed(1)} m · Mevkii: ${props.mevkii||'—'}</div>`;
   state.locLabel=`🗺️ ${props.ilceAd||''} · Ada ${props.adaNo||ada}/${props.parselNo||parsel}`;
+  showParcelOnMap(ring, {lat:m.lat0,lng:m.lng0});
 }
 
 async function sorgulaParsel(){
@@ -1647,6 +1654,48 @@ $('pdfBtn').onclick = () => {
   w.document.close();
 };
 
+/* ---------- İnteraktif harita (Leaflet + uydu) ---------- */
+let leafletLoad=null;
+function ensureLeaflet(){
+  if(window.L) return Promise.resolve();
+  if(leafletLoad) return leafletLoad;
+  leafletLoad=new Promise((res,rej)=>{
+    const css=document.createElement('link'); css.rel='stylesheet'; css.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(css);
+    const sc=document.createElement('script'); sc.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    sc.onload=()=>res(); sc.onerror=()=>rej(new Error('Harita kütüphanesi yüklenemedi (internet?)')); document.head.appendChild(sc);
+  });
+  return leafletLoad;
+}
+let mtMap=null, mtParcel=null, mtMarker=null;
+async function ensureMap(){
+  await ensureLeaflet();
+  if(mtMap) { setTimeout(()=>mtMap.invalidateSize(),120); return mtMap; }
+  mtMap=L.map('map',{zoomControl:true}).setView([39.0,35.2],6);
+  const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:21,maxNativeZoom:19,attribution:'Tiles © Esri'});
+  const osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'});
+  sat.addTo(mtMap); L.control.layers({'Uydu':sat,'Sokak':osm}).addTo(mtMap);
+  mtMap.on('click', e=>{
+    $('lat').value=e.latlng.lat.toFixed(6); $('lng').value=e.latlng.lng.toFixed(6);
+    if(mtMarker) mtMarker.setLatLng(e.latlng); else mtMarker=L.marker(e.latlng).addTo(mtMap);
+    $('lat').dispatchEvent(new Event('input'));
+  });
+  setTimeout(()=>mtMap.invalidateSize(),200);
+  return mtMap;
+}
+async function showParcelOnMap(geoRing, centroid){
+  try{
+    if(!$('mapWrap').open) $('mapWrap').open=true;
+    await ensureMap();
+    if(mtParcel) mtMap.removeLayer(mtParcel);
+    const latlngs=geoRing.map(p=>[p[1],p[0]]);
+    mtParcel=L.polygon(latlngs,{color:'#1f6f5c',weight:3,fillColor:'#46b896',fillOpacity:0.25}).addTo(mtMap);
+    mtMap.fitBounds(mtParcel.getBounds(),{padding:[24,24],maxZoom:19});
+    if(centroid){ if(mtMarker) mtMarker.setLatLng([centroid.lat,centroid.lng]); else mtMarker=L.marker([centroid.lat,centroid.lng]).addTo(mtMap); }
+    setTimeout(()=>mtMap.invalidateSize(),200);
+  }catch(e){ /* harita yüklenemezse sessiz geç */ }
+}
+$('mapWrap').addEventListener('toggle', ()=>{ if($('mapWrap').open) ensureMap().catch(()=>{}); });
+
 /* ---------- Dışa aktarma: DXF / OBJ / KML / JSON ---------- */
 function downloadFile(name, content, mime){
   const blob=new Blob([content],{type:mime||'text/plain;charset=utf-8'});
@@ -1761,7 +1810,7 @@ function applyState(o){
   if(o.theme){ document.documentElement.setAttribute('data-theme',o.theme); }
   if(o.mode) setMode(o.mode);
   if(o.dataSrc) setSrc(o.dataSrc);
-  if(o.rp){ state.realParcel=o.rp; showRestoredParcel(o.rp); }
+  if(o.rp){ state.realParcel=o.rp; showRestoredParcel(o.rp); if(o.rp.geoRing) showParcelOnMap(o.rp.geoRing, o.rp.centroid); }
   if(o.pl) state.planLimits=o.pl;
   ['taks','kaks','katAdet','sunAy','sunSaat'].forEach(id=>{ const e=$(id); if(e) e.dispatchEvent(new Event('input')); });
   updParselAlan();
