@@ -264,7 +264,7 @@
         </label>
         <label class="field">
           <span class="lbl"><span>KAKS / Emsal</span><span class="hint" id="kaksHint">1.50</span></span>
-          <div class="rng"><input type="range" id="kaks" min="0.30" max="4.00" step="0.10" value="1.50"><span class="val" id="kaksVal">1.50</span></div>
+          <div class="rng"><input type="range" id="kaks" min="0.30" max="4.00" step="0.05" value="1.50"><span class="val" id="kaksVal">1.50</span></div>
         </label>
         <label class="field">
           <span class="lbl"><span>Kat adedi</span></span>
@@ -1273,8 +1273,8 @@ function parseImarNotes(raw){
   if(m=t.match(/taks\s*[:=]?\s*(0?[.,]\d{1,2})/)) f.taks=imarNum(m[1]);
   else if(m=t.match(/taban\s*alan[ıi]?\s*kat\s*say[ıi]s[ıi]?\s*[:=]?\s*(0?[.,]\d{1,2})/)) f.taks=imarNum(m[1]);
   // KAKS / Emsal / E
-  if(m=t.match(/(?:kaks|emsal|k\.?\s*a\.?\s*k\.?\s*s)\s*[:=(]*\s*(\d{1,2}[.,]\d{1,2})/)) f.kaks=imarNum(m[1]);
-  else if(m=t.match(/\be\s*[:=]\s*(\d{1,2}[.,]\d{1,2})/)) f.kaks=imarNum(m[1]);
+  if(m=t.match(/(?:kaks|emsal|k\.?\s*a\.?\s*k\.?\s*s)\s*[:=(]*\s*(\d{1,2}(?:[.,]\d{1,2})?)/)) f.kaks=imarNum(m[1]);
+  else if(m=t.match(/\be\s*[:=]\s*(\d{1,2}(?:[.,]\d{1,2})?)/)) f.kaks=imarNum(m[1]);
   // Hmax / Yençok
   if(m=t.match(/(?:hmax|h\.?\s*maks?|yen[çc]ok|en\s*fazla\s*y[uü]kseklik|bina\s*y[uü]ksekli[gğ]i|y[eo]nçok)\s*[:=]?\s*(serbest|\d{1,2}\s*kat|\d{1,2}[.,]?\d{0,2}\s*m\b)/)){
     const v=m[1];
@@ -1317,7 +1317,8 @@ $('imarParseBtn').onclick=()=>{
   ['taks','kaks','katAdet'].forEach(id=>$(id).dispatchEvent(new Event('input')));
   updParselAlan();
   let extra = f.hmaxNote==='serbest' ? ' · Hmax: serbest (kat adedini elle ayarlayın)' : '';
-  imarOut('✓ Otomatik dolduruldu → '+applied.join(' · ')+extra+'. İmar Durumu bölümünden kontrol edip “Tasarımı Oluştur”a basın.','ok');
+  imarOut('✓ Otomatik dolduruldu → '+applied.join(' · ')+extra+'. Yukarıdaki İmar Durumu değerleri güncellendi.','ok');
+  $('taks').scrollIntoView({behavior:'smooth', block:'center'});
 };
 // Belediye e-imar linkini seçili il/ilçeye göre güncelle
 function updImarLinks(){
