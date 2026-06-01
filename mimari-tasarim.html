@@ -282,6 +282,20 @@
       </div>
 
       <div class="card">
+        <h2>3b · Plan Notu / İmar Durumu — Otomatik Yorumla</h2>
+        <div class="note" style="margin-bottom:8px">Belediye e-imar / e-Plan'dan aldığınız <b>imar durumu yazısını / plan notlarını</b> aşağıya yapıştırın; uygulama TAKS, KAKS, Hmax, nizam, kullanım ve çekme mesafelerini bulup üstteki alanları otomatik doldurur.</div>
+        <textarea id="imarNot" rows="5" placeholder="Örn: Ayrık nizam, TAKS: 0.30, KAKS (Emsal): 1.05, Yençok: 4 kat, ön bahçe 5 m, yan bahçe 3 m, konut alanı..." style="width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:var(--bg);color:var(--fg);font-size:14px;font-family:inherit;outline:none;resize:vertical;"></textarea>
+        <button class="btn" id="imarParseBtn" style="margin-top:10px">🧠 Yorumla ve Otomatik Doldur</button>
+        <div class="note" id="imarParseOut" style="margin-top:8px"></div>
+        <div class="note" style="margin-top:8px">Resmî kaynaklar:
+          <a id="lnkEplan" href="https://e-plan.gov.tr/" target="_blank" rel="noopener">e-Plan</a> ·
+          <a id="lnkEdevlet" href="https://www.turkiye.gov.tr/imar-durum-bilgisi-sorgulama" target="_blank" rel="noopener">e-Devlet İmar</a> ·
+          <a id="lnkBelediye" href="https://www.google.com/search?q=e-imar+imar+durumu+sorgulama" target="_blank" rel="noopener">belediye e-imar</a> ·
+          <a id="lnkTkgm" href="https://parselsorgu.tkgm.gov.tr/" target="_blank" rel="noopener">TKGM harita</a>
+        </div>
+      </div>
+
+      <div class="card">
         <h2>4 · Program</h2>
         <label class="field">
           <span class="lbl"><span>Kullanım</span></span>
@@ -665,8 +679,8 @@ $('srcSeg').querySelectorAll('button').forEach(b=> b.onclick=()=>{
   if(tk) ensureIller(); else state.realParcel=null;
 });
 state.dataSrc='tkgm';
-$('ilSel').addEventListener('change', e=>{ state.realParcel=null; $('parselInfo').style.display='none'; loadIlce(e.target.value); });
-$('ilceSel').addEventListener('change', e=>{ loadMah(e.target.value); });
+$('ilSel').addEventListener('change', e=>{ state.realParcel=null; $('parselInfo').style.display='none'; loadIlce(e.target.value); updImarLinks(); });
+$('ilceSel').addEventListener('change', e=>{ loadMah(e.target.value); updImarLinks(); });
 $('sorguBtn').onclick=sorgulaParsel;
 
 /* ---------- Girdileri topla ---------- */
@@ -1247,6 +1261,73 @@ $('imarProfil').addEventListener('change', e=>{
   $('kullanim').value=p.kullanim;
   ['taks','kaks','katAdet'].forEach(id=>$(id).dispatchEvent(new Event('input')));
 });
+
+/* ---------- Plan notu / imar durumu yorumlayıcı ---------- */
+function imarNum(s){ return parseFloat(String(s).trim().replace(',','.')); }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+function parseImarNotes(raw){
+  // Türkçe küçük harfe indir
+  const t=(raw||'').replace(/İ/g,'i').replace(/I/g,'ı').replace(/Ş/g,'ş').replace(/Ğ/g,'ğ').replace(/Ü/g,'ü').replace(/Ö/g,'ö').replace(/Ç/g,'ç').toLowerCase();
+  const f={}; let m;
+  // TAKS
+  if(m=t.match(/taks\s*[:=]?\s*(0?[.,]\d{1,2})/)) f.taks=imarNum(m[1]);
+  else if(m=t.match(/taban\s*alan[ıi]?\s*kat\s*say[ıi]s[ıi]?\s*[:=]?\s*(0?[.,]\d{1,2})/)) f.taks=imarNum(m[1]);
+  // KAKS / Emsal / E
+  if(m=t.match(/(?:kaks|emsal|k\.?\s*a\.?\s*k\.?\s*s)\s*[:=(]*\s*(\d{1,2}[.,]\d{1,2})/)) f.kaks=imarNum(m[1]);
+  else if(m=t.match(/\be\s*[:=]\s*(\d{1,2}[.,]\d{1,2})/)) f.kaks=imarNum(m[1]);
+  // Hmax / Yençok
+  if(m=t.match(/(?:hmax|h\.?\s*maks?|yen[çc]ok|en\s*fazla\s*y[uü]kseklik|bina\s*y[uü]ksekli[gğ]i|y[eo]nçok)\s*[:=]?\s*(serbest|\d{1,2}\s*kat|\d{1,2}[.,]?\d{0,2}\s*m\b)/)){
+    const v=m[1];
+    if(/serbest/.test(v)) f.hmaxNote='serbest';
+    else if(/kat/.test(v)) f.kat=parseInt(v);
+    else { const h=imarNum(v); if(h>2) f.hmaxM=h; }
+  }
+  // Kat adedi
+  if(f.kat==null && (m=t.match(/kat\s*aded[iı]?\s*[:=]?\s*(\d{1,2})/))) f.kat=parseInt(m[1]);
+  if(f.kat==null && (m=t.match(/(\d{1,2})\s*kat\b/))) f.kat=parseInt(m[1]);
+  // Nizam
+  if(/ayr[ıi]k\s*niz/.test(t)||/ayr[ıi]k/.test(t)) f.nizam='ayrik';
+  else if(/biti[şs]ik/.test(t)) f.nizam='bitisik';
+  else if(/blok/.test(t)) f.nizam='blok';
+  // Kullanım
+  const tic=/ticaret|ticari|tic[ck]\b|t\+t|ticaret\+konut/.test(t), kon=/konut|mesken|t[ck]\b/.test(t);
+  if(tic&&kon) f.kullanim='karma'; else if(tic) f.kullanim='ofis'; else if(kon) f.kullanim='konut';
+  // Çekme mesafeleri
+  if(m=t.match(/[öo]n\s*bah[çc]e\D{0,10}(\d{1,2}(?:[.,]\d)?)\s*m?/)) f.on=imarNum(m[1]);
+  if(m=t.match(/yan\s*bah[çc]e\D{0,10}(\d{1,2}(?:[.,]\d)?)\s*m?/)) f.yan=imarNum(m[1]);
+  if(m=t.match(/arka\s*bah[çc]e\D{0,10}(\d{1,2}(?:[.,]\d)?)\s*m?/)) f.arka=imarNum(m[1]);
+  // Hmax (m) -> kat tahmini
+  if(f.kat==null && f.hmaxM){ f.kat=Math.max(1,Math.round((f.hmaxM-3.5)/3)); f.katFromH=true; }
+  return f;
+}
+function imarOut(msg,kind){ const el=$('imarParseOut'); el.style.color=kind==='err'?'var(--danger)':kind==='ok'?'var(--brand)':'var(--muted)'; el.innerHTML=msg; }
+$('imarParseBtn').onclick=()=>{
+  const f=parseImarNotes($('imarNot').value);
+  const applied=[];
+  if(f.nizam){ $('nizam').value=f.nizam; applied.push('nizam: '+f.nizam); }
+  if(f.taks!=null && isFinite(f.taks)){ $('taks').value=clamp(f.taks,0.05,0.9); applied.push('TAKS '+f.taks); }
+  if(f.kaks!=null && isFinite(f.kaks)){ $('kaks').value=clamp(f.kaks,0.1,6); applied.push('KAKS '+f.kaks); }
+  if(f.kat!=null && isFinite(f.kat)){ $('katAdet').value=clamp(f.kat,1,12); applied.push('kat '+f.kat+(f.katFromH?' (Hmax≈'+f.hmaxM+'m)':'')); }
+  if(f.on!=null){ $('onCekme').value=f.on; applied.push('ön '+f.on+'m'); }
+  if(f.yan!=null){ $('yanCekme').value=f.yan; applied.push('yan '+f.yan+'m'); }
+  if(f.arka!=null){ $('arkaCekme').value=f.arka; applied.push('arka '+f.arka+'m'); }
+  if(f.kullanim){ $('kullanim').value=f.kullanim; applied.push('kullanım '+f.kullanim); }
+  if(!applied.length){ imarOut('Tanınabilir imar verisi bulunamadı. Metinde TAKS / KAKS / kat / nizam gibi ifadeler olmalı.','err'); return; }
+  $('imarProfil').value='';
+  ['taks','kaks','katAdet'].forEach(id=>$(id).dispatchEvent(new Event('input')));
+  updParselAlan();
+  let extra = f.hmaxNote==='serbest' ? ' · Hmax: serbest (kat adedini elle ayarlayın)' : '';
+  imarOut('✓ Otomatik dolduruldu → '+applied.join(' · ')+extra+'. İmar Durumu bölümünden kontrol edip “Tasarımı Oluştur”a basın.','ok');
+};
+// Belediye e-imar linkini seçili il/ilçeye göre güncelle
+function updImarLinks(){
+  const il=$('ilSel')?.selectedOptions?.[0]?.text||'';
+  const ilce=$('ilceSel')?.selectedOptions?.[0]?.text||'';
+  if(il && !il.startsWith('—')){
+    const q=encodeURIComponent(`${ilce&&!ilce.startsWith('—')?ilce+' ':''}${il} belediye e-imar imar durumu sorgulama`);
+    $('lnkBelediye').href='https://www.google.com/search?q='+q;
+  }
+}
 
 /* ---------- Güneş kontrolleri ---------- */
 $('sunOn').addEventListener('change', e=>{ $('sunControls').style.display = e.target.checked?'':'none'; });
