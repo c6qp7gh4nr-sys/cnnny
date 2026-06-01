@@ -392,7 +392,7 @@
         </label>
         <label class="field">
           <span class="lbl"><span>Kat adedi</span></span>
-          <div class="rng"><input type="range" id="katAdet" min="1" max="12" step="1" value="3"><span class="val" id="katAdetVal">3</span></div>
+          <div class="rng"><input type="range" id="katAdet" min="1" max="99" step="1" value="3"><span class="val" id="katAdetVal">3</span></div>
         </label>
         <div class="row3">
           <label class="field"><span class="lbl">Ön bahçe <span class="hint">m</span></span><input type="number" id="onCekme" value="5" min="0" step="0.5"></label>
@@ -1434,11 +1434,24 @@ function viewKutle(C){
         g+=`<line x1="${p0[0]}" y1="${p0[1]}" x2="${p1[0]}" y2="${p1[1]}" stroke="${bd}" stroke-width=".4" opacity=".4"/>`; }
       const len=Math.hypot(e.B[0]-e.A[0],e.B[1]-e.A[1]), nw=Math.max(1,Math.round(len/3));
       const ptOn=(t)=>[e.A[0]+(e.B[0]-e.A[0])*t, e.A[1]+(e.B[1]-e.A[1])*t];
-      for(let f=0;f<floors;f++){ const gc=(ground&&f===0&&(C.inp.kullanim==='ofis'||C.inp.kullanim==='karma')); const wz0=z0+f*fhL+fhL*(gc?0.12:0.3), wz1=z0+f*fhL+fhL*(gc?0.88:0.82);
-        for(let i=0;i<nw;i++){ const p0=ptOn((i+0.24)/nw), p1=ptOn((i+0.76)/nw);
-          g+=`<polygon points="${quad([p0[0],p0[1],wz0],[p1[0],p1[1],wz0],[p1[0],p1[1],wz1],[p0[0],p0[1],wz1])}" fill="${glass}" stroke="${frame}" stroke-width=".35"/>`; }
+      const ticari=(C.inp.kullanim==='karma'||C.inp.kullanim==='ofis');
+      const fStart=(ground && ticari)?1:0;   // zemin vitrin ayrı çizilir
+      if(floors<=24){
+        for(let f=fStart;f<floors;f++){ const wz0=z0+f*fhL+fhL*0.3, wz1=z0+f*fhL+fhL*0.82;
+          for(let i=0;i<nw;i++){ const p0=ptOn((i+0.24)/nw), p1=ptOn((i+0.76)/nw);
+            g+=`<polygon points="${quad([p0[0],p0[1],wz0],[p1[0],p1[1],wz0],[p1[0],p1[1],wz1],[p0[0],p0[1],wz1])}" fill="${glass}" stroke="${frame}" stroke-width=".35"/>`; }
+        }
+      } else {
+        // yüksek bina LOD: sürekli düşey cam şeritleri (kat çizgileri yatay denyeyi verir)
+        const gz0=z0+(fStart?fhL*1.05:fhL*0.06), gz1=z1-fhL*0.18;
+        for(let i=0;i<nw;i++){ const p0=ptOn((i+0.22)/nw), p1=ptOn((i+0.78)/nw);
+          g+=`<polygon points="${quad([p0[0],p0[1],gz0],[p1[0],p1[1],gz0],[p1[0],p1[1],gz1],[p0[0],p0[1],gz1])}" fill="${glass}" stroke="${frame}" stroke-width=".3"/>`; }
       }
-      if(opt.balcony && ground && konut && e.rny>0.2 && e!==frontEdge){
+      // zemin ticari vitrini (tam genişlik cam bant)
+      if(ground && ticari){ const p0=ptOn(0.05), p1=ptOn(0.95), vz0=z0+fhL*0.10, vz1=z0+fhL*0.92;
+        g+=`<polygon points="${quad([p0[0],p0[1],vz0],[p1[0],p1[1],vz0],[p1[0],p1[1],vz1],[p0[0],p0[1],vz1])}" fill="${isDark?'#2a4452':'#bcd9e8'}" stroke="${accent}" stroke-width=".6"/>`; }
+      // balkonlar (yalnız düşük/orta konut)
+      if(opt.balcony && ground && konut && floors<=24 && e.rny>0.2 && e!==frontEdge){
         const bp=1.1, ox2=e.ex*bp, oy2=e.ey*bp;
         for(let f=1;f<floors;f++){ const z=z0+f*fhL, p0=ptOn(0.16), p1=ptOn(0.84);
           g+=`<polygon points="${quad([p0[0],p0[1],z],[p1[0],p1[1],z],[p1[0]+ox2,p1[1]+oy2,z],[p0[0]+ox2,p0[1]+oy2,z])}" fill="${lerpHex(bd,soft,0.55)}" stroke="${bd}" stroke-width=".3"/>`;
@@ -1707,7 +1720,7 @@ function compareScenarios(){
   const base=state.last; if(!base){ toast('Önce tasarım oluşturun','err'); return; }
   const rp=(state.mode==='parsel'&&state.dataSrc==='tkgm')?state.realParcel:null;
   const k0=base.inp.katAdet, kmax=base.katKaks||k0;
-  const kats=[...new Set([Math.max(1,k0-2),k0,Math.min(12,k0+3),Math.min(12,kmax)])].filter(k=>k>=1).sort((a,b)=>a-b);
+  const kats=[...new Set([Math.max(1,k0-2),k0,Math.min(99,k0+3),Math.min(99,kmax)])].filter(k=>k>=1).sort((a,b)=>a-b);
   const hasMoney = (imarNum($('costBuild').value)||0)||(imarNum($('costSale').value)||0);
   const rows=kats.map(k=>{ const inp={...base.inp,katAdet:k}; const C=compute(inp,rp); C.realParcel=rp; return {k,C,f:feasibility(C)}; });
   const head=['Kat','Toplam İnşaat','Emsal','Daire','Otopark'].concat(hasMoney?['Maliyet','Gelir','Kâr']:[]);
@@ -1963,7 +1976,7 @@ $('imarParseBtn').onclick=()=>{
   if(f.nizam){ $('nizam').value=f.nizam; applied.push('nizam: '+f.nizam); }
   if(f.taks!=null && isFinite(f.taks)){ $('taks').value=clamp(f.taks,0.05,0.9); applied.push('TAKS '+(Math.round(f.taks*100)/100)+(f.taksDerived?' (emsal/kat)':'')); }
   if(f.kaks!=null && isFinite(f.kaks)){ $('kaks').value=clamp(f.kaks,0.1,6); applied.push('KAKS '+f.kaks); }
-  if(f.kat!=null && isFinite(f.kat)){ $('katAdet').value=clamp(f.kat,1,12); applied.push('kat '+f.kat+(f.katFromH?' (Hmax≈'+f.hmaxM+'m)':'')); }
+  if(f.kat!=null && isFinite(f.kat)){ $("katAdet").value=clamp(f.kat,1,99); applied.push('kat '+f.kat+(f.katFromH?' (Hmax≈'+f.hmaxM+'m)':'')); }
   if(f.on!=null){ $('onCekme').value=f.on; applied.push('ön '+f.on+'m'); }
   if(f.yan!=null){ $('yanCekme').value=f.yan; applied.push('yan '+f.yan+'m'); }
   if(f.arka!=null){ $('arkaCekme').value=f.arka; applied.push('arka '+f.arka+'m'); }
