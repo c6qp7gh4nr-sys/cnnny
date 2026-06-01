@@ -1594,10 +1594,16 @@ function feasibility(C){
   const otoparkAlan=otopark*25;
   const siginakGerek=toplamDaire>12;
   const siginakAlan=siginakGerek? Math.max(toplamDaire*3,20):0;
-  const insMaliyet=toplamYapi*insBirim, toplamMaliyet=insMaliyet+arsa;
-  const gelir=satilabilir*satFiyat, kar=gelir-toplamMaliyet;
-  const karlilik=toplamMaliyet? kar/toplamMaliyet*100 : 0;
-  return {insBirim,satFiyat,arsa,emsalAlan,toplamYapi,satilabilir,toplamDaire,ortDaire,otopark,otoparkAlan,siginakGerek,siginakAlan,insMaliyet,toplamMaliyet,gelir,kar,karlilik};
+  const insMaliyet=toplamYapi*insBirim;
+  const ruhsatProje=insMaliyet*0.06;                 // ruhsat/harç + proje/müşavirlik ~%6
+  const toplamYatirim=arsa+insMaliyet+ruhsatProje;
+  const gelir=satilabilir*satFiyat, kar=gelir-toplamYatirim;
+  const karlilik=toplamYatirim? kar/toplamYatirim*100 : 0;   // ROI
+  const karMarji=gelir? kar/gelir*100 : 0;
+  const m2Maliyet=satilabilir? toplamYatirim/satilabilir : 0;
+  // kaba inşaat maliyet dağılımı (bilgilendirme)
+  const kalemler=[['Kaba yapı',insMaliyet*0.45],['İnce işler',insMaliyet*0.35],['Mekanik/Elektrik',insMaliyet*0.14],['Çevre/Altyapı',insMaliyet*0.06]];
+  return {insBirim,satFiyat,arsa,emsalAlan,toplamYapi,satilabilir,toplamDaire,ortDaire,otopark,otoparkAlan,siginakGerek,siginakAlan,insMaliyet,ruhsatProje,toplamYatirim,gelir,kar,karlilik,karMarji,m2Maliyet,kalemler};
 }
 function showFeasibility(C){
   if(!C){ $('feasCard').style.display='none'; return; }
@@ -1611,18 +1617,31 @@ function showFeasibility(C){
     ['Otopark', f.otopark, `araç · ${fmt(f.otoparkAlan)} m²`],
     ['Sığınak', f.siginakGerek?'Gerekli':'Gerekmez', f.siginakGerek?`~${fmt(f.siginakAlan)} m²`:'(≤12 b.b.)'],
   ];
-  const money = (f.insBirim||f.satFiyat) ? [
+  const hasMoney=(f.insBirim||f.satFiyat);
+  const money = hasMoney ? [
     ['İnşaat Maliyeti', trMoney(f.insMaliyet), `${fmt(f.insBirim)} ₺/m²`],
-    ['Toplam Maliyet', trMoney(f.toplamMaliyet), f.arsa?'+arsa':'inşaat'],
+    ['Ruhsat + Proje', trMoney(f.ruhsatProje), '~%6'],
+    ['Toplam Yatırım', trMoney(f.toplamYatirim), f.arsa?'+arsa':'inşaat'],
     ['Tahmini Gelir', trMoney(f.gelir), `${fmt(f.satFiyat)} ₺/m²`],
-    ['Kaba Kâr', trMoney(f.kar), f.karlilik?`%${fmt(f.karlilik)} kârlılık`:''],
+    ['Kaba Kâr', trMoney(f.kar), `m²: ${trMoney(f.m2Maliyet)} mal.`],
+    ['ROI', f.karlilik?('%'+fmt(f.karlilik)):'—', `kâr marjı %${fmt(f.karMarji)}`],
   ] : [];
+  // maliyet dağılım çubuğu
+  let bar='';
+  if(hasMoney && f.toplamYatirim>0){
+    const segs=[['Arsa',f.arsa,'#d98a3c'],['İnşaat',f.insMaliyet,'#1f6f5c'],['Ruhsat/Proje',f.ruhsatProje,'#7c83ff']].filter(s=>s[1]>0);
+    const tot=segs.reduce((a,s)=>a+s[1],0)||1;
+    bar=`<div style="grid-column:1/-1;margin-top:2px"><div style="display:flex;height:14px;border-radius:7px;overflow:hidden;border:1px solid var(--line)">`+
+      segs.map(s=>`<div title="${s[0]}" style="width:${(s[1]/tot*100).toFixed(1)}%;background:${s[2]}"></div>`).join('')+
+      `</div><div style="font-size:11px;color:var(--muted);margin-top:5px;display:flex;gap:12px;flex-wrap:wrap">`+
+      segs.map(s=>`<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${s[2]};vertical-align:middle"></span> ${s[0]} ${trMoney(s[1])} (%${(s[1]/tot*100).toFixed(0)})</span>`).join('')+`</div></div>`;
+  }
   const all=tiles.concat(money);
   $('feasMetrics').innerHTML = all.map(x=>{
-    const v = x[0]==='Kaba Kâr' ? `<span style="color:${f.kar>=0?'var(--brand)':'var(--danger)'}">${x[1]}</span>` : x[1];
+    const v = (x[0]==='Kaba Kâr'||x[0]==='ROI') ? `<span style="color:${f.kar>=0?'var(--brand)':'var(--danger)'}">${x[1]}</span>` : x[1];
     return `<div class="metric"><div class="k">${x[0]}</div><div class="v">${v} <span class="u">${x[2]}</span></div></div>`;
-  }).join('') + (money.length?'':`<div class="note" style="grid-column:1/-1">Maliyet/kâr için yukarıya inşaat (₺/m²) ve satış (₺/m²) fiyatı girin.</div>`)
-    + `<div class="note" style="grid-column:1/-1">Otopark: konutta ~1 araç/daire, ofiste ~1/100 m² (yönetmelik & yerel plana göre değişir). Sığınak: 12'den fazla bağımsız bölümde gerekir. Maliyet/gelir kaba tahmindir; kesin fizibilite için detaylı metraj ve güncel piyasa esastır.</div>`;
+  }).join('') + bar + (money.length?'':`<div class="note" style="grid-column:1/-1">Maliyet/kâr için yukarıya inşaat (₺/m²) ve satış (₺/m²) fiyatı girin.</div>`)
+    + `<div class="note" style="grid-column:1/-1">Otopark: konutta ~1 araç/daire, ofiste ~1/100 m². Sığınak: 12'den fazla b.b. ROI = kâr / toplam yatırım. Tahminler kabadır; kesin fizibilite için detaylı metraj ve güncel piyasa esastır.</div>`;
 }
 $('costBuild').addEventListener('input',()=>{ if(state.last) showFeasibility(state.last); });
 $('costSale').addEventListener('input',()=>{ if(state.last) showFeasibility(state.last); });
@@ -1858,7 +1877,7 @@ $('pdfBtn').onclick = () => {
   const metricHtml=rows.map(x=>`<tr><td>${x[0]}</td><td><b>${x[1]}</b> ${x[2]}</td></tr>`).join('');
   const hasMoney=(f.insBirim||f.satFiyat);
   const feasRows=[['Toplam Yapı Alanı',fmt(f.toplamYapi)+' m²'],['Satılabilir Alan',fmt(f.satilabilir)+' m²'],['Bağımsız Bölüm',(f.toplamDaire||'—')+' daire'],['Otopark',f.otopark+' araç'],['Sığınak',f.siginakGerek?('~'+fmt(f.siginakAlan)+' m²'):'Gerekmez']]
-    .concat(hasMoney?[['İnşaat Maliyeti',trMoney(f.insMaliyet)],['Toplam Maliyet',trMoney(f.toplamMaliyet)],['Tahmini Gelir',trMoney(f.gelir)],['Kaba Kâr',trMoney(f.kar)+(f.karlilik?(' · %'+fmt(f.karlilik)):'')]]:[]);
+    .concat(hasMoney?[['İnşaat Maliyeti',trMoney(f.insMaliyet)],['Ruhsat + Proje',trMoney(f.ruhsatProje)],['Toplam Yatırım',trMoney(f.toplamYatirim)],['Tahmini Gelir',trMoney(f.gelir)],['Kaba Kâr',trMoney(f.kar)+(f.karlilik?(' · ROI %'+fmt(f.karlilik)):'')]]:[]);
   const feasHtml=feasRows.map(x=>`<tr><td>${x[0]}</td><td><b>${x[1]}</b></td></tr>`).join('');
   const parselTbl=(state.realParcel)?`<table>
     <tr><td>İl / İlçe</td><td><b>${p.ilAd||'—'} / ${p.ilceAd||'—'}</b></td></tr>
