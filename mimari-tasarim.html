@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1f6f5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Mimari Tasarım Üretici · Koordinat / Ada-Parsel</title>
+<style>
+  :root {
+    --bg: #eef2f0;
+    --fg: #15201c;
+    --muted: #5f6f68;
+    --card: #ffffff;
+    --line: #dde5e1;
+    --brand: #1f6f5c;
+    --brand-soft: #e3f1ec;
+    --brand-deep: #134034;
+    --accent: #d98a3c;
+    --accent-soft: #fbeede;
+    --danger: #d64545;
+    --grid: #c9d6d0;
+    --wall: #2a3a34;
+    --plot: #b7c8c0;
+    --shadow: 0 6px 24px rgba(20, 64, 52, 0.10);
+    --radius: 16px;
+  }
+  [data-theme="dark"] {
+    --bg: #0c130f;
+    --fg: #e6efe9;
+    --muted: #93a69c;
+    --card: #14201b;
+    --line: #243029;
+    --brand: #46b896;
+    --brand-soft: #15281f;
+    --brand-deep: #0c1a14;
+    --accent: #e3a35c;
+    --accent-soft: #2a2014;
+    --grid: #283a32;
+    --wall: #cdd9d3;
+    --plot: #2c3d35;
+    --shadow: 0 6px 24px rgba(0,0,0,0.5);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--fg); line-height: 1.45; font-size: 15px;
+    padding-bottom: 40px; transition: background .25s, color .25s;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 14px; }
+
+  header {
+    background: linear-gradient(135deg, var(--brand), var(--brand-deep));
+    color: #fff; padding: 18px 0 22px; border-radius: 0 0 24px 24px; box-shadow: var(--shadow);
+  }
+  header .wrap { display: flex; flex-direction: column; gap: 6px; }
+  .top-row { display: flex; align-items: center; gap: 12px; }
+  .brand-title { font-size: 20px; font-weight: 700; flex: 1; letter-spacing: .2px; }
+  .brand-sub { font-size: 13px; opacity: .85; }
+  .icon-btn {
+    width: 38px; height: 38px; border-radius: 12px; border: none; cursor: pointer;
+    background: rgba(255,255,255,.16); color: #fff; font-size: 17px; display: grid; place-items: center;
+  }
+  .icon-btn:active { transform: scale(.94); }
+
+  .grid2 { display: grid; grid-template-columns: 360px 1fr; gap: 16px; margin-top: 18px; }
+  @media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px;
+  }
+  .card h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .6px; color: var(--brand); margin-bottom: 12px; }
+
+  .seg { display: flex; background: var(--bg); border-radius: 12px; padding: 4px; gap: 4px; margin-bottom: 14px; }
+  .seg button {
+    flex: 1; border: none; background: transparent; padding: 9px 8px; border-radius: 9px; cursor: pointer;
+    font-size: 13.5px; font-weight: 600; color: var(--muted); transition: .15s;
+  }
+  .seg button.active { background: var(--brand); color: #fff; box-shadow: 0 2px 8px rgba(31,111,92,.35); }
+
+  label.field { display: block; margin-bottom: 12px; }
+  label.field .lbl { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); margin-bottom: 5px; font-weight: 600; }
+  label.field .lbl .hint { font-weight: 400; opacity: .8; }
+  input[type=text], input[type=number], select {
+    width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 11px;
+    background: var(--bg); color: var(--fg); font-size: 15px; font-family: inherit; outline: none;
+  }
+  input:focus, select:focus { border-color: var(--brand); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+  .rng { display: flex; align-items: center; gap: 10px; }
+  .rng input[type=range] { flex: 1; accent-color: var(--brand); }
+  .rng .val { min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--brand); }
+
+  .btn {
+    width: 100%; padding: 13px; border: none; border-radius: 12px; cursor: pointer;
+    font-size: 15px; font-weight: 700; background: var(--brand); color: #fff;
+    box-shadow: 0 4px 14px rgba(31,111,92,.3); transition: .15s; margin-top: 4px;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn.ghost { background: var(--brand-soft); color: var(--brand); box-shadow: none; }
+  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .viewer { padding: 0; overflow: hidden; }
+  .viewer-head {
+    display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  .viewer-head .tabs { display: flex; gap: 6px; flex: 1; }
+  .tab-btn {
+    border: 1px solid var(--line); background: var(--bg); color: var(--muted); padding: 7px 12px;
+    border-radius: 9px; cursor: pointer; font-size: 13px; font-weight: 600;
+  }
+  .tab-btn.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .canvas-host { position: relative; background:
+    linear-gradient(var(--bg) 0 0); display: grid; place-items: center; min-height: 420px; padding: 14px; }
+  .canvas-host svg { width: 100%; height: auto; max-height: 70vh; display: block; }
+  .empty { color: var(--muted); text-align: center; padding: 80px 20px; font-size: 14px; }
+  .empty .big { font-size: 42px; margin-bottom: 12px; }
+
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap: 10px; }
+  .metric { background: var(--bg); border-radius: 12px; padding: 12px; }
+  .metric .k { font-size: 11.5px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+  .metric .v { font-size: 20px; font-weight: 800; color: var(--brand); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .metric .u { font-size: 12px; color: var(--muted); font-weight: 500; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .legend i { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+
+  .roomlist { list-style: none; font-size: 13.5px; }
+  .roomlist li { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed var(--line); }
+  .roomlist li:last-child { border-bottom: none; }
+  .roomlist .ra { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .note { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+  .badge { display:inline-block; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+  .coord-readout { font-size: 12px; color: var(--muted); margin-top: -4px; margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top-row">
+      <div style="flex:1">
+        <div class="brand-title">⌖ Mimari Tasarım Üretici</div>
+        <div class="brand-sub">Koordinat veya Ada/Parsel girin · otomatik vaziyet planı, kat planı ve kütle</div>
+      </div>
+      <button class="icon-btn" id="themeBtn" title="Tema">◐</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="grid2">
+    <!-- SOL: GİRDİLER -->
+    <div>
+      <div class="card">
+        <h2>1 · Konum</h2>
+        <div class="seg" id="modeSeg">
+          <button data-mode="coord" class="active">Koordinat</button>
+          <button data-mode="parsel">Ada / Parsel</button>
+        </div>
+
+        <div id="coordInputs">
+          <div class="row">
+            <label class="field"><span class="lbl">Enlem</span><input type="text" id="lat" placeholder="41.015137" inputmode="decimal"></label>
+            <label class="field"><span class="lbl">Boylam</span><input type="text" id="lng" placeholder="28.979530" inputmode="decimal"></label>
+          </div>
+          <div class="coord-readout" id="coordReadout">İpucu: "41.0151, 28.9795" şeklinde tek alana da yapıştırabilirsiniz.</div>
+        </div>
+
+        <div id="parselInputs" style="display:none">
+          <div class="row3">
+            <label class="field"><span class="lbl">İl/İlçe</span><input type="text" id="ilce" placeholder="Kadıköy"></label>
+            <label class="field"><span class="lbl">Ada</span><input type="text" id="ada" placeholder="1234" inputmode="numeric"></label>
+            <label class="field"><span class="lbl">Parsel</span><input type="text" id="parsel" placeholder="56" inputmode="numeric"></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>2 · Parsel Geometrisi</h2>
+        <div class="row">
+          <label class="field"><span class="lbl">Cephe (yol) <span class="hint">m</span></span><input type="number" id="cephe" value="20" min="5" step="0.5"></label>
+          <label class="field"><span class="lbl">Derinlik <span class="hint">m</span></span><input type="number" id="derinlik" value="30" min="5" step="0.5"></label>
+        </div>
+        <label class="field">
+          <span class="lbl"><span>Yol cephesi</span></span>
+          <select id="yolYon">
+            <option value="S">Güney (alt)</option>
+            <option value="N">Kuzey (üst)</option>
+            <option value="E">Doğu (sağ)</option>
+            <option value="W">Batı (sol)</option>
+          </select>
+        </label>
+        <div class="metric" style="margin-top:4px">
+          <div class="k">Parsel Alanı</div>
+          <div class="v"><span id="parselAlan">600</span> <span class="u">m²</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>3 · İmar Durumu</h2>
+        <label class="field">
+          <span class="lbl"><span>Yapı nizamı</span></span>
+          <select id="nizam">
+            <option value="ayrik">Ayrık nizam (villa/konut)</option>
+            <option value="bitisik">Bitişik nizam</option>
+            <option value="blok">Blok / apartman</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="lbl"><span>TAKS (taban alanı kat.)</span><span class="hint" id="taksHint">0.30</span></span>
+          <div class="rng"><input type="range" id="taks" min="0.10" max="0.60" step="0.05" value="0.30"><span class="val" id="taksVal">0.30</span></div>
+        </label>
+        <label class="field">
+          <span class="lbl"><span>KAKS / Emsal</span><span class="hint" id="kaksHint">1.50</span></span>
+          <div class="rng"><input type="range" id="kaks" min="0.30" max="4.00" step="0.10" value="1.50"><span class="val" id="kaksVal">1.50</span></div>
+        </label>
+        <label class="field">
+          <span class="lbl"><span>Kat adedi</span></span>
+          <div class="rng"><input type="range" id="katAdet" min="1" max="12" step="1" value="3"><span class="val" id="katAdetVal">3</span></div>
+        </label>
+        <div class="row3">
+          <label class="field"><span class="lbl">Ön bahçe <span class="hint">m</span></span><input type="number" id="onCekme" value="5" min="0" step="0.5"></label>
+          <label class="field"><span class="lbl">Yan bahçe <span class="hint">m</span></span><input type="number" id="yanCekme" value="3" min="0" step="0.5"></label>
+          <label class="field"><span class="lbl">Arka bahçe <span class="hint">m</span></span><input type="number" id="arkaCekme" value="3" min="0" step="0.5"></label>
+        </div>
+        <label class="field">
+          <span class="lbl"><span>Kat yüksekliği <span class="hint">m</span></span></span>
+          <input type="number" id="katH" value="3" min="2.4" step="0.1">
+        </label>
+      </div>
+
+      <div class="card">
+        <h2>4 · Program</h2>
+        <label class="field">
+          <span class="lbl"><span>Kullanım</span></span>
+          <select id="kullanim">
+            <option value="konut">Konut</option>
+            <option value="ofis">Ofis / Ticari</option>
+            <option value="karma">Karma (zemin ticari)</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="lbl"><span>Daire tipi (kat başına)</span></span>
+          <select id="daireTip">
+            <option value="auto">Otomatik</option>
+            <option value="1+1">1+1</option>
+            <option value="2+1">2+1</option>
+            <option value="3+1">3+1</option>
+            <option value="4+1">4+1</option>
+          </select>
+        </label>
+        <button class="btn" id="genBtn">⚡ Tasarımı Oluştur</button>
+        <div class="btn-row" style="margin-top:10px">
+          <button class="btn ghost" id="randBtn">🎲 Örnek doldur</button>
+          <button class="btn ghost" id="dlBtn">⬇︎ SVG indir</button>
+        </div>
+        <div class="note">Bu araç imar parametrelerine göre <b>kavramsal/şematik</b> bir tasarım üretir. Resmî projeler için yetkili mimar ve yerel imar yönetmeliği esastır. Veriler tarayıcıda işlenir, sunucuya gönderilmez.</div>
+      </div>
+    </div>
+
+    <!-- SAĞ: ÇIKTI -->
+    <div>
+      <div class="card viewer">
+        <div class="viewer-head">
+          <div class="tabs" id="viewTabs">
+            <button class="tab-btn active" data-view="vaziyet">Vaziyet Planı</button>
+            <button class="tab-btn" data-view="kat">Kat Planı</button>
+            <button class="tab-btn" data-view="kutle">3B Kütle</button>
+          </div>
+          <span class="badge" id="seedBadge">—</span>
+        </div>
+        <div class="canvas-host" id="canvasHost">
+          <div class="empty">
+            <div class="big">⌖</div>
+            Konum ve imar bilgilerini girip<br><b>“Tasarımı Oluştur”</b>a basın.
+          </div>
+        </div>
+        <div class="legend" id="legend" style="display:none">
+          <span><i style="background:var(--plot)"></i> Parsel</span>
+          <span><i style="background:var(--brand)"></i> Bina oturumu</span>
+          <span><i style="background:var(--accent)"></i> Yol cephesi</span>
+          <span><i style="background:#7fb0a2"></i> Bahçe / çekme</span>
+        </div>
+      </div>
+
+      <div class="card" id="metricCard" style="display:none">
+        <h2>Tasarım Özeti</h2>
+        <div class="metrics" id="metrics"></div>
+      </div>
+
+      <div class="card" id="roomCard" style="display:none">
+        <h2>Mahal Listesi <span class="badge" id="floorBadge"></span></h2>
+        <ul class="roomlist" id="roomlist"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ---------- Yardımcılar ---------- */
+const $ = id => document.getElementById(id);
+const fmt = (n, d=0) => Number(n).toLocaleString('tr-TR', {maximumFractionDigits:d, minimumFractionDigits:d});
+
+// Deterministik sayı üretici (girdiye bağlı tekrarlanabilir tasarım)
+function hashStr(s){ let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+
+let state = { mode:'coord' };
+
+/* ---------- Tema ---------- */
+$('themeBtn').onclick = () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? '' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try{ localStorage.setItem('mt-theme', next); }catch(e){}
+  if(state.last) render(state.activeView || 'vaziyet');
+};
+try{ const t=localStorage.getItem('mt-theme'); if(t) document.documentElement.setAttribute('data-theme',t); }catch(e){}
+
+/* ---------- Mod değiştirme ---------- */
+$('modeSeg').querySelectorAll('button').forEach(b => b.onclick = () => {
+  $('modeSeg').querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  state.mode = b.dataset.mode;
+  $('coordInputs').style.display = state.mode==='coord' ? '' : 'none';
+  $('parselInputs').style.display = state.mode==='parsel' ? '' : 'none';
+});
+
+/* ---------- Koordinat yapıştırma ayrıştırma ---------- */
+$('lat').addEventListener('input', e => {
+  const v = e.target.value;
+  if(v.includes(',')){
+    const parts = v.split(',').map(s=>s.trim());
+    if(parts.length===2 && parts[1]!==''){ $('lat').value=parts[0]; $('lng').value=parts[1]; }
+  }
+});
+
+/* ---------- Aralık göstergeleri ---------- */
+function bindRange(id, valId, hintId){
+  const r=$(id), v=$(valId);
+  const upd=()=>{ const val=parseFloat(r.value); v.textContent = (id==='katAdet')? val : val.toFixed(2); if(hintId) $(hintId).textContent=(id==='katAdet')?val:val.toFixed(2); };
+  r.addEventListener('input', upd); upd();
+}
+bindRange('taks','taksVal','taksHint');
+bindRange('kaks','kaksVal','kaksHint');
+bindRange('katAdet','katAdetVal');
+
+/* ---------- Parsel alanı canlı ---------- */
+function updParselAlan(){ $('parselAlan').textContent = fmt(parseFloat($('cephe').value||0)*parseFloat($('derinlik').value||0)); }
+$('cephe').addEventListener('input',updParselAlan);
+$('derinlik').addEventListener('input',updParselAlan);
+updParselAlan();
+
+/* ---------- Örnek doldur ---------- */
+$('randBtn').onclick = () => {
+  const samples = [
+    {lat:'41.015137',lng:'28.979530', c:25, d:32, taks:.35, kaks:1.8, kat:4},
+    {lat:'39.925533',lng:'32.866287', c:18, d:28, taks:.30, kaks:1.2, kat:3},
+    {lat:'38.423733',lng:'27.142826', c:30, d:40, taks:.40, kaks:2.4, kat:6},
+    {lat:'36.896891',lng:'30.713323', c:15, d:22, taks:.25, kaks:.75, kat:2},
+  ];
+  const s = samples[Math.floor(Math.random()*samples.length)];
+  $('lat').value=s.lat; $('lng').value=s.lng;
+  $('cephe').value=s.c; $('derinlik').value=s.d;
+  $('taks').value=s.taks; $('kaks').value=s.kaks; $('katAdet').value=s.kat;
+  bindRange; ['taks','kaks','katAdet'].forEach(id=>$(id).dispatchEvent(new Event('input')));
+  updParselAlan();
+};
+
+/* ---------- Girdileri topla ---------- */
+function gather(){
+  const cephe=Math.max(3,parseFloat($('cephe').value)||20);
+  const derinlik=Math.max(3,parseFloat($('derinlik').value)||30);
+  let key;
+  if(state.mode==='coord'){
+    const lat=($('lat').value||'').trim()||'41.015137';
+    const lng=($('lng').value||'').trim()||'28.979530';
+    key=`coord:${lat},${lng}`;
+    state.locLabel=`📍 ${lat}, ${lng}`;
+  } else {
+    const ilce=($('ilce').value||'').trim();
+    const ada=($('ada').value||'').trim()||'0';
+    const parsel=($('parsel').value||'').trim()||'0';
+    key=`parsel:${ilce}/${ada}/${parsel}`;
+    state.locLabel=`🗺️ ${ilce?ilce+' · ':''}Ada ${ada} / Parsel ${parsel}`;
+  }
+  return {
+    key, cephe, derinlik,
+    yol:$('yolYon').value,
+    nizam:$('nizam').value,
+    taks:parseFloat($('taks').value),
+    kaks:parseFloat($('kaks').value),
+    katAdet:parseInt($('katAdet').value),
+    katH:parseFloat($('katH').value)||3,
+    on:Math.max(0,parseFloat($('onCekme').value)||0),
+    yan:Math.max(0,parseFloat($('yanCekme').value)||0),
+    arka:Math.max(0,parseFloat($('arkaCekme').value)||0),
+    kullanim:$('kullanim').value,
+    daireTip:$('daireTip').value,
+  };
+}
+
+/* ---------- Tasarım hesabı ---------- */
+function compute(inp){
+  const parselAlan = inp.cephe * inp.derinlik;
+
+  // Yol yönüne göre çekme: "ön" yol cephesinde uygulanır
+  // Çalışma düzleminde: x = cephe ekseni (yatay), y = derinlik ekseni (dikey)
+  // Yol yönü S/N derinlik eksenini, E/W cephe eksenini etkiler.
+  let setX0=inp.yan, setX1=inp.yan, setY0=inp.arka, setY1=inp.on; // varsayılan yol güneyde (alt = y büyük)
+  // y0 = üst (kuzey), y1 = alt (güney) konvansiyonu için aşağıda çizim ele alır.
+  if(inp.yol==='S'){ setY1=inp.on; setY0=inp.arka; } // ön bahçe altta
+  if(inp.yol==='N'){ setY0=inp.on; setY1=inp.arka; } // ön bahçe üstte
+  if(inp.yol==='E'){ setX1=inp.on; setX0=inp.arka; setY0=inp.yan; setY1=inp.yan; } // ön sağda
+  if(inp.yol==='W'){ setX0=inp.on; setX1=inp.arka; setY0=inp.yan; setY1=inp.yan; } // ön solda
+
+  // İnşa edilebilir alan (çekmeler sonrası)
+  let bw = inp.cephe - setX0 - setX1;
+  let bd = inp.derinlik - setY0 - setY1;
+  bw = Math.max(3, bw); bd = Math.max(3, bd);
+
+  // TAKS sınırı: taban alanı <= parsel * TAKS
+  const maxTaban = parselAlan * inp.taks;
+  let tabanAlan = bw * bd;
+  if(tabanAlan > maxTaban){
+    const k = Math.sqrt(maxTaban / tabanAlan);
+    bw *= k; bd *= k; tabanAlan = bw*bd;
+  }
+
+  // KAKS sınırı: toplam inşaat <= parsel * KAKS -> izin verilen kat
+  const maxToplam = parselAlan * inp.kaks;
+  let katAdet = inp.katAdet;
+  const katFromKaks = Math.max(1, Math.floor(maxToplam / tabanAlan));
+  let kaksUyari = '';
+  if(katAdet > katFromKaks){ kaksUyari = `KAKS sınırı ${katFromKaks} katı destekliyor (girilen ${katAdet}).`; }
+  const toplamInsaat = tabanAlan * katAdet;
+  const emsalKullanim = toplamInsaat / parselAlan;
+
+  // Daire/birim tahmini
+  const usableRatio = 0.82; // dolaşım/duvar payı
+  const netKat = tabanAlan * usableRatio;
+  let unitArea;
+  switch(inp.daireTip){
+    case '1+1': unitArea=55; break;
+    case '2+1': unitArea=90; break;
+    case '3+1': unitArea=130; break;
+    case '4+1': unitArea=170; break;
+    default: unitArea = inp.kullanim==='ofis'?70: (netKat>180?120:netKat>90?85:60);
+  }
+  const daireKat = Math.max(1, Math.round(netKat / unitArea));
+  const toplamDaire = daireKat * (inp.kullanim==='karma' ? Math.max(0,katAdet-1) : katAdet);
+
+  const yukseklik = katAdet * inp.katH;
+
+  return {
+    inp, parselAlan, setX0,setX1,setY0,setY1, bw, bd, tabanAlan, maxTaban,
+    maxToplam, katAdet, toplamInsaat, emsalKullanim, kaksUyari,
+    daireKat, toplamDaire, unitArea, yukseklik, netKat,
+  };
+}
+
+/* ---------- Mahal (oda) üretimi: kat planı ---------- */
+function genRooms(C, rnd){
+  // Bina oturumu bw x bd. İçeride mahalleri yerleştir.
+  const rooms=[];
+  const W=C.bw, D=C.bd;
+  const u = C.inp.kullanim;
+
+  if(u==='ofis'){
+    // çekirdek + açık ofis
+    const coreW=Math.min(W*0.3, 6), coreD=Math.min(D*0.4,7);
+    rooms.push({name:'Çekirdek (asansör/merdiven)', x:(W-coreW)/2, y:(D-coreD)/2, w:coreW, h:coreD, t:'core'});
+    rooms.push({name:'Açık Ofis Alanı', x:0, y:0, w:W, h:D, t:'open', sub:true});
+    rooms.push({name:'Toplantı Odası', x:0, y:0, w:W*0.32, h:D*0.3, t:'room'});
+    rooms.push({name:'WC / Islak Hacim', x:W-W*0.22, y:0, w:W*0.22, h:D*0.22, t:'wet'});
+    return rooms;
+  }
+
+  // Konut: salon yol cephesine, ıslak hacimler arkaya
+  const oda = parseInt((C.inp.daireTip||'auto').split('+')[0]) || (C.netKat>180?4:C.netKat>120?3:C.netKat>80?2:1);
+  // Bölme: alt şerit (yaşam) + üst şerit (yatak/ıslak)
+  const splitY = D * 0.52;
+  // Yaşam şeridi: Salon + Mutfak + Antre
+  let x=0;
+  const salonW = W*0.5;
+  rooms.push({name:'Salon / Oturma', x:0, y:0, w:salonW, h:splitY, t:'living'});
+  rooms.push({name:'Mutfak', x:salonW, y:0, w:W-salonW, h:splitY*0.62, t:'kitchen'});
+  rooms.push({name:'Antre / Hol', x:salonW, y:splitY*0.62, w:W-salonW, h:splitY*0.38, t:'hall'});
+
+  // Yatak şeridi
+  const restD = D - splitY;
+  const koridorH = Math.min(1.4, restD*0.25);
+  rooms.push({name:'Koridor', x:0, y:splitY, w:W, h:koridorH, t:'hall'});
+  const ry = splitY + koridorH;
+  const ryD = D - ry;
+  const beds = Math.max(1, oda);
+  const wetW = W*0.26;
+  // banyo + ebeveyn banyo
+  rooms.push({name:'Banyo', x:W-wetW, y:ry, w:wetW, h:ryD*0.5, t:'wet'});
+  rooms.push({name:'WC', x:W-wetW, y:ry+ryD*0.5, w:wetW, h:ryD*0.5, t:'wet'});
+  // yatak odaları kalan genişliğe
+  const bedAreaW = W - wetW;
+  const each = bedAreaW / beds;
+  for(let i=0;i<beds;i++){
+    rooms.push({name: i===0?'Ebeveyn Yatak Odası':`Yatak Odası ${i+1}`, x:i*each, y:ry, w:each, h:ryD, t:'bed'});
+  }
+  return rooms;
+}
+
+/* ---------- SVG yardımcı ---------- */
+function cssvar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function svgEl(w,h){ return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Roboto,sans-serif">`; }
+
+/* ---------- Görünüm: Vaziyet Planı ---------- */
+function viewVaziyet(C){
+  const pad=46, scale=Math.min(560/C.inp.cephe, 480/C.inp.derinlik);
+  const PW=C.inp.cephe*scale, PD=C.inp.derinlik*scale;
+  const W=PW+pad*2, H=PD+pad*2+30;
+  const plot=cssvar('--plot'), brand=cssvar('--brand'), accent=cssvar('--accent'), fg=cssvar('--fg'), muted=cssvar('--muted'), garden='#7fb0a2';
+  const ox=pad, oy=pad;
+  // bina dikdörtgeni (çekmeler sonrası, alanı bw,bd; çekme kenarlardan)
+  const bx = ox + C.setX0*scale, by = oy + C.setY0*scale;
+  const bbw = C.bw*scale, bbd = C.bd*scale;
+
+  // yol kenarı
+  let roadLine='';
+  const rs=ox, re=ox+PW, ts=oy, te=oy+PD, rw=10;
+  const roadStyle=`fill="${accent}" opacity="0.85"`;
+  if(C.inp.yol==='S') roadLine=`<rect x="${rs}" y="${te+4}" width="${PW}" height="${rw}" rx="3" ${roadStyle}/>`;
+  if(C.inp.yol==='N') roadLine=`<rect x="${rs}" y="${ts-4-rw}" width="${PW}" height="${rw}" rx="3" ${roadStyle}/>`;
+  if(C.inp.yol==='E') roadLine=`<rect x="${re+4}" y="${ts}" width="${rw}" height="${PD}" rx="3" ${roadStyle}/>`;
+  if(C.inp.yol==='W') roadLine=`<rect x="${rs-4-rw}" y="${ts}" width="${rw}" height="${PD}" rx="3" ${roadStyle}/>`;
+
+  // kuzey oku
+  const north=`<g transform="translate(${W-34},${28})"><circle r="13" fill="none" stroke="${muted}" stroke-width="1"/><path d="M0,-11 L4,4 L0,1 L-4,4 Z" fill="${fg}"/><text x="0" y="-15" text-anchor="middle" font-size="9" fill="${muted}">K</text></g>`;
+
+  // ölçü etiketleri
+  let s=svgEl(W,H);
+  s+=`<rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/>`;
+  s+=`<rect x="${ox}" y="${oy}" width="${PW}" height="${PD}" fill="${garden}" opacity="0.28" stroke="${muted}" stroke-width="1.4" stroke-dasharray="6 4"/>`;
+  s+=roadLine;
+  // bina
+  s+=`<rect x="${bx}" y="${by}" width="${bbw}" height="${bbd}" rx="2" fill="${brand}" opacity="0.92"/>`;
+  s+=`<rect x="${bx}" y="${by}" width="${bbw}" height="${bbd}" rx="2" fill="none" stroke="${cssvar('--brand-deep')}" stroke-width="1.5"/>`;
+  s+=`<text x="${bx+bbw/2}" y="${by+bbd/2-4}" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">BİNA</text>`;
+  s+=`<text x="${bx+bbw/2}" y="${by+bbd/2+13}" text-anchor="middle" font-size="10" fill="#eef">${fmt(C.tabanAlan)} m² · ${C.katAdet} kat</text>`;
+  // parsel ölçüleri
+  s+=`<text x="${ox+PW/2}" y="${oy-10}" text-anchor="middle" font-size="11" fill="${fg}">${fmt(C.inp.cephe,1)} m</text>`;
+  s+=`<text x="${ox-10}" y="${oy+PD/2}" text-anchor="middle" font-size="11" fill="${fg}" transform="rotate(-90 ${ox-10} ${oy+PD/2})">${fmt(C.inp.derinlik,1)} m</text>`;
+  // çekme okları (ön)
+  s+=north;
+  s+=`<text x="${W/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="${muted}">Parsel ${fmt(C.parselAlan)} m² · TAKS ${C.inp.taks.toFixed(2)} → maks. taban ${fmt(C.maxTaban)} m²</text>`;
+  s+=`</svg>`;
+  return s;
+}
+
+/* ---------- Görünüm: Kat Planı ---------- */
+function viewKat(C){
+  const rnd=mulberry32(hashStr(C.inp.key+'-plan'));
+  const rooms=genRooms(C,rnd);
+  const pad=40, scale=Math.min(620/C.bw, 460/C.bd);
+  const PW=C.bw*scale, PD=C.bd*scale, W=PW+pad*2, H=PD+pad*2+24;
+  const wall=cssvar('--wall'), fg=cssvar('--fg'), muted=cssvar('--muted');
+  const colors={ living:'#8ec9b8', kitchen:'#f0c987', bed:'#a8c8e8', wet:'#9fd0d8', hall:'#e3e0d4', core:'#c9c0d8', open:'#d8e8e0', room:'#bcd9c8' };
+  const labels={ living:'🛋️', kitchen:'🍳', bed:'🛏️', wet:'🚿', hall:'', core:'⬍', open:'', room:'' };
+  const ox=pad, oy=pad;
+  let s=svgEl(W,H);
+  // dış duvar
+  s+=`<rect x="${ox-4}" y="${oy-4}" width="${PW+8}" height="${PD+8}" fill="${wall}" rx="2"/>`;
+  s+=`<rect x="${ox}" y="${oy}" width="${PW}" height="${PD}" fill="${cssvar('--card')}"/>`;
+  rooms.forEach(r=>{
+    if(r.sub) return; // arka plan açık ofis, ayrı çizmeyelim üstte
+    const rx=ox+r.x*scale, ry=oy+r.y*scale, rw=r.w*scale, rh=r.h*scale;
+    const area=r.w*r.h;
+    s+=`<rect x="${rx}" y="${ry}" width="${rw}" height="${rh}" fill="${colors[r.t]||'#ddd'}" opacity="0.55" stroke="${wall}" stroke-width="1.2"/>`;
+    if(rw>40 && rh>24){
+      s+=`<text x="${rx+rw/2}" y="${ry+rh/2-2}" text-anchor="middle" font-size="${Math.min(12,rw/8)}" font-weight="600" fill="${wall}">${labels[r.t]||''} ${r.name.length>16?r.name.slice(0,15)+'…':r.name}</text>`;
+      s+=`<text x="${rx+rw/2}" y="${ry+rh/2+12}" text-anchor="middle" font-size="9" fill="${muted}">${fmt(area,1)} m²</text>`;
+    }
+  });
+  // kapı (yol cephesine giriş)
+  s+=`<text x="${W/2}" y="${H-6}" text-anchor="middle" font-size="11" fill="${muted}">Tip kat planı · oturum ${fmt(C.bw,1)} × ${fmt(C.bd,1)} m · ${fmt(C.tabanAlan)} m² (brüt)</text>`;
+  s+=`</svg>`;
+  state.lastRooms=rooms;
+  return s;
+}
+
+/* ---------- Görünüm: 3B Kütle (izometrik) ---------- */
+function viewKutle(C){
+  const W=640,H=520;
+  const fg=cssvar('--fg'), muted=cssvar('--muted'), brand=cssvar('--brand'), bd=cssvar('--brand-deep'), accent=cssvar('--accent');
+  // izometrik projeksiyon
+  const sc=Math.min(380/(C.inp.cephe+C.inp.derinlik), 150/Math.max(1,C.yukseklik));
+  const scP=Math.min(11, 320/(C.inp.cephe+C.inp.derinlik));
+  const a=Math.PI/6;
+  function iso(x,y,z){ // x:cephe, y:derinlik, z:yükseklik
+    const px = (x - y)*Math.cos(a)*scP;
+    const py = (x + y)*Math.sin(a)*scP - z*scP*1.0;
+    return [px, py];
+  }
+  const cx=W/2, cy=H*0.66;
+  const P=(x,y,z)=>{const p=iso(x,y,z); return `${(cx+p[0]).toFixed(1)},${(cy+p[1]).toFixed(1)}`;};
+
+  let s=svgEl(W,H);
+  // parsel zemini
+  const px0=C.setX0, py0=C.setY0, px1=C.setX0+C.bw, py1=C.setY0+C.bd;
+  const cw=C.inp.cephe, cd=C.inp.derinlik;
+  s+=`<polygon points="${P(0,0,0)} ${P(cw,0,0)} ${P(cw,cd,0)} ${P(0,cd,0)}" fill="${cssvar('--plot')}" opacity="0.45" stroke="${muted}" stroke-width="1"/>`;
+
+  // bina katları
+  const H1=C.inp.katH;
+  for(let k=0;k<C.katAdet;k++){
+    const z0=k*H1, z1=(k+1)*H1;
+    // üst yüz
+    const top=`${P(px0,py0,z1)} ${P(px1,py0,z1)} ${P(px1,py1,z1)} ${P(px0,py1,z1)}`;
+    // sağ yüz (cephe x=px1)
+    const right=`${P(px1,py0,z0)} ${P(px1,py1,z0)} ${P(px1,py1,z1)} ${P(px1,py0,z1)}`;
+    // ön yüz (y=py1)
+    const front=`${P(px0,py1,z0)} ${P(px1,py1,z0)} ${P(px1,py1,z1)} ${P(px0,py1,z1)}`;
+    s+=`<polygon points="${right}" fill="${bd}" opacity="${0.85}"/>`;
+    s+=`<polygon points="${front}" fill="${brand}" opacity="${0.92}"/>`;
+    s+=`<polygon points="${top}" fill="${cssvar('--brand-soft')}" stroke="${bd}" stroke-width="0.8"/>`;
+    // pencere şeritleri
+    for(let wfrac of [0.25,0.5,0.75]){
+      const wx=px0+(px1-px0)*wfrac;
+      s+=`<line x1="${P(wx,py1,z0+H1*0.25).split(',')[0]}" y1="${P(wx,py1,z0+H1*0.25).split(',')[1]}" x2="${P(wx,py1,z0+H1*0.8).split(',')[0]}" y2="${P(wx,py1,z0+H1*0.8).split(',')[1]}" stroke="${accent}" stroke-width="1.4" opacity="0.7"/>`;
+    }
+  }
+  s+=`<text x="${W/2}" y="${H-14}" text-anchor="middle" font-size="12" fill="${fg}">${C.katAdet} kat · ≈ ${fmt(C.yukseklik,1)} m yükseklik · ${fmt(C.toplamInsaat)} m² toplam inşaat</text>`;
+  s+=`</svg>`;
+  return s;
+}
+
+/* ---------- Render ---------- */
+function render(view){
+  const C=state.last; if(!C) return;
+  state.activeView=view;
+  $('viewTabs').querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  let html;
+  if(view==='vaziyet') html=viewVaziyet(C);
+  else if(view==='kat') html=viewKat(C);
+  else html=viewKutle(C);
+  $('canvasHost').innerHTML=html;
+  state.lastSVG=html;
+
+  // mahal listesi sadece kat planında ilgili
+  if(view==='kat' && state.lastRooms){
+    $('roomCard').style.display='';
+    $('floorBadge').textContent = C.inp.kullanim==='ofis'?'ofis katı':'tip kat';
+    const ul=$('roomlist'); ul.innerHTML='';
+    state.lastRooms.filter(r=>!r.sub).forEach(r=>{
+      const li=document.createElement('li');
+      li.innerHTML=`<span>${r.name}</span><span class="ra">${fmt(r.w*r.h,1)} m²</span>`;
+      ul.appendChild(li);
+    });
+  } else {
+    $('roomCard').style.display='none';
+  }
+}
+
+/* ---------- Metrikler ---------- */
+function showMetrics(C){
+  $('metricCard').style.display='';
+  const m=[
+    ['Parsel Alanı', fmt(C.parselAlan), 'm²'],
+    ['Taban Alanı', fmt(C.tabanAlan), 'm²'],
+    ['Toplam İnşaat', fmt(C.toplamInsaat), 'm²'],
+    ['Kat Adedi', C.katAdet, 'kat'],
+    ['Bina Yüksekliği', fmt(C.yukseklik,1), 'm'],
+    ['Kullanılan Emsal', C.emsalKullanim.toFixed(2), `/ ${C.inp.kaks.toFixed(2)}`],
+    ['Tahmini Birim', C.toplamDaire, C.inp.kullanim==='ofis'?'birim':'daire'],
+    ['Oturum', `${fmt(C.bw,1)}×${fmt(C.bd,1)}`, 'm'],
+  ];
+  $('metrics').innerHTML = m.map(x=>`<div class="metric"><div class="k">${x[0]}</div><div class="v">${x[1]} <span class="u">${x[2]}</span></div></div>`).join('');
+}
+
+/* ---------- Oluştur ---------- */
+$('genBtn').onclick = () => {
+  const inp=gather();
+  const C=compute(inp);
+  state.last=C;
+  $('seedBadge').textContent = state.locLabel;
+  $('legend').style.display='flex';
+  showMetrics(C);
+  render('vaziyet');
+  // yumuşak kaydırma
+  document.querySelector('.viewer').scrollIntoView({behavior:'smooth', block:'start'});
+};
+
+/* ---------- Görünüm sekmeleri ---------- */
+$('viewTabs').querySelectorAll('.tab-btn').forEach(b=> b.onclick=()=>{ if(state.last) render(b.dataset.view); });
+
+/* ---------- SVG indir ---------- */
+$('dlBtn').onclick = () => {
+  if(!state.lastSVG){ alert('Önce bir tasarım oluşturun.'); return; }
+  const blob=new Blob([state.lastSVG], {type:'image/svg+xml'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`mimari-tasarim-${state.activeView||'plan'}.svg`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+};
+</script>
+</body>
+</html>
