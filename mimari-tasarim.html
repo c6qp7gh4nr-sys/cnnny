@@ -343,6 +343,15 @@
         </div>
         <button class="btn ghost" id="pdfBtn" style="margin-top:10px">📄 PDF / Pafta oluştur</button>
         <button class="btn ghost" id="shareBtn" style="margin-top:10px">🔗 Bağlantı oluştur (kaydet & paylaş)</button>
+        <div class="note" style="margin-top:10px">📦 CAD / BIM / GIS dışa aktar:</div>
+        <div class="btn-row" style="margin-top:6px">
+          <button class="btn ghost" id="expDXF">📐 DXF (AutoCAD)</button>
+          <button class="btn ghost" id="expOBJ">🧱 OBJ (3B)</button>
+        </div>
+        <div class="btn-row" style="margin-top:8px">
+          <button class="btn ghost" id="expKML">🌍 KML (Earth)</button>
+          <button class="btn ghost" id="expJSON">🗂 Proje JSON</button>
+        </div>
         <div class="note">Bu araç imar parametrelerine göre <b>kavramsal/şematik</b> bir tasarım üretir. Resmî projeler için yetkili mimar ve yerel imar yönetmeliği esastır. Veriler tarayıcıda işlenir, sunucuya gönderilmez.</div>
       </div>
     </div>
@@ -672,7 +681,7 @@ function applyParcelFeature(feat, ada, parsel){
   const cephe=Math.max(rect.w,3), derinlik=Math.max(rect.h,3);
   const props=feat.properties||{};
   const alan = parseFloat(props.alan) || shoelace(m.pts);
-  state.realParcel = { polyNorm, cephe, derinlik, alan, props, centroid:{lat:m.lat0,lng:m.lng0} };
+  state.realParcel = { polyNorm, cephe, derinlik, alan, props, centroid:{lat:m.lat0,lng:m.lng0}, geoRing:ring };
   $('cephe').value = cephe.toFixed(1); $('derinlik').value = derinlik.toFixed(1); updParselAlan();
   $('lat').value=m.lat0.toFixed(6); $('lng').value=m.lng0.toFixed(6);
   const info=$('parselInfo'); info.style.display='';
@@ -1637,6 +1646,71 @@ $('pdfBtn').onclick = () => {
   </body></html>`);
   w.document.close();
 };
+
+/* ---------- Dışa aktarma: DXF / OBJ / KML / JSON ---------- */
+function downloadFile(name, content, mime){
+  const blob=new Blob([content],{type:mime||'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function massRings(C){
+  // metre cinsinden oturum poligon(lar)ı (x sağ, y üst)
+  if(C.blocks && C.blocks.length>1) return C.blocks.map(b=>[[b.x,b.y],[b.x+b.w,b.y],[b.x+b.w,b.y+b.h],[b.x,b.y+b.h]]);
+  if(C.footprintPoly) return [C.footprintPoly];
+  return [[[C.setX0,C.setY0],[C.setX0+C.bw,C.setY0],[C.setX0+C.bw,C.setY0+C.bd],[C.setX0,C.setY0+C.bd]]];
+}
+function exportDXF(){
+  const C=state.last; if(!C){ alert('Önce bir tasarım oluşturun.'); return; }
+  let e='';
+  const line=(lay,x1,y1,x2,y2)=>{ e+=`0\nLINE\n8\n${lay}\n10\n${x1.toFixed(3)}\n20\n${y1.toFixed(3)}\n30\n0\n11\n${x2.toFixed(3)}\n21\n${y2.toFixed(3)}\n31\n0\n`; };
+  const poly=(lay,r)=>{ for(let i=0;i<r.length;i++){ const a=r[i],b=r[(i+1)%r.length]; line(lay,a[0],a[1],b[0],b[1]); } };
+  const text=(lay,x,y,h,str)=>{ e+=`0\nTEXT\n8\n${lay}\n10\n${x.toFixed(3)}\n20\n${y.toFixed(3)}\n30\n0\n40\n${h}\n1\n${str}\n`; };
+  // parsel
+  const par = (C.realParcel&&C.realParcel.polyNorm)?C.realParcel.polyNorm:[[0,0],[C.inp.cephe,0],[C.inp.cephe,C.inp.derinlik],[0,C.inp.derinlik]];
+  // çekme zarfı
+  const env=[[C.setX0,C.setY0],[C.setX0+(C.bwFull||C.bw),C.setY0],[C.setX0+(C.bwFull||C.bw),C.setY0+(C.bdFull||C.bd)],[C.setX0,C.setY0+(C.bdFull||C.bd)]];
+  let body='';
+  e=''; poly('PARSEL',par); body+=e; e=''; poly('CEKME',env); body+=e;
+  e=''; massRings(C).forEach((r,i)=>{ poly('BINA',r); }); body+=e;
+  e=''; text('BILGI',0,-2,1.2,`Parsel ${fmt(C.parselAlan)} m2 - ${C.katAdet} kat - Hmax ${fmt(C.hmax,2)} m - Emsal ${C.emsalKullanim.toFixed(2)}`); body+=e;
+  const dxf=`0\nSECTION\n2\nENTITIES\n${body}0\nENDSEC\n0\nEOF\n`;
+  downloadFile('mimari-vaziyet.dxf', dxf, 'application/dxf');
+}
+function exportOBJ(){
+  const C=state.last; if(!C){ alert('Önce bir tasarım oluşturun.'); return; }
+  const H=C.yukseklik; let v='', f='', off=1;
+  // OBJ: y yukarı; konum (x, yükseklik, planY)
+  function extrude(ring){
+    const n=ring.length;
+    for(const p of ring) v+=`v ${p[0].toFixed(3)} 0 ${p[1].toFixed(3)}\n`;          // alt
+    for(const p of ring) v+=`v ${p[0].toFixed(3)} ${H.toFixed(3)} ${p[1].toFixed(3)}\n`; // üst
+    for(let i=0;i<n;i++){ const a=off+i, b=off+(i+1)%n, c=off+n+(i+1)%n, d=off+n+i; f+=`f ${a} ${b} ${c} ${d}\n`; }
+    let top='f'; for(let i=0;i<n;i++) top+=` ${off+n+i}`; f+=top+'\n';               // üst yüz
+    off+=2*n;
+  }
+  massRings(C).forEach(extrude);
+  const obj=`# Mimari Tasarim Uretici - 3B kutle (metre)\n# ${C.katAdet} kat, Hmax ${fmt(C.hmax,2)} m\n${v}${f}`;
+  downloadFile('mimari-kutle.obj', obj, 'text/plain');
+}
+function exportKML(){
+  const C=state.last, rp=state.realParcel;
+  if(!rp || !rp.geoRing){ alert('KML için TKGM\'den gerçek parsel çekmelisiniz (koordinatlı sınır gerekir).'); return; }
+  const coords=rp.geoRing.map(p=>`${p[0]},${p[1]},0`).join(' ');
+  const p=rp.props||{};
+  const kml=`<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${(p.ilceAd||'')} Ada ${p.adaNo||''}/${p.parselNo||''}</name>
+<Style id="s"><LineStyle><color>ff3a6f1f</color><width>3</width></LineStyle><PolyStyle><color>553a6f1f</color></PolyStyle></Style>
+<Placemark><name>Parsel ${p.adaNo||''}/${p.parselNo||''} (${fmt(rp.alan||0)} m²)</name><styleUrl>#s</styleUrl>
+<Polygon><outerBoundaryIs><LinearRing><coordinates>${coords}</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>
+</Document></kml>`;
+  downloadFile('parsel.kml', kml, 'application/vnd.google-earth.kml+xml');
+}
+function exportJSON(){
+  const o=collectState(); o.exportedAt=new Date().toISOString();
+  downloadFile('mimari-proje.json', JSON.stringify(o,null,2), 'application/json');
+}
+$('expDXF').onclick=exportDXF; $('expOBJ').onclick=exportOBJ; $('expKML').onclick=exportKML; $('expJSON').onclick=exportJSON;
 
 /* ---------- Kaydet & Paylaş (localStorage + URL) ---------- */
 const SAVE_FIELDS=['lat','lng','ilce','ada','parsel','adaT','parselT','cephe','derinlik','yolYon','nizam','taks','kaks','katAdet','katH','onCekme','yanCekme','arkaCekme','kullanim','daireTip','oturum','imarNot','costBuild','costSale','costLand'];
