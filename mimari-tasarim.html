@@ -443,7 +443,7 @@
           </select>
         </label>
         <label class="field">
-          <span class="lbl"><span>Çatı tipi</span></span>
+          <span class="lbl"><span>Çatı tipi</span><span class="hint"><input type="checkbox" id="cekmeKat" style="vertical-align:middle"> son kat çekme (teras kat)</span></span>
           <select id="catiTipi">
             <option value="teras">Teras (parapet)</option>
             <option value="duz">Düz</option>
@@ -923,6 +923,7 @@ function gather(){
     daireTip:$('daireTip').value,
     oturum:$('oturum').value,
     catiTipi:$('catiTipi').value,
+    cekmeKat:$('cekmeKat').checked,
     lat: parseFloat(($('lat').value||'').trim()) || (state.realParcel?.centroid?.lat) || 41.0,
     sunOn: $('sunOn').checked,
     sunAy: parseInt($('sunAy').value),
@@ -1369,9 +1370,12 @@ function viewKutle(C){
 
   // --- kütle(ler) ---
   const fh=modelH/C.katAdet;
-  // Genel prizma çizici (dikdörtgen veya poligon); döndürmeye duyarlı, balkon+kapı opsiyonel
+  // Genel prizma çizici — z-aralığı/kat parametreli, döndürmeye duyarlı; balkon/kapı/çekme kat
   function drawPrism(ring, opt){
-    opt=opt||{}; const cen=polyCentroid(ring), n=ring.length; let g='';
+    opt=opt||{};
+    const z0=opt.z0||0, z1=(opt.z1!=null?opt.z1:modelH), floors=opt.floors||C.katAdet, fhL=(z1-z0)/Math.max(1,floors);
+    const ground=(z0<=0.001), konut=(C.inp.kullanim!=='ofis');
+    const cen=polyCentroid(ring), n=ring.length; let g='';
     const edges=[];
     for(let i=0;i<n;i++){ const A=ring[i], B=ring[(i+1)%n];
       const mid=[(A[0]+B[0])/2,(A[1]+B[1])/2];
@@ -1381,45 +1385,44 @@ function viewKutle(C){
       edges.push({A,B,ex,ey,vis:rn[0]+rn[1],rnx:rn[0],rny:rn[1],depth:rm[0]+rm[1]});
     }
     edges.sort((p,q)=>p.depth-q.depth);
-    // ön kapı için en öne bakan görünür kenar
-    let frontEdge=null; edges.forEach(e=>{ if(e.vis>-0.05 && (!frontEdge||e.vis>frontEdge.vis)) frontEdge=e; });
+    let frontEdge=null; if(ground&&opt.door) edges.forEach(e=>{ if(e.vis>-0.05 && (!frontEdge||e.vis>frontEdge.vis)) frontEdge=e; });
     edges.forEach(e=>{
       if(e.vis < -0.05) return;
       const shade=Math.max(0,Math.min(1,(e.rnx*0.45+e.rny*0.9+1)/2));
-      g+=`<polygon points="${quad([e.A[0],e.A[1],0],[e.B[0],e.B[1],0],[e.B[0],e.B[1],modelH],[e.A[0],e.A[1],modelH])}" fill="${lerpHex(bd,soft,0.22+0.62*shade)}" stroke="${bd}" stroke-width=".4"/>`;
-      for(let f=1;f<C.katAdet;f++){ const z=f*fh, p0=P(e.A[0],e.A[1],z), p1=P(e.B[0],e.B[1],z);
+      g+=`<polygon points="${quad([e.A[0],e.A[1],z0],[e.B[0],e.B[1],z0],[e.B[0],e.B[1],z1],[e.A[0],e.A[1],z1])}" fill="${lerpHex(bd,soft,0.22+0.62*shade)}" stroke="${bd}" stroke-width=".4"/>`;
+      for(let f=1;f<floors;f++){ const z=z0+f*fhL, p0=P(e.A[0],e.A[1],z), p1=P(e.B[0],e.B[1],z);
         g+=`<line x1="${p0[0]}" y1="${p0[1]}" x2="${p1[0]}" y2="${p1[1]}" stroke="${bd}" stroke-width=".4" opacity=".4"/>`; }
       const len=Math.hypot(e.B[0]-e.A[0],e.B[1]-e.A[1]), nw=Math.max(1,Math.round(len/3));
       const ptOn=(t)=>[e.A[0]+(e.B[0]-e.A[0])*t, e.A[1]+(e.B[1]-e.A[1])*t];
-      for(let f=0;f<C.katAdet;f++){ const gc=(f===0&&(C.inp.kullanim==='ofis'||C.inp.kullanim==='karma')); const wz0=gc?f*fh+fh*0.12:f*fh+fh*0.3, wz1=gc?f*fh+fh*0.88:f*fh+fh*0.82;
+      for(let f=0;f<floors;f++){ const gc=(ground&&f===0&&(C.inp.kullanim==='ofis'||C.inp.kullanim==='karma')); const wz0=z0+f*fhL+fhL*(gc?0.12:0.3), wz1=z0+f*fhL+fhL*(gc?0.88:0.82);
         for(let i=0;i<nw;i++){ const p0=ptOn((i+0.24)/nw), p1=ptOn((i+0.76)/nw);
           g+=`<polygon points="${quad([p0[0],p0[1],wz0],[p1[0],p1[1],wz0],[p1[0],p1[1],wz1],[p0[0],p0[1],wz1])}" fill="${glass}" stroke="${frame}" stroke-width=".35"/>`; }
       }
-      // balkonlar (konut, öne bakan yüz)
-      if(opt.balcony && C.inp.kullanim!=='ofis' && e.rny>0.2 && e!==frontEdge){
+      if(opt.balcony && ground && konut && e.rny>0.2 && e!==frontEdge){
         const bp=1.1, ox2=e.ex*bp, oy2=e.ey*bp;
-        for(let f=1;f<C.katAdet;f++){ const z=f*fh, p0=ptOn(0.16), p1=ptOn(0.84);
+        for(let f=1;f<floors;f++){ const z=z0+f*fhL, p0=ptOn(0.16), p1=ptOn(0.84);
           g+=`<polygon points="${quad([p0[0],p0[1],z],[p1[0],p1[1],z],[p1[0]+ox2,p1[1]+oy2,z],[p0[0]+ox2,p0[1]+oy2,z])}" fill="${lerpHex(bd,soft,0.55)}" stroke="${bd}" stroke-width=".3"/>`;
           g+=`<polygon points="${quad([p0[0]+ox2,p0[1]+oy2,z],[p1[0]+ox2,p1[1]+oy2,z],[p1[0]+ox2,p1[1]+oy2,z+1.0],[p0[0]+ox2,p0[1]+oy2,z+1.0])}" fill="${glass}" opacity=".5" stroke="${frame}" stroke-width=".3"/>`; }
       }
     });
-    // çatı (tipe göre)
-    const cati=C.inp.catiTipi||'teras';
-    if(cati==='kirma'){
-      let mnx=1e9,mxx=-1e9,mny=1e9,mxy=-1e9; ring.forEach(p=>{mnx=Math.min(mnx,p[0]);mxx=Math.max(mxx,p[0]);mny=Math.min(mny,p[1]);mxy=Math.max(mxy,p[1]);});
-      const rh=Math.max(1.6, Math.min(5, 0.32*Math.min(mxx-mnx,mxy-mny)));
-      edges.forEach(e=>{ if(e.vis< -0.05) return;
-        const shade=Math.max(0,Math.min(1,(e.rnx*0.4+e.rny*0.9+1)/2));
-        g+=`<polygon points="${PS(e.A[0],e.A[1],modelH)} ${PS(e.B[0],e.B[1],modelH)} ${PS(cen[0],cen[1],modelH+rh)}" fill="${lerpHex('8a5a3a','e0b48a',0.2+0.55*shade)}" stroke="${bd}" stroke-width=".4"/>`; });
-    } else {
-      g+=`<polygon points="${ring.map(p=>PS(p[0],p[1],modelH)).join(' ')}" fill="url(#mttop)" stroke="${bd}" stroke-width=".8"/>`;
-      if(cati==='teras') edges.forEach(e=>{ if(e.vis< -0.05) return; g+=`<polygon points="${quad([e.A[0],e.A[1],modelH],[e.B[0],e.B[1],modelH],[e.B[0],e.B[1],modelH+pp],[e.A[0],e.A[1],modelH+pp])}" fill="${lerpHex(bd,soft,0.2)}" stroke="${bd}" stroke-width=".3"/>`; });
+    if(opt.roof!==false){
+      const cati=C.inp.catiTipi||'teras';
+      if(cati==='kirma'){
+        let mnx=1e9,mxx=-1e9,mny=1e9,mxy=-1e9; ring.forEach(p=>{mnx=Math.min(mnx,p[0]);mxx=Math.max(mxx,p[0]);mny=Math.min(mny,p[1]);mxy=Math.max(mxy,p[1]);});
+        const rh=Math.max(1.6, Math.min(5, 0.32*Math.min(mxx-mnx,mxy-mny)));
+        edges.forEach(e=>{ if(e.vis< -0.05) return;
+          const shade=Math.max(0,Math.min(1,(e.rnx*0.4+e.rny*0.9+1)/2));
+          g+=`<polygon points="${PS(e.A[0],e.A[1],z1)} ${PS(e.B[0],e.B[1],z1)} ${PS(cen[0],cen[1],z1+rh)}" fill="${lerpHex('8a5a3a','e0b48a',0.2+0.55*shade)}" stroke="${bd}" stroke-width=".4"/>`; });
+      } else {
+        g+=`<polygon points="${ring.map(p=>PS(p[0],p[1],z1)).join(' ')}" fill="url(#mttop)" stroke="${bd}" stroke-width=".8"/>`;
+        if(cati==='teras') edges.forEach(e=>{ if(e.vis< -0.05) return; g+=`<polygon points="${quad([e.A[0],e.A[1],z1],[e.B[0],e.B[1],z1],[e.B[0],e.B[1],z1+pp],[e.A[0],e.A[1],z1+pp])}" fill="${lerpHex(bd,soft,0.2)}" stroke="${bd}" stroke-width=".3"/>`; });
+      }
     }
-    // giriş kapısı
-    if(opt.door && frontEdge && C.inp.kullanim!=='ofis'){ const e=frontEdge, pa=[e.A[0]+(e.B[0]-e.A[0])*0.43,e.A[1]+(e.B[1]-e.A[1])*0.43], pb=[e.A[0]+(e.B[0]-e.A[0])*0.57,e.A[1]+(e.B[1]-e.A[1])*0.57];
-      g+=`<polygon points="${quad([pa[0],pa[1],0],[pb[0],pb[1],0],[pb[0],pb[1],fh*0.7],[pa[0],pa[1],fh*0.7])}" fill="${isDark?'#091210':'#22302b'}" stroke="${accent}" stroke-width="1"/>`; }
+    if(opt.door && frontEdge && konut){ const e=frontEdge, pa=[e.A[0]+(e.B[0]-e.A[0])*0.43,e.A[1]+(e.B[1]-e.A[1])*0.43], pb=[e.A[0]+(e.B[0]-e.A[0])*0.57,e.A[1]+(e.B[1]-e.A[1])*0.57];
+      g+=`<polygon points="${quad([pa[0],pa[1],0],[pb[0],pb[1],0],[pb[0],pb[1],fhL*0.7],[pa[0],pa[1],fhL*0.7])}" fill="${isDark?'#091210':'#22302b'}" stroke="${accent}" stroke-width="1"/>`; }
     return g;
   }
+  function insetRing(ring,d){ let a=1e9,b=1e9,c=-1e9,e2=-1e9; ring.forEach(p=>{a=Math.min(a,p[0]);b=Math.min(b,p[1]);c=Math.max(c,p[0]);e2=Math.max(e2,p[1]);}); const ix=Math.min(d,(c-a)/3), iy=Math.min(d,(e2-b)/3); return [[a+ix,b+iy],[c-ix,b+iy],[c-ix,e2-iy],[a+ix,e2-iy]]; }
 
   // oturum listesi
   let masses;
@@ -1439,8 +1442,17 @@ function viewKutle(C){
       s+=`<polygon points="${m.ring.map(p=>PS(p[0]+sdx,p[1]+sdy,0)).join(' ')}" fill="${shadowCol}" opacity=".12"/>`;
     }
   }
-  // kütleler (arkadan öne)
-  for(const m of masses){ s+= drawPrism(m.ring, {balcony:true, door:m.door}); }
+  // kütleler (arkadan öne) — çekme kat varsa son kat geri çekilir
+  for(const m of masses){
+    if(C.inp.cekmeKat && C.katAdet>=3){
+      const mainH=(C.katAdet-1)*fh;
+      s+= drawPrism(m.ring, {z0:0, z1:mainH, floors:C.katAdet-1, roof:false, balcony:true, door:m.door});
+      s+= `<polygon points="${m.ring.map(p=>PS(p[0],p[1],mainH)).join(' ')}" fill="url(#mttop)" stroke="${bd}" stroke-width=".5" opacity=".95"/>`;
+      s+= drawPrism(insetRing(m.ring,1.8), {z0:mainH, z1:modelH, floors:1, roof:true});
+    } else {
+      s+= drawPrism(m.ring, {balcony:true, door:m.door});
+    }
+  }
 
   // ön ağaçlar (yüksek y)
   if(cd-by1>2){ s+=tree(cw*0.18,(by1+cd)/2)+tree(cw*0.82,(by1+cd)/2+1); }
@@ -1504,8 +1516,12 @@ async function viewThree(C){
   // bina kütleleri
   const wallMat=new THREE.MeshLambertMaterial({color:0x2f7d68}); const roofMat=new THREE.MeshLambertMaterial({color:isDark?0x35564a:0xcfe2da});
   const roofPitchMat=new THREE.MeshLambertMaterial({color:0xa9714b});
-  function addBox(x0,y0,x1,y1){ const w=Math.max(0.5,x1-x0), d=Math.max(0.5,y1-y0); const cx=(x0+x1)/2, cz=(y0+y1)/2; const m=new THREE.Mesh(new THREE.BoxGeometry(w,Hb,d),[wallMat,wallMat,roofMat,wallMat,wallMat,wallMat]); m.castShadow=true; m.receiveShadow=true; m.position.set(cx,Hb/2,cz); sc.add(m);
-    const edg=new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({color:0x123a30,transparent:true,opacity:0.35})); edg.position.copy(m.position); sc.add(edg);
+  function boxAt(w,h,d,cx,cy,cz){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),[wallMat,wallMat,roofMat,wallMat,wallMat,wallMat]); m.castShadow=true; m.receiveShadow=true; m.position.set(cx,cy,cz); sc.add(m);
+    const edg=new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({color:0x123a30,transparent:true,opacity:0.35})); edg.position.copy(m.position); sc.add(edg); }
+  function addBox(x0,y0,x1,y1){ const w=Math.max(0.5,x1-x0), d=Math.max(0.5,y1-y0); const cx=(x0+x1)/2, cz=(y0+y1)/2;
+    if(C.inp.cekmeKat && C.katAdet>=3){ const fhh=Hb/C.katAdet, mainH=(C.katAdet-1)*fhh, iw=Math.max(0.5,w-3.6), id=Math.max(0.5,d-3.6);
+      boxAt(w,mainH,d,cx,mainH/2,cz); boxAt(iw,Hb-mainH,id,cx,mainH+(Hb-mainH)/2,cz); }
+    else boxAt(w,Hb,d,cx,Hb/2,cz);
     if((C.inp.catiTipi||'teras')==='kirma'){ const rh=Math.max(1.6,Math.min(5,0.32*Math.min(w,d))); const rf=new THREE.Mesh(new THREE.ConeGeometry(Math.max(w,d)*0.72, rh, 4), roofPitchMat); rf.rotation.y=Math.PI/4; rf.position.set(cx, Hb+rh/2, cz); rf.castShadow=true; rf.scale.set(w/Math.max(w,d),1,d/Math.max(w,d)); sc.add(rf); } }
   function bbox(ring){ let a=1e9,b=1e9,c=-1e9,d=-1e9; ring.forEach(p=>{a=Math.min(a,p[0]);b=Math.min(b,p[1]);c=Math.max(c,p[0]);d=Math.max(d,p[1]);}); return [a,b,c,d]; }
   if(C.blocks && C.blocks.length>1) C.blocks.forEach(bk=>addBox(bk.x,bk.y,bk.x+bk.w,bk.y+bk.h));
@@ -2068,7 +2084,7 @@ const SAVE_FIELDS=['lat','lng','ilce','ada','parsel','adaT','parselT','cephe','d
 function collectState(){
   const o={v:1};
   SAVE_FIELDS.forEach(id=>{ const el=$(id); if(el) o[id]=el.value; });
-  o.sunOn=$('sunOn').checked; o.sunAy=$('sunAy').value; o.sunSaat=$('sunSaat').value;
+  o.sunOn=$('sunOn').checked; o.sunAy=$('sunAy').value; o.sunSaat=$('sunSaat').value; o.cekmeKat=$('cekmeKat').checked;
   o.mode=state.mode||'coord'; o.dataSrc=state.dataSrc||'tkgm';
   o.theme=document.documentElement.getAttribute('data-theme')||'';
   if(state.realParcel) o.rp=state.realParcel;
@@ -2107,6 +2123,7 @@ function applyState(o){
   if(!o) return;
   SAVE_FIELDS.forEach(id=>{ if(o[id]!=null && $(id)) $(id).value=o[id]; });
   if(o.sunOn!=null){ $('sunOn').checked=!!o.sunOn; $('sunControls').style.display=o.sunOn?'':'none'; }
+  if(o.cekmeKat!=null) $('cekmeKat').checked=!!o.cekmeKat;
   if(o.sunAy!=null) $('sunAy').value=o.sunAy;
   if(o.sunSaat!=null) $('sunSaat').value=o.sunSaat;
   if(o.theme){ document.documentElement.setAttribute('data-theme',o.theme); }
