@@ -528,6 +528,12 @@
           <label class="field"><span class="lbl">Arsa <span class="hint">₺</span></span><input type="text" id="costLand" placeholder="0" inputmode="numeric"></label>
         </div>
         <div class="metrics" id="feasMetrics"></div>
+        <button class="btn ghost" id="scenBtn" style="margin-top:12px">📊 Kat senaryolarını karşılaştır</button>
+      </div>
+
+      <div class="card" id="scenCard" style="display:none">
+        <h2>📊 Senaryo Karşılaştırma</h2>
+        <div id="scenBody"></div>
       </div>
     </div>
   </div>
@@ -1621,6 +1627,29 @@ function showFeasibility(C){
 $('costBuild').addEventListener('input',()=>{ if(state.last) showFeasibility(state.last); });
 $('costSale').addEventListener('input',()=>{ if(state.last) showFeasibility(state.last); });
 $('costLand').addEventListener('input',()=>{ if(state.last) showFeasibility(state.last); });
+
+function compareScenarios(){
+  const base=state.last; if(!base){ toast('Önce tasarım oluşturun','err'); return; }
+  const rp=(state.mode==='parsel'&&state.dataSrc==='tkgm')?state.realParcel:null;
+  const k0=base.inp.katAdet, kmax=base.katKaks||k0;
+  const kats=[...new Set([Math.max(1,k0-2),k0,Math.min(12,k0+3),Math.min(12,kmax)])].filter(k=>k>=1).sort((a,b)=>a-b);
+  const hasMoney = (imarNum($('costBuild').value)||0)||(imarNum($('costSale').value)||0);
+  const rows=kats.map(k=>{ const inp={...base.inp,katAdet:k}; const C=compute(inp,rp); C.realParcel=rp; return {k,C,f:feasibility(C)}; });
+  const head=['Kat','Toplam İnşaat','Emsal','Daire','Otopark'].concat(hasMoney?['Maliyet','Gelir','Kâr']:[]);
+  let h='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>'+
+    head.map(x=>`<th style="text-align:left;padding:7px 8px;border-bottom:2px solid var(--brand);color:var(--brand);white-space:nowrap">${x}</th>`).join('')+'</tr></thead><tbody>';
+  rows.forEach(r=>{
+    const hl=r.k===k0?'background:var(--brand-soft)':'';
+    const asim=r.C.emsalKullanim>r.C.inp.kaks+0.02?' ⚠︎':'';
+    const cells=[`<b>${r.k} kat</b>${r.k===k0?' •':''}`, fmt(r.C.toplamInsaat)+' m²', r.C.emsalKullanim.toFixed(2)+asim, r.f.toplamDaire||'—', r.f.otopark];
+    if(hasMoney) cells.push(trMoney(r.f.insMaliyet), trMoney(r.f.gelir), `<b style="color:${r.f.kar>=0?'var(--brand)':'var(--danger)'}">${trMoney(r.f.kar)}</b>`);
+    h+=`<tr style="${hl}">`+cells.map(c=>`<td style="padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap">${c}</td>`).join('')+'</tr>';
+  });
+  h+='</tbody></table></div><div class="note">• mevcut senaryo · ⚠︎ emsal aşımı. Maliyet/gelir sütunları için fizibilite fiyatlarını girin.</div>';
+  $('scenBody').innerHTML=h; $('scenCard').style.display='';
+  $('scenCard').scrollIntoView({behavior:'smooth',block:'center'});
+}
+$('scenBtn').onclick=compareScenarios;
 
 /* ---------- Oluştur ---------- */
 $('genBtn').onclick = () => {
