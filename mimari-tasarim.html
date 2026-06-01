@@ -195,9 +195,9 @@
             <div class="metric" id="parselInfo" style="display:none; margin-top:10px"></div>
             <details style="margin-top:10px">
               <summary class="note" style="cursor:pointer">⚙︎ Bağlantı ayarları (CORS)</summary>
-              <label class="field" style="margin-top:8px"><span class="lbl"><span>CORS proxy</span><span class="hint">gerekirse</span></span>
-                <input type="text" id="proxy" value="https://corsproxy.io/?url="></label>
-              <div class="note">Tarayıcı CORS nedeniyle TKGM'ye doğrudan erişemezse istek bu proxy üzerinden tekrar denenir. Boş bırakırsanız yalnız doğrudan denenir. Kendi proxy adresinizi de girebilirsiniz (örn. <code>https://api.allorigins.win/raw?url=</code>).</div>
+              <label class="field" style="margin-top:8px"><span class="lbl"><span>Özel CORS proxy</span><span class="hint">opsiyonel</span></span>
+                <input type="text" id="proxy" value="" placeholder="https://… (boş = otomatik)"></label>
+              <div class="note">TKGM tarayıcıya doğrudan erişim izni (CORS) vermez. Uygulama otomatik olarak birkaç genel proxy'yi sırayla dener (allorigins, codetabs, corsproxy…). Hepsi başarısızsa buraya kendi proxy adresinizi yazabilirsiniz; en güvenilir yol ise kendi Cloudflare Worker proxy'nizdir.</div>
             </details>
           </div>
 
@@ -450,8 +450,8 @@ $('randBtn').onclick = () => {
 const TKGM_BASES = [
   'https://cbsapi.tkgm.gov.tr/megsiswebapi.v3.1',
   'https://cbsservis.tkgm.gov.tr/megsiswebapi.v3',
+  'https://cbsapi.tkgm.gov.tr/megsiswebapi.v3',
 ];
-let TKGM_BASE = TKGM_BASES[0];
 
 function tkgmStatus(msg, kind){
   const el=$('tkgmStatus'); if(!el) return;
@@ -459,26 +459,47 @@ function tkgmStatus(msg, kind){
   el.innerHTML = msg;
 }
 
-// Doğrudan dene, olmazsa proxy ile tekrar dene
+// Proxy zinciri: tarayıcı CORS nedeniyle TKGM'ye doğrudan erişemezse sırayla denenir
+function buildProxies(){
+  const list=[];
+  const custom=($('proxy')?.value||'').trim();
+  if(custom) list.push({name:'özel', make:u=>custom+encodeURIComponent(u), wrap:false});
+  list.push({name:'doğrudan',     make:u=>u, wrap:false});
+  list.push({name:'allorigins',   make:u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u), wrap:false});
+  list.push({name:'codetabs',     make:u=>'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u), wrap:false});
+  list.push({name:'corsproxy',    make:u=>'https://corsproxy.io/?url='+encodeURIComponent(u), wrap:false});
+  list.push({name:'allorigins-json', make:u=>'https://api.allorigins.win/get?url='+encodeURIComponent(u), wrap:true});
+  list.push({name:'thingproxy',   make:u=>'https://thingproxy.freeboard.io/fetch/'+u, wrap:false});
+  return list;
+}
+let TKGM_COMBO=null; // çalışan {base, name} kombinasyonunu hatırla
+
 async function tkgmGet(path){
-  const proxy=($('proxy')?.value||'').trim();
+  const proxies=buildProxies();
   const errs=[];
-  for(const base of TKGM_BASES){
+  // önce daha önce çalışmış kombinasyon, sonra tüm base × proxy
+  const order=[];
+  if(TKGM_COMBO){ const px=proxies.find(p=>p.name===TKGM_COMBO.name); if(px) order.push({base:TKGM_COMBO.base, px}); }
+  for(const base of TKGM_BASES) for(const px of proxies) order.push({base,px});
+  for(const {base,px} of order){
     const url=base+path;
-    const tries=[url];
-    if(proxy) tries.push(proxy+encodeURIComponent(url));
-    for(const u of tries){
-      try{
-        const r=await fetch(u,{headers:{'Accept':'application/json'}, mode:'cors'});
-        if(!r.ok){ errs.push('HTTP '+r.status); continue; }
-        const t=await r.text();
-        const j=JSON.parse(t);
-        TKGM_BASE=base;
+    try{
+      const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), 12000);
+      const r=await fetch(px.make(url), {headers:{'Accept':'application/json'}, signal:ctrl.signal});
+      clearTimeout(to);
+      if(!r.ok){ errs.push(`${px.name}:HTTP${r.status}`); continue; }
+      let t=await r.text();
+      if(px.wrap){ try{ t=JSON.parse(t).contents; }catch(e){} }
+      const j=JSON.parse(t);
+      if(j && (Array.isArray(j) ? j.length : Object.keys(j).length)){
+        TKGM_COMBO={base, name:px.name}; state.lastProxy=`${px.name}`;
         return j;
-      }catch(e){ errs.push(e.message||String(e)); }
-    }
+      }
+      errs.push(`${px.name}:boş`);
+    }catch(e){ errs.push(`${px.name}:${(e.name==='AbortError'?'zaman aşımı':e.message||e)}`); }
   }
-  throw new Error(errs.join(' / '));
+  TKGM_COMBO=null;
+  throw new Error(errs.slice(0,6).join(' · '));
 }
 
 // Liste öğelerini esnek ayrıştır ({value,text} / {id,ad} / {Id,Ad} ...)
@@ -500,13 +521,15 @@ function fillSel(sel, items, placeholder){
 
 async function loadIller(){
   try{
-    tkgmStatus('İller yükleniyor…');
+    tkgmStatus('İller yükleniyor… (proxy zinciri deneniyor, ilk seferinde 5-15 sn sürebilir)');
     const items=normList(await tkgmGet('/api/idariYapi/ilListe'));
     fillSel($('ilSel'), items, 'il seçin');
-    tkgmStatus(`${items.length} il yüklendi. İl → ilçe → mahalle seçip ada/parsel girin.`, 'ok');
+    tkgmStatus(`✓ ${items.length} il yüklendi (kaynak: ${state.lastProxy}). İl → ilçe → mahalle seçip ada/parsel girin.`, 'ok');
   }catch(e){
     $('ilSel').innerHTML='<option value="">— yüklenemedi —</option>';
-    tkgmStatus('İl listesi alınamadı. CORS engeli olabilir — ayarlardan bir proxy girip tekrar deneyin. ('+e.message+')','err');
+    illerLoaded=false; // tekrar denenebilsin
+    tkgmStatus('İl listesi alınamadı. Tüm proxy\'ler başarısız oldu — TKGM erişimi/aracı kısıtlamış olabilir. “Tekrar dene” düğmesine basın veya ayarlardan kendi proxy adresinizi girin.<br><button id="retryIl" style="margin-top:6px;padding:6px 12px;border:none;border-radius:8px;background:var(--brand);color:#fff;font-weight:700;cursor:pointer">↻ Tekrar dene</button><br><small style="opacity:.7">Ayrıntı: '+e.message+'</small>','err');
+    const rb=$('retryIl'); if(rb) rb.onclick=()=>{ illerLoaded=true; loadIller(); };
   }
 }
 async function loadIlce(ilId){
