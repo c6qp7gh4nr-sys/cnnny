@@ -836,52 +836,49 @@ function layoutBlocks(x0,y0,W,D,totalArea,n){
   return out;
 }
 
-/* ---------- Mahal (oda) üretimi: kat planı ---------- */
-function genRooms(C, rnd){
-  // Tip kat oturumu (çok bloklu ise tek blok). İçeride mahalleri yerleştir.
-  const rooms=[];
-  const W=C.planW||C.bw, D=C.planD||C.bd;
-  const u = C.inp.kullanim;
-
-  if(u==='ofis'){
-    // çekirdek + açık ofis
-    const coreW=Math.min(W*0.3, 6), coreD=Math.min(D*0.4,7);
-    rooms.push({name:'Çekirdek (asansör/merdiven)', x:(W-coreW)/2, y:(D-coreD)/2, w:coreW, h:coreD, t:'core'});
-    rooms.push({name:'Açık Ofis Alanı', x:0, y:0, w:W, h:D, t:'open', sub:true});
-    rooms.push({name:'Toplantı Odası', x:0, y:0, w:W*0.32, h:D*0.3, t:'room'});
-    rooms.push({name:'WC / Islak Hacim', x:W-W*0.22, y:0, w:W*0.22, h:D*0.22, t:'wet'});
-    return rooms;
+/* ---------- Kat planı: tek daire mahal üretimi (yerel koord, ön=yol=alt) ---------- */
+function genApartment(W, H, beds, ku){
+  const R=[];
+  if(ku==='ofis'){
+    const cw=Math.min(W*0.26,5.5), ch=Math.min(H*0.34,7);
+    R.push({name:'Açık Ofis', x:0,y:0,w:W,h:H,t:'open',sub:true});
+    R.push({name:'Çekirdek', x:(W-cw)/2,y:(H-ch)/2,w:cw,h:ch,t:'core'});
+    R.push({name:'Toplantı', x:0.1,y:0.1,w:Math.min(W*0.34,6),h:Math.min(H*0.3,5),t:'room',furn:'table'});
+    R.push({name:'WC', x:W-Math.min(W*0.2,3.2),y:0.1,w:Math.min(W*0.2,3.2)-0.1,h:Math.min(H*0.22,3),t:'wet',furn:'wc'});
+    return R;
   }
-
-  // Konut: salon yol cephesine, ıslak hacimler arkaya
-  const oda = parseInt((C.inp.daireTip||'auto').split('+')[0]) || (C.netKat>180?4:C.netKat>120?3:C.netKat>80?2:1);
-  // Bölme: alt şerit (yaşam) + üst şerit (yatak/ıslak)
-  const splitY = D * 0.52;
-  // Yaşam şeridi: Salon + Mutfak + Antre
-  let x=0;
-  const salonW = W*0.5;
-  rooms.push({name:'Salon / Oturma', x:0, y:0, w:salonW, h:splitY, t:'living'});
-  rooms.push({name:'Mutfak', x:salonW, y:0, w:W-salonW, h:splitY*0.62, t:'kitchen'});
-  rooms.push({name:'Antre / Hol', x:salonW, y:splitY*0.62, w:W-salonW, h:splitY*0.38, t:'hall'});
-
-  // Yatak şeridi
-  const restD = D - splitY;
-  const koridorH = Math.min(1.4, restD*0.25);
-  rooms.push({name:'Koridor', x:0, y:splitY, w:W, h:koridorH, t:'hall'});
-  const ry = splitY + koridorH;
-  const ryD = D - ry;
-  const beds = Math.max(1, oda);
-  const wetW = W*0.26;
-  // banyo + ebeveyn banyo
-  rooms.push({name:'Banyo', x:W-wetW, y:ry, w:wetW, h:ryD*0.5, t:'wet'});
-  rooms.push({name:'WC', x:W-wetW, y:ry+ryD*0.5, w:wetW, h:ryD*0.5, t:'wet'});
-  // yatak odaları kalan genişliğe
-  const bedAreaW = W - wetW;
-  const each = bedAreaW / beds;
-  for(let i=0;i<beds;i++){
-    rooms.push({name: i===0?'Ebeveyn Yatak Odası':`Yatak Odası ${i+1}`, x:i*each, y:ry, w:each, h:ryD, t:'bed'});
+  beds=Math.max(1,beds);
+  const balc=Math.min(1.5, H*0.10);
+  const frontH=Math.min(H*0.46, 6.5)+balc;
+  const livW=W*0.56;
+  R.push({name:'Balkon', x:0, y:H-balc, w:livW, h:balc, t:'balcony'});
+  R.push({name:'Salon', x:0, y:H-frontH, w:livW, h:frontH-balc, t:'living', furn:'living'});
+  const kitH=(frontH-balc)*0.6;
+  R.push({name:'Mutfak', x:livW, y:H-frontH, w:W-livW, h:kitH, t:'kitchen', furn:'kitchen'});
+  R.push({name:'Antre', x:livW, y:H-frontH+kitH, w:W-livW, h:(frontH-balc)-kitH, t:'hall', entry:true});
+  const corr=Math.min(1.3, H*0.12);
+  R.push({name:'Koridor', x:0, y:H-frontH-corr, w:W, h:corr, t:'hall'});
+  const backH=H-frontH-corr;
+  const wetW=Math.min(W*0.26, 3.2);
+  R.push({name:'Banyo', x:W-wetW, y:0, w:wetW, h:backH*0.52, t:'wet', furn:'bath'});
+  R.push({name:'WC', x:W-wetW, y:backH*0.52, w:wetW, h:backH*0.48, t:'wet', furn:'wc'});
+  const bw=(W-wetW)/beds;
+  for(let i=0;i<beds;i++) R.push({name:i===0?'Ebeveyn Y.O.':'Yatak '+(i+1), x:i*bw, y:0, w:bw, h:backH, t:'bed', furn:'bed'});
+  return R;
+}
+// Tip kat: bloğu daire(ler) + çekirdek olarak böl
+function genFloor(C){
+  const W=C.planW||C.bw, H=C.planD||C.bd, ku=C.inp.kullanim;
+  if(ku==='ofis') return {W,H,units:[{x:0,y:0,w:W,h:H,beds:0,flip:false}],core:null};
+  const ua=C.unitArea||90;
+  const beds = ua>150?4:ua>110?3:ua>75?2:1;
+  let nU=clamp(Math.round(W*H*0.82/ua),1,4);
+  let cols=clamp(Math.round(Math.sqrt(nU*W/Math.max(1,H))),1,nU), rows=Math.ceil(nU/cols);
+  const cellW=W/cols, cellH=H/rows, units=[];
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    units.push({x:c*cellW,y:r*cellH,w:cellW,h:cellH,beds,flip:(c%2===1)});
   }
-  return rooms;
+  return {W,H,units,core:(units.length>1?{x:W/2,y:H/2}:null),beds,nU:units.length};
 }
 
 /* ---------- SVG yardımcı ---------- */
@@ -1014,35 +1011,97 @@ function viewVaziyet(C){
   return s;
 }
 
-/* ---------- Görünüm: Kat Planı ---------- */
+/* ---------- Görünüm: Kat Planı (gerçekçi) ---------- */
 function viewKat(C){
-  const rnd=mulberry32(hashStr(C.inp.key+'-plan'));
-  const rooms=genRooms(C,rnd);
-  const PW0=C.planW||C.bw, PD0=C.planD||C.bd;
-  const pad=40, scale=Math.min(620/PW0, 460/PD0);
-  const PW=PW0*scale, PD=PD0*scale, W=PW+pad*2, H=PD+pad*2+24;
-  const wall=cssvar('--wall'), fg=cssvar('--fg'), muted=cssvar('--muted');
-  const colors={ living:'#8ec9b8', kitchen:'#f0c987', bed:'#a8c8e8', wet:'#9fd0d8', hall:'#e3e0d4', core:'#c9c0d8', open:'#d8e8e0', room:'#bcd9c8' };
-  const labels={ living:'🛋️', kitchen:'🍳', bed:'🛏️', wet:'🚿', hall:'', core:'⬍', open:'', room:'' };
-  const ox=pad, oy=pad;
-  let s=svgEl(W,H);
-  // dış duvar
-  s+=`<rect x="${ox-4}" y="${oy-4}" width="${PW+8}" height="${PD+8}" fill="${wall}" rx="2"/>`;
-  s+=`<rect x="${ox}" y="${oy}" width="${PW}" height="${PD}" fill="${cssvar('--card')}"/>`;
-  rooms.forEach(r=>{
-    if(r.sub) return; // arka plan açık ofis, ayrı çizmeyelim üstte
-    const rx=ox+r.x*scale, ry=oy+r.y*scale, rw=r.w*scale, rh=r.h*scale;
-    const area=r.w*r.h;
-    s+=`<rect x="${rx}" y="${ry}" width="${rw}" height="${rh}" fill="${colors[r.t]||'#ddd'}" opacity="0.55" stroke="${wall}" stroke-width="1.2"/>`;
-    if(rw>40 && rh>24){
-      s+=`<text x="${rx+rw/2}" y="${ry+rh/2-2}" text-anchor="middle" font-size="${Math.min(12,rw/8)}" font-weight="600" fill="${wall}">${labels[r.t]||''} ${r.name.length>16?r.name.slice(0,15)+'…':r.name}</text>`;
-      s+=`<text x="${rx+rw/2}" y="${ry+rh/2+12}" text-anchor="middle" font-size="9" fill="${muted}">${fmt(area,1)} m²</text>`;
-    }
+  const F=genFloor(C);
+  const W=F.W, H=F.H;
+  const pad=56, scale=Math.min(600/W, 430/H);
+  const PW=W*scale, PD=H*scale, SW=PW+pad*2, SH=PD+pad*2+26;
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  const wall=cssvar('--wall'), fg=cssvar('--fg'), muted=cssvar('--muted'), card=cssvar('--card'), brand=cssvar('--brand');
+  const glass=isDark?'#5f8aa4':'#9cc3de';
+  const colors={ living:'#e7f0ea', kitchen:'#f6ecd6', bed:'#e6eef8', wet:'#dceef0', hall:'#efeae0', core:'#e2dcec', open:'#e7f0ea', room:'#e3efe6', balcony:'#d4e3da' };
+  if(isDark){ for(const k in colors) colors[k]=lerpHex(colors[k].replace('#',''), '203028', 0.6); }
+  const ox=pad, oy=pad, X=x=>ox+x*scale, Y=y=>oy+y*scale;
+
+  const furn=(t,ax,ay,aw,ah)=>{
+    if(!t) return ''; const col=muted; let g='';
+    const rc=(x,y,w,h)=>`<rect x="${X(x)}" y="${Y(y)}" width="${w*scale}" height="${h*scale}" fill="none" stroke="${col}" stroke-width="0.7"/>`;
+    if(t==='bed'){ const w=Math.min(aw*0.62,2.2), h=Math.min(ah*0.5,2.1), bx=ax+aw*0.5-w/2, by=ay+0.35;
+      g+=rc(bx,by,w,h)+`<line x1="${X(bx)}" y1="${Y(by+h*0.24)}" x2="${X(bx+w)}" y2="${Y(by+h*0.24)}" stroke="${col}" stroke-width="0.6"/>`; }
+    else if(t==='living'){ const w=Math.min(aw*0.66,3.2); g+=rc(ax+0.3,ay+ah-1.15,w,0.8)+rc(ax+0.3+w*0.3,ay+ah-2.4,w*0.4,0.7); }
+    else if(t==='kitchen'){ g+=rc(ax+0.12,ay+0.12,aw-0.24,0.55)+`<line x1="${X(ax+aw*0.5)}" y1="${Y(ay+0.12)}" x2="${X(ax+aw*0.5)}" y2="${Y(ay+0.67)}" stroke="${col}" stroke-width="0.5"/>`; }
+    else if(t==='bath'){ g+=rc(ax+0.2,ay+0.2,Math.min(aw-0.4,1.7),Math.min(ah*0.5,0.85))+`<circle cx="${X(ax+aw-0.5)}" cy="${Y(ay+ah-0.5)}" r="${0.3*scale}" fill="none" stroke="${col}" stroke-width="0.7"/>`; }
+    else if(t==='wc'){ g+=`<circle cx="${X(ax+aw-0.55)}" cy="${Y(ay+0.55)}" r="${0.28*scale}" fill="none" stroke="${col}" stroke-width="0.7"/>`; }
+    else if(t==='table'){ g+=rc(ax+aw*0.28,ay+ah*0.3,aw*0.44,ah*0.4); }
+    return g;
+  };
+
+  let s=svgEl(SW,SH);
+  s+=`<rect x="0" y="0" width="${SW}" height="${SH}" fill="transparent"/>`;
+  s+=`<rect x="${X(0)}" y="${Y(0)}" width="${PW}" height="${PD}" fill="${card}"/>`;
+
+  let firstRooms=null;
+  F.units.forEach((U,ui)=>{
+    const rooms=genApartment(U.w,U.h,U.beds,C.inp.kullanim);
+    if(ui===0) firstRooms=rooms;
+    rooms.forEach(rm=>{
+      if(rm.sub) return;
+      const lx = U.flip ? (U.w - rm.x - rm.w) : rm.x;
+      const ax=U.x+lx, ay=U.y+rm.y, aw=rm.w, ah=rm.h;
+      const px=X(ax), py=Y(ay), pw=aw*scale, ph=ah*scale;
+      s+=`<rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="${colors[rm.t]||'#eee'}" stroke="${wall}" stroke-width="0.9"/>`;
+      if(rm.t==='balcony'){ s+=`<rect x="${px+1}" y="${py+1}" width="${pw-2}" height="${ph-2}" fill="none" stroke="${muted}" stroke-width="0.8" stroke-dasharray="3 2"/>`; }
+      s+=furn(rm.furn,ax,ay,aw,ah);
+      // pencereler: blok çevresine değen yaşam mekânları
+      if(['living','bed','kitchen','room','open'].includes(rm.t)){
+        const segs=[];
+        if(ax<=0.06) segs.push(['v',ax,ay,ah]);
+        if(ax+aw>=W-0.06) segs.push(['v',ax+aw,ay,ah]);
+        if(ay<=0.06) segs.push(['h',ax,ay,aw]);
+        if(ay+ah>=H-0.06) segs.push(['h',ax,ay+ah,aw]);
+        segs.forEach(([d,cx,cy,ln])=>{ const a=0.22,b=0.78;
+          if(d==='h') s+=`<line x1="${X(cx+ln*a)}" y1="${Y(cy)}" x2="${X(cx+ln*b)}" y2="${Y(cy)}" stroke="${glass}" stroke-width="3" stroke-linecap="round"/>`;
+          else s+=`<line x1="${X(cx)}" y1="${Y(cy+ln*a)}" x2="${X(cx)}" y2="${Y(cy+ln*b)}" stroke="${glass}" stroke-width="3" stroke-linecap="round"/>`;
+        });
+      }
+      if(pw>40 && ph>24){
+        s+=`<text x="${px+pw/2}" y="${py+ph/2-2}" text-anchor="middle" font-size="${Math.min(10.5,pw/6)}" font-weight="600" fill="${wall}">${rm.name}</text>`;
+        if(ph>38) s+=`<text x="${px+pw/2}" y="${py+ph/2+10}" text-anchor="middle" font-size="8" fill="${muted}">${fmt(aw,1)}×${fmt(ah,1)} · ${fmt(aw*ah,1)} m²</text>`;
+      }
+    });
+    // daire çeperi + giriş kapısı
+    s+=`<rect x="${X(U.x)}" y="${Y(U.y)}" width="${U.w*scale}" height="${U.h*scale}" fill="none" stroke="${wall}" stroke-width="2.2"/>`;
+    const dcx=U.x+U.w*0.5, dy=U.y+U.h;
+    s+=`<line x1="${X(dcx-0.5)}" y1="${Y(dy)}" x2="${X(dcx+0.5)}" y2="${Y(dy)}" stroke="${card}" stroke-width="3"/>`;
+    s+=`<path d="M ${X(dcx-0.5)} ${Y(dy)} A ${1*scale} ${1*scale} 0 0 1 ${X(dcx-0.5)} ${Y(dy-1)}" fill="none" stroke="${muted}" stroke-width="0.8"/>`;
   });
-  // kapı (yol cephesine giriş)
-  s+=`<text x="${W/2}" y="${H-6}" text-anchor="middle" font-size="11" fill="${muted}">${(C.blocks&&C.blocks.length>1)?'Tip blok kat planı ('+C.blocks.length+' blok)':'Tip kat planı'} · oturum ${fmt(PW0,1)} × ${fmt(PD0,1)} m · ${fmt(PW0*PD0)} m²</text>`;
+
+  // çekirdek (merdiven/asansör)
+  if(F.core){ const cw=Math.min(F.W,F.H)*0.15, c=F.core, x0=c.x-cw/2, y0=c.y-cw/2;
+    s+=`<rect x="${X(x0)}" y="${Y(y0)}" width="${cw*scale}" height="${cw*scale}" fill="${colors.core}" stroke="${wall}" stroke-width="1.6"/>`;
+    for(let i=1;i<6;i++){ const yy=y0+cw*i/6; s+=`<line x1="${X(x0)}" y1="${Y(yy)}" x2="${X(x0+cw*0.55)}" y2="${Y(yy)}" stroke="${muted}" stroke-width="0.6"/>`; }
+    s+=`<rect x="${X(x0+cw*0.6)}" y="${Y(y0+cw*0.25)}" width="${cw*0.32*scale}" height="${cw*0.5*scale}" fill="none" stroke="${muted}" stroke-width="0.7"/>`;
+  }
+
+  // dış duvar (kalın)
+  s+=`<rect x="${X(0)}" y="${Y(0)}" width="${PW}" height="${PD}" fill="none" stroke="${wall}" stroke-width="4"/>`;
+
+  // ölçü çizgileri
+  const dimY=oy-18, dimX=ox-22;
+  s+=`<line x1="${X(0)}" y1="${dimY}" x2="${X(W)}" y2="${dimY}" stroke="${muted}"/><line x1="${X(0)}" y1="${dimY-4}" x2="${X(0)}" y2="${dimY+4}" stroke="${muted}"/><line x1="${X(W)}" y1="${dimY-4}" x2="${X(W)}" y2="${dimY+4}" stroke="${muted}"/>`;
+  s+=`<text x="${X(W/2)}" y="${dimY-5}" text-anchor="middle" font-size="11" fill="${fg}">${fmt(W,1)} m</text>`;
+  s+=`<line x1="${dimX}" y1="${Y(0)}" x2="${dimX}" y2="${Y(H)}" stroke="${muted}"/><line x1="${dimX-4}" y1="${Y(0)}" x2="${dimX+4}" y2="${Y(0)}" stroke="${muted}"/><line x1="${dimX-4}" y1="${Y(H)}" x2="${dimX+4}" y2="${Y(H)}" stroke="${muted}"/>`;
+  s+=`<text x="${dimX-5}" y="${Y(H/2)}" text-anchor="middle" font-size="11" fill="${fg}" transform="rotate(-90 ${dimX-5} ${Y(H/2)})">${fmt(H,1)} m</text>`;
+
+  // yol cephesi + ölçek + başlık
+  s+=`<text x="${X(W/2)}" y="${Y(H)+16}" text-anchor="middle" font-size="10" font-weight="700" fill="${brand}">▼ YOL CEPHESİ</text>`;
+  const sb=5*scale, sx=ox, sy=SH-14;
+  s+=`<line x1="${sx}" y1="${sy}" x2="${sx+sb}" y2="${sy}" stroke="${fg}" stroke-width="2"/><line x1="${sx}" y1="${sy-3}" x2="${sx}" y2="${sy+3}" stroke="${fg}"/><line x1="${sx+sb}" y1="${sy-3}" x2="${sx+sb}" y2="${sy+3}" stroke="${fg}"/><text x="${sx+sb+6}" y="${sy+3}" font-size="9" fill="${muted}">5 m</text>`;
+  const title=(C.blocks&&C.blocks.length>1)?`Tip blok kat planı · ${F.units.length} daire/kat · ${C.blocks.length} blok`:`Tip kat planı · ${F.units.length} daire/kat`;
+  s+=`<text x="${SW/2}" y="${SH-14}" text-anchor="middle" font-size="10" fill="${muted}">${title} · ${fmt(W,1)}×${fmt(H,1)} m</text>`;
   s+=`</svg>`;
-  state.lastRooms=rooms;
+  state.lastRooms = firstRooms ? firstRooms.filter(r=>!r.sub) : [];
   return s;
 }
 
