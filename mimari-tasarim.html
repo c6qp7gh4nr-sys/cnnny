@@ -342,6 +342,7 @@
           <button class="btn ghost" id="pngBtn">🖼️ PNG indir</button>
         </div>
         <button class="btn ghost" id="pdfBtn" style="margin-top:10px">📄 PDF / Pafta oluştur</button>
+        <button class="btn ghost" id="shareBtn" style="margin-top:10px">🔗 Bağlantı oluştur (kaydet & paylaş)</button>
         <div class="note">Bu araç imar parametrelerine göre <b>kavramsal/şematik</b> bir tasarım üretir. Resmî projeler için yetkili mimar ve yerel imar yönetmeliği esastır. Veriler tarayıcıda işlenir, sunucuya gönderilmez.</div>
       </div>
     </div>
@@ -443,6 +444,7 @@ updParselAlan();
 
 /* ---------- Örnek doldur ---------- */
 $('randBtn').onclick = () => {
+  state.planLimits=null;
   const samples = [
     {lat:'41.015137',lng:'28.979530', c:25, d:32, taks:.35, kaks:1.8, kat:4},
     {lat:'39.925533',lng:'32.866287', c:18, d:28, taks:.30, kaks:1.2, kat:3},
@@ -576,10 +578,11 @@ async function loadIlce(ilId){
   }catch(e){ tkgmStatus('İlçe listesi alınamadı: '+e.message,'err'); }
 }
 async function loadMah(ilceId){
-  fillSel($('mahSel'), [], 'yükleniyor'); $('mahSel').disabled=true;
+  fillSel($('mahSel'), [], 'yükleniyor'); $('mahSel').disabled=true; state.mahList=[];
   if(!ilceId) return;
   try{
     const items=normList(await tkgmGet('/api/idariYapi/mahalleListe/'+ilceId));
+    state.mahList=items;
     fillSel($('mahSel'), items, 'mahalle seçin');
   }catch(e){ tkgmStatus('Mahalle listesi alınamadı: '+e.message,'err'); }
 }
@@ -624,48 +627,78 @@ function normalizeToRect(pts, rect){
   return out;
 }
 
+// Tek mahallede hızlı parsel sorgusu (bulunamazsa null)
+async function quickParsel(mahId, ada, parsel){
+  try{
+    const gj=await proxyFetch(`${TKGM_BASES[0]}/api/parsel/${mahId}/${ada}/${parsel}`);
+    const feat = gj.type==='FeatureCollection' ? gj.features?.[0] : gj;
+    return (feat && feat.geometry) ? feat : null;
+  }catch(e){ return null; }
+}
+// Ada/parseli ilçedeki tüm mahallelerde paralel ara
+async function searchAcrossMahalle(mahList, ada, parsel, onProg){
+  let found=null, i=0, done=0; const N=mahList.length, conc=6;
+  async function worker(){
+    while(i<N && !found){ const idx=i++; const mh=mahList[idx];
+      const feat=await quickParsel(mh.id, ada, parsel);
+      done++; if(onProg) onProg(done,N);
+      if(feat) found={feat, mah:mh};
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(conc,N)},()=>worker()));
+  return found;
+}
+// Bulunan parsel feature'ını forma uygula
+function applyParcelFeature(feat, ada, parsel){
+  const ring=outerRing(feat.geometry);
+  if(!ring || ring.length<3) throw new Error('Geçersiz geometri.');
+  const m=toMeters(ring);
+  const rect=minAreaRect(m.pts);
+  const polyNorm=normalizeToRect(m.pts, rect);
+  const cephe=Math.max(rect.w,3), derinlik=Math.max(rect.h,3);
+  const props=feat.properties||{};
+  const alan = parseFloat(props.alan) || shoelace(m.pts);
+  state.realParcel = { polyNorm, cephe, derinlik, alan, props, centroid:{lat:m.lat0,lng:m.lng0} };
+  $('cephe').value = cephe.toFixed(1); $('derinlik').value = derinlik.toFixed(1); updParselAlan();
+  $('lat').value=m.lat0.toFixed(6); $('lng').value=m.lng0.toFixed(6);
+  const info=$('parselInfo'); info.style.display='';
+  info.innerHTML=`<div class="k">${(props.ilAd||'')} / ${(props.ilceAd||'')} / ${(props.mahalleAd||'')}</div>
+    <div class="v" style="font-size:15px">Ada ${props.adaNo||ada} · Parsel ${props.parselNo||parsel}</div>
+    <div class="u">Alan: ${fmt(alan)} m² · Nitelik: ${props.nitelik||'—'}<br>
+    Yönlü dikdörtgen ≈ ${cephe.toFixed(1)} × ${derinlik.toFixed(1)} m · Mevkii: ${props.mevkii||'—'}</div>`;
+  state.locLabel=`🗺️ ${props.ilceAd||''} · Ada ${props.adaNo||ada}/${props.parselNo||parsel}`;
+}
+
 async function sorgulaParsel(){
   const mahId=$('mahSel').value, ada=($('adaT').value||'').trim(), parsel=($('parselT').value||'').trim();
-  if(!mahId){ tkgmStatus('Lütfen önce il/ilçe/mahalle seçin.','err'); return; }
+  const ilceSeili=$('ilceSel').value;
   if(!ada||!parsel){ tkgmStatus('Ada ve parsel numarası girin.','err'); return; }
-  $('sorguBtn').disabled=true; tkgmStatus('Parsel sorgulanıyor…');
+  if(!mahId && !ilceSeili){ tkgmStatus('Lütfen en azından il/ilçe seçin (mahalle seçmezseniz ilçede aranır).','err'); return; }
+  $('sorguBtn').disabled=true;
   try{
-    const gj=await tkgmGet(`/api/parsel/${mahId}/${ada}/${parsel}`);
-    const feat = gj.type==='FeatureCollection' ? gj.features?.[0] : gj;
-    if(!feat || !feat.geometry) throw new Error('Parsel bulunamadı veya geometri yok.');
-    const ring=outerRing(feat.geometry);
-    if(!ring || ring.length<3) throw new Error('Geçersiz geometri.');
-    const m=toMeters(ring);
-    const rect=minAreaRect(m.pts);
-    const polyNorm=normalizeToRect(m.pts, rect);
-    const cephe=Math.max(rect.w,3), derinlik=Math.max(rect.h,3);
-    const props=feat.properties||{};
-    const alan = parseFloat(props.alan) || shoelace(m.pts);
-
-    state.realParcel = { polyNorm, cephe, derinlik, alan, props, centroid:{lat:m.lat0,lng:m.lng0} };
-
-    // Tasarım girdilerine yaz
-    $('cephe').value = cephe.toFixed(1);
-    $('derinlik').value = derinlik.toFixed(1);
-    updParselAlan();
-    // Koordinat alanlarını da doldur
-    $('lat').value=m.lat0.toFixed(6); $('lng').value=m.lng0.toFixed(6);
-
-    const info=$('parselInfo'); info.style.display='';
-    info.innerHTML=`<div class="k">${(props.ilAd||'')} / ${(props.ilceAd||'')} / ${(props.mahalleAd||'')}</div>
-      <div class="v" style="font-size:15px">Ada ${props.adaNo||ada} · Parsel ${props.parselNo||parsel}</div>
-      <div class="u">Alan: ${fmt(alan)} m² · Nitelik: ${props.nitelik||'—'}<br>
-      Yönlü dikdörtgen ≈ ${cephe.toFixed(1)} × ${derinlik.toFixed(1)} m · Mevkii: ${props.mevkii||'—'}</div>`;
-    tkgmStatus('✓ Parsel bulundu. Gerçek sınır vaziyet planında çizilecek. “Tasarımı Oluştur”a basın.','ok');
-    state.locLabel=`🗺️ ${props.ilceAd||''} · Ada ${props.adaNo||ada}/${props.parselNo||parsel}`;
-  }catch(e){
-    state.realParcel=null;
-    if(e.tkgm || /bulunama/i.test(e.message)){
-      tkgmStatus(`⚠︎ TKGM: bu Ada/Parsel bu mahallede bulunamadı. Numaraları kontrol edin — gerçek, var olan bir ada/parsel girin. <small style="opacity:.7">(${e.message})</small>`,'err');
-    } else {
-      tkgmStatus('Sorgu başarısız: '+e.message+'. (CORS engeli ise ayarlardan proxy deneyin.)','err');
+    // 1) Mahalle seçiliyse önce onu dene
+    if(mahId){
+      tkgmStatus('Parsel sorgulanıyor…');
+      const feat=await quickParsel(mahId, ada, parsel);
+      if(feat){ applyParcelFeature(feat, ada, parsel); tkgmStatus('✓ Parsel bulundu. “Tasarımı Oluştur”a basın.','ok'); return; }
     }
-    $('parselInfo').style.display='none';
+    // 2) Bulunamadı → ilçedeki tüm mahallelerde ara
+    const mahList=state.mahList||[];
+    if(!mahList.length){ tkgmStatus('⚠︎ Bu mahallede bulunamadı ve mahalle listesi yok. İlçeyi yeniden seçip deneyin.','err'); return; }
+    tkgmStatus(`⚠︎ Seçili mahallede yok. Ada ${ada}/${parsel} ilçenin ${mahList.length} mahallesinde aranıyor… %0`);
+    const res=await searchAcrossMahalle(mahList, ada, parsel, (d,N)=>{ tkgmStatus(`🔎 İlçede aranıyor… %${Math.round(d/N*100)} (${d}/${N})`); });
+    if(res){
+      // bulunan mahalleyi seç
+      $('mahSel').value=res.mah.id;
+      applyParcelFeature(res.feat, ada, parsel);
+      tkgmStatus(`✓ Parsel <b>${res.mah.name}</b> mahallesinde bulundu! Mahalle otomatik seçildi. “Tasarımı Oluştur”a basın.`,'ok');
+    } else {
+      state.realParcel=null; $('parselInfo').style.display='none';
+      tkgmStatus(`⚠︎ Ada ${ada}/Parsel ${parsel} ilçenin hiçbir mahallesinde bulunamadı. Numaraları ve il/ilçeyi kontrol edin.`,'err');
+    }
+  }catch(e){
+    state.realParcel=null; $('parselInfo').style.display='none';
+    tkgmStatus('Sorgu başarısız: '+e.message+'. (CORS ise ayarlardan proxy deneyin.)','err');
   }finally{ $('sorguBtn').disabled=false; }
 }
 
@@ -809,11 +842,19 @@ function compute(inp, realParcel){
   const planW = (nBlok>1) ? blocks[0].w : bw;
   const planD = (nBlok>1) ? blocks[0].h : bd;
 
+  // --- İmar tutarlılık uyarıları (plan notundan gelen sınırlara göre) ---
+  const uyarilar=[];
+  if(katAdet > katFromKaks) uyarilar.push(`Emsal aşımı: KAKS ${inp.kaks.toFixed(2)} en çok <b>${katFromKaks} kat</b> destekliyor (girilen ${katAdet}). Taban alanını/katı düşürün.`);
+  const pl=state.planLimits||{};
+  if(pl.yencokKat && katAdet > pl.yencokKat) uyarilar.push(`Plan <b>Yençok ${pl.yencokKat} kat</b>; girilen ${katAdet} kat bunu aşıyor.`);
+  if(pl.hmaxM && yukseklik > pl.hmaxM+0.05) uyarilar.push(`Bina yüksekliği ${fmt(yukseklik,1)} m, plan <b>Hmax ${pl.hmaxM} m</b>'yi aşıyor.`);
+  if(pl.emsal && emsalKullanim > pl.emsal+0.02) uyarilar.push(`Kullanılan emsal ${emsalKullanim.toFixed(2)}, plan emsali <b>${pl.emsal}</b>'i aşıyor.`);
+
   return {
     inp, parselAlan, setX0,setX1,setY0,setY1, bw, bd, bwFull, bdFull, tabanAlan, maxTaban,
     maxToplam, katAdet, katKaks: katFromKaks, toplamInsaat, emsalKullanim, kaksUyari,
     daireKat, toplamDaire, unitArea, yukseklik, netKat, hmax, hmaxFloors, onerilenKaks,
-    footprintPoly, footprintMode, blocks, nBlok, planW, planD,
+    footprintPoly, footprintMode, blocks, nBlok, planW, planD, uyarilar,
   };
 }
 
@@ -1297,7 +1338,10 @@ function metricRows(C){
 function showMetrics(C){
   $('metricCard').style.display='';
   const m=metricRows(C);
-  $('metrics').innerHTML = m.map(x=>`<div class="metric"><div class="k">${x[0]}</div><div class="v">${x[1]} <span class="u">${x[2]}</span></div></div>`).join('') +
+  const uyari = (C.uyarilar && C.uyarilar.length)
+    ? `<div style="grid-column:1/-1;background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:10px 12px;margin-top:2px"><b style="color:var(--accent)">⚠︎ İmar uyarıları</b><ul style="margin:6px 0 0 18px;font-size:12.5px;color:var(--fg)">${C.uyarilar.map(u=>`<li>${u}</li>`).join('')}</ul></div>`
+    : `<div style="grid-column:1/-1;font-size:12.5px;color:var(--brand)">✓ İmar sınırlarıyla tutarlı (emsal/yençok/Hmax aşımı yok).</div>`;
+  $('metrics').innerHTML = m.map(x=>`<div class="metric"><div class="k">${x[0]}</div><div class="v">${x[1]} <span class="u">${x[2]}</span></div></div>`).join('') + uyari +
     `<div class="note" style="grid-column:1/-1">Hmax, Planlı Alanlar İmar Yönetmeliği'nin kat adedine göre azami yükseklik kuralından (3,00·kat+3,50 m) türetilmiştir. TAKS/KAKS değerleri parselin bağlı olduğu <b>imar planından</b> gelir; buradakiler girdiğiniz/temsili değerlerdir. Kesin değerler için ilgili belediyenin imar durumu belgesi esastır.</div>`;
 }
 
@@ -1370,6 +1414,7 @@ const IMAR_PROFILLERI = {
 };
 $('imarProfil').addEventListener('change', e=>{
   const p=IMAR_PROFILLERI[e.target.value]; if(!p) return;
+  state.planLimits=null;
   $('nizam').value=p.nizam;
   $('taks').value=p.taks; $('kaks').value=p.kaks; $('katAdet').value=p.kat;
   $('onCekme').value=p.on; $('yanCekme').value=p.yan; $('arkaCekme').value=p.arka;
@@ -1456,6 +1501,8 @@ $('imarParseBtn').onclick=()=>{
   const f=parseImarNotes($('imarNot').value);
   // TAKS verilmemiş ama emsal+kat varsa türet (örn. E:2.0 / 17 kat → TAKS≈0.12)
   if(f.taks==null && f.kaks!=null && f.kat){ f.taks=Math.max(0.05,Math.min(0.6, f.kaks/f.kat)); f.taksDerived=true; }
+  // Plan sınırlarını kaydet (Yençok/Hmax/emsal) — uyarılarda kullanılır
+  state.planLimits={ yencokKat:(f.kat!=null?f.kat:null), hmaxM:(f.hmaxM!=null?f.hmaxM:null), emsal:(f.kaks!=null?f.kaks:null), serbest:f.hmaxNote==='serbest' };
   const applied=[];
   if(f.nizam){ $('nizam').value=f.nizam; applied.push('nizam: '+f.nizam); }
   if(f.taks!=null && isFinite(f.taks)){ $('taks').value=clamp(f.taks,0.05,0.9); applied.push('TAKS '+(Math.round(f.taks*100)/100)+(f.taksDerived?' (emsal/kat)':'')); }
@@ -1529,6 +1576,77 @@ $('pdfBtn').onclick = () => {
   </body></html>`);
   w.document.close();
 };
+
+/* ---------- Kaydet & Paylaş (localStorage + URL) ---------- */
+const SAVE_FIELDS=['lat','lng','ilce','ada','parsel','adaT','parselT','cephe','derinlik','yolYon','nizam','taks','kaks','katAdet','katH','onCekme','yanCekme','arkaCekme','kullanim','daireTip','oturum','imarNot'];
+function collectState(){
+  const o={v:1};
+  SAVE_FIELDS.forEach(id=>{ const el=$(id); if(el) o[id]=el.value; });
+  o.sunOn=$('sunOn').checked; o.sunAy=$('sunAy').value; o.sunSaat=$('sunSaat').value;
+  o.mode=state.mode||'coord'; o.dataSrc=state.dataSrc||'tkgm';
+  o.theme=document.documentElement.getAttribute('data-theme')||'';
+  if(state.realParcel) o.rp=state.realParcel;
+  if(state.planLimits) o.pl=state.planLimits;
+  return o;
+}
+function b64e(s){ return btoa(unescape(encodeURIComponent(s))); }
+function b64d(s){ return decodeURIComponent(escape(atob(s))); }
+function saveLocal(){ try{ localStorage.setItem('mt-state', JSON.stringify(collectState())); }catch(e){} }
+let saveTimer=null;
+function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveLocal,500); }
+document.addEventListener('input', scheduleSave, true);
+document.addEventListener('change', scheduleSave, true);
+
+function setMode(mode){
+  state.mode=mode;
+  $('modeSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+  $('coordInputs').style.display = mode==='coord'?'':'none';
+  $('parselInputs').style.display = mode==='parsel'?'':'none';
+}
+function setSrc(src){
+  state.dataSrc=src;
+  $('srcSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.src===src));
+  $('tkgmParsel').style.display = src==='tkgm'?'':'none';
+  $('manualParsel').style.display = src==='tkgm'?'none':'';
+}
+function showRestoredParcel(rp){
+  const p=rp.props||{}, info=$('parselInfo');
+  if(info){ info.style.display='';
+    info.innerHTML=`<div class="k">${(p.ilAd||'')} / ${(p.ilceAd||'')} / ${(p.mahalleAd||'')}</div>
+      <div class="v" style="font-size:15px">Ada ${p.adaNo||''} · Parsel ${p.parselNo||''}</div>
+      <div class="u">Alan: ${fmt(rp.alan||0)} m² · Nitelik: ${p.nitelik||'—'} <span style="opacity:.7">(kayıttan geri yüklendi)</span></div>`; }
+  state.locLabel=`🗺️ ${p.ilceAd||''} · Ada ${p.adaNo||''}/${p.parselNo||''}`;
+}
+function applyState(o){
+  if(!o) return;
+  SAVE_FIELDS.forEach(id=>{ if(o[id]!=null && $(id)) $(id).value=o[id]; });
+  if(o.sunOn!=null){ $('sunOn').checked=!!o.sunOn; $('sunControls').style.display=o.sunOn?'':'none'; }
+  if(o.sunAy!=null) $('sunAy').value=o.sunAy;
+  if(o.sunSaat!=null) $('sunSaat').value=o.sunSaat;
+  if(o.theme){ document.documentElement.setAttribute('data-theme',o.theme); }
+  if(o.mode) setMode(o.mode);
+  if(o.dataSrc) setSrc(o.dataSrc);
+  if(o.rp){ state.realParcel=o.rp; showRestoredParcel(o.rp); }
+  if(o.pl) state.planLimits=o.pl;
+  ['taks','kaks','katAdet','sunAy','sunSaat'].forEach(id=>{ const e=$(id); if(e) e.dispatchEvent(new Event('input')); });
+  updParselAlan();
+}
+$('shareBtn').onclick=()=>{
+  const url=location.origin+location.pathname+'#d='+b64e(JSON.stringify(collectState()));
+  saveLocal();
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(
+      ()=>alert('🔗 Bağlantı panoya kopyalandı!\nBu bağlantıyı açan herkes aynı parsel + imar + tasarımı görür. (Tarayıcı yerelinde de otomatik kaydedildi.)'),
+      ()=>prompt('Bağlantıyı kopyalayın:',url));
+  } else prompt('Bağlantıyı kopyalayın:',url);
+};
+// Açılışta geri yükle: önce URL, yoksa localStorage
+(function restoreOnLoad(){
+  let o=null;
+  try{ if(location.hash.indexOf('#d=')===0) o=JSON.parse(b64d(location.hash.slice(3))); }catch(e){}
+  if(!o){ try{ o=JSON.parse(localStorage.getItem('mt-state')||'null'); }catch(e){} }
+  if(o){ try{ applyState(o); }catch(e){} }
+})();
 </script>
 </body>
 </html>
