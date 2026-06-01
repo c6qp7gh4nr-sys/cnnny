@@ -472,46 +472,57 @@ function buildProxies(){
   list.push({name:'thingproxy',   make:u=>'https://thingproxy.freeboard.io/fetch/'+u, wrap:false});
   return list;
 }
-let TKGM_COMBO=null; // çalışan {base, name} kombinasyonunu hatırla
+let TKGM_COMBO=null; // çalışan proxy adını hatırla
 
-async function tkgmGet(path){
+// Tek bir mutlak URL'i proxy zinciri üzerinden çek
+async function proxyFetch(url){
   const proxies=buildProxies();
-  const errs=[];
-  // önce daha önce çalışmış kombinasyon, sonra tüm base × proxy
   const order=[];
-  if(TKGM_COMBO){ const px=proxies.find(p=>p.name===TKGM_COMBO.name); if(px) order.push({base:TKGM_COMBO.base, px}); }
-  for(const base of TKGM_BASES) for(const px of proxies) order.push({base,px});
-  for(const {base,px} of order){
-    const url=base+path;
+  if(TKGM_COMBO){ const px=proxies.find(p=>p.name===TKGM_COMBO); if(px) order.push(px); }
+  for(const px of proxies) if(!order.includes(px)) order.push(px);
+  const errs=[];
+  for(const px of order){
     try{
-      const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), 12000);
+      const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), 13000);
       const r=await fetch(px.make(url), {headers:{'Accept':'application/json'}, signal:ctrl.signal});
       clearTimeout(to);
       if(!r.ok){ errs.push(`${px.name}:HTTP${r.status}`); continue; }
       let t=await r.text();
       if(px.wrap){ try{ t=JSON.parse(t).contents; }catch(e){} }
-      const j=JSON.parse(t);
-      if(j && (Array.isArray(j) ? j.length : Object.keys(j).length)){
-        TKGM_COMBO={base, name:px.name}; state.lastProxy=`${px.name}`;
-        return j;
+      let j; try{ j=JSON.parse(t); }catch(e){ errs.push(`${px.name}:JSON?`); continue; }
+      // TKGM .NET hata gövdesini (ör. {"Message":"..."}) başarı sayma
+      if(j && !Array.isArray(j) && (j.Message||j.message||j.error) && !(j.features||j.data||j.result)){
+        errs.push(`${px.name}:${String(j.Message||j.message||j.error).slice(0,40)}`); continue;
       }
-      errs.push(`${px.name}:boş`);
+      TKGM_COMBO=px.name; state.lastProxy=px.name;
+      return j;
     }catch(e){ errs.push(`${px.name}:${(e.name==='AbortError'?'zaman aşımı':e.message||e)}`); }
   }
   TKGM_COMBO=null;
   throw new Error(errs.slice(0,6).join(' · '));
 }
+// cbsapi tabanlı yol; birden çok base dener
+async function tkgmGet(path){
+  const errs=[];
+  for(const base of TKGM_BASES){
+    try{ return await proxyFetch(base+path); }catch(e){ errs.push(e.message); }
+  }
+  throw new Error(errs.slice(0,3).join(' · '));
+}
 
-// Liste öğelerini esnek ayrıştır ({value,text} / {id,ad} / {Id,Ad} ...)
+// Liste öğelerini esnek ayrıştır — GeoJSON Feature (properties) dahil
 function normList(data){
-  let arr = Array.isArray(data) ? data : (data.features||data.data||data.result||[]);
+  let arr = Array.isArray(data) ? data : (data.features||data.data||data.result||data.list||[]);
   return arr.map(it=>{
-    const id = it.value ?? it.id ?? it.Id ?? it.ID ?? it.kod ?? it.no;
-    const name = it.text ?? it.ad ?? it.Ad ?? it.name ?? it.aciklama ?? it.adi;
-    return {id:String(id), name:String(name)};
-  }).filter(x=>x.id!=='undefined' && x.name!=='undefined')
+    const p = it && it.properties ? it.properties : it;
+    const id = p.value ?? p.id ?? p.Id ?? p.ID ?? p.ilId ?? p.ILID ?? p.IL_ID ?? p.ilceId ?? p.ILCEID ?? p.ILCE_ID ?? p.mahalleId ?? p.MAHALLEID ?? p.MAHALLE_ID ?? p.kod ?? p.KOD ?? p.gid ?? p.no;
+    const name = p.text ?? p.ad ?? p.Ad ?? p.ADI ?? p.adi ?? p.ilAd ?? p.ILADI ?? p.IL_ADI ?? p.ilceAd ?? p.ILCEADI ?? p.ILCE_ADI ?? p.mahalleAd ?? p.MAHALLEADI ?? p.MAHALLE_ADI ?? p.name ?? p.aciklama ?? p.AD;
+    return {id:(id==null?'':String(id)), name:(name==null?'':String(name))};
+  }).filter(x=>x.id!=='' && x.name!=='')
     .sort((a,b)=>a.name.localeCompare(b.name,'tr'));
 }
+// İl listesi statik GeoJSON dosyasından gelir
+const IL_URL='https://parselsorgu.tkgm.gov.tr/app/modules/administrativeQuery/data/ilListe.json';
 
 function fillSel(sel, items, placeholder){
   sel.innerHTML = `<option value="">— ${placeholder} —</option>` +
@@ -521,8 +532,8 @@ function fillSel(sel, items, placeholder){
 
 async function loadIller(){
   try{
-    tkgmStatus('İller yükleniyor… (proxy zinciri deneniyor, ilk seferinde 5-15 sn sürebilir)');
-    const items=normList(await tkgmGet('/api/idariYapi/ilListe'));
+    tkgmStatus('İller yükleniyor… (ilk seferinde 5-15 sn sürebilir)');
+    const items=normList(await proxyFetch(IL_URL));
     fillSel($('ilSel'), items, 'il seçin');
     tkgmStatus(`✓ ${items.length} il yüklendi (kaynak: ${state.lastProxy}). İl → ilçe → mahalle seçip ada/parsel girin.`, 'ok');
   }catch(e){
