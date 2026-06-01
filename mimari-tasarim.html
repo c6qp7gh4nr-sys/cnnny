@@ -236,6 +236,21 @@
       <div class="card">
         <h2>3 · İmar Durumu</h2>
         <label class="field">
+          <span class="lbl"><span>İmar profili</span><span class="hint">hızlı doldur</span></span>
+          <select id="imarProfil">
+            <option value="">— özel / elle —</option>
+            <option value="a2">Ayrık nizam · 2 kat konut (E:0.60)</option>
+            <option value="a3">Ayrık nizam · 3 kat konut (E:1.05)</option>
+            <option value="a4">Ayrık nizam · 4 kat konut (E:1.60)</option>
+            <option value="b4">Bitişik nizam · 4 kat (E:2.00)</option>
+            <option value="b5">Bitişik nizam · 5 kat (E:2.50)</option>
+            <option value="blok8">Blok / apartman · 8 kat (E:2.00)</option>
+            <option value="villa">Villa / az yoğun (E:0.30)</option>
+            <option value="ticari">Ticari–ofis · 5 kat (E:3.00)</option>
+            <option value="toki">TOKİ tipi blok · 12 kat (E:2.40)</option>
+          </select>
+        </label>
+        <label class="field">
           <span class="lbl"><span>Yapı nizamı</span></span>
           <select id="nizam">
             <option value="ayrik">Ayrık nizam (villa/konut)</option>
@@ -287,9 +302,10 @@
           </select>
         </label>
         <button class="btn" id="genBtn">⚡ Tasarımı Oluştur</button>
+        <button class="btn ghost" id="randBtn" style="margin-top:10px">🎲 Örnek doldur</button>
         <div class="btn-row" style="margin-top:10px">
-          <button class="btn ghost" id="randBtn">🎲 Örnek doldur</button>
-          <button class="btn ghost" id="dlBtn">⬇︎ SVG indir</button>
+          <button class="btn ghost" id="dlBtn">⬇︎ SVG</button>
+          <button class="btn ghost" id="pngBtn">🖼️ PNG indir</button>
         </div>
         <div class="note">Bu araç imar parametrelerine göre <b>kavramsal/şematik</b> bir tasarım üretir. Resmî projeler için yetkili mimar ve yerel imar yönetmeliği esastır. Veriler tarayıcıda işlenir, sunucuya gönderilmez.</div>
       </div>
@@ -1007,6 +1023,52 @@ $('dlBtn').onclick = () => {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url), 1000);
 };
+
+/* ---------- PNG indir (SVG -> canvas) ---------- */
+$('pngBtn').onclick = () => {
+  if(!state.lastSVG){ alert('Önce bir tasarım oluşturun.'); return; }
+  const vb=state.lastSVG.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+  const w=vb?+vb[1]:760, h=vb?+vb[2]:580, scale=2;
+  const blob=new Blob([state.lastSVG],{type:'image/svg+xml;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const img=new Image();
+  img.onload=()=>{
+    const cv=document.createElement('canvas'); cv.width=w*scale; cv.height=h*scale;
+    const ctx=cv.getContext('2d');
+    ctx.fillStyle=cssvar('--bg')||'#fff'; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.drawImage(img,0,0,cv.width,cv.height);
+    URL.revokeObjectURL(url);
+    cv.toBlob(b=>{
+      const u=URL.createObjectURL(b), a=document.createElement('a');
+      a.href=u; a.download=`mimari-tasarim-${state.activeView||'plan'}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(u),1000);
+    },'image/png');
+  };
+  img.onerror=()=>alert('PNG dönüştürme başarısız oldu.');
+  img.src=url;
+};
+
+/* ---------- İmar profili (hızlı doldur) ---------- */
+const IMAR_PROFILLERI = {
+  a2:    {nizam:'ayrik',  taks:0.30, kaks:0.60, kat:2, on:5, yan:3, arka:3, kullanim:'konut'},
+  a3:    {nizam:'ayrik',  taks:0.35, kaks:1.05, kat:3, on:5, yan:3, arka:3, kullanim:'konut'},
+  a4:    {nizam:'ayrik',  taks:0.40, kaks:1.60, kat:4, on:5, yan:3, arka:3, kullanim:'konut'},
+  b4:    {nizam:'bitisik',taks:0.50, kaks:2.00, kat:4, on:0, yan:0, arka:3, kullanim:'konut'},
+  b5:    {nizam:'bitisik',taks:0.50, kaks:2.50, kat:5, on:0, yan:0, arka:3, kullanim:'konut'},
+  blok8: {nizam:'blok',   taks:0.25, kaks:2.00, kat:8, on:5, yan:4, arka:4, kullanim:'konut'},
+  villa: {nizam:'ayrik',  taks:0.15, kaks:0.30, kat:2, on:5, yan:5, arka:5, kullanim:'konut'},
+  ticari:{nizam:'bitisik',taks:0.60, kaks:3.00, kat:5, on:0, yan:0, arka:3, kullanim:'karma'},
+  toki:  {nizam:'blok',   taks:0.20, kaks:2.40, kat:12,on:5, yan:5, arka:5, kullanim:'konut'},
+};
+$('imarProfil').addEventListener('change', e=>{
+  const p=IMAR_PROFILLERI[e.target.value]; if(!p) return;
+  $('nizam').value=p.nizam;
+  $('taks').value=p.taks; $('kaks').value=p.kaks; $('katAdet').value=p.kat;
+  $('onCekme').value=p.on; $('yanCekme').value=p.yan; $('arkaCekme').value=p.arka;
+  $('kullanim').value=p.kullanim;
+  ['taks','kaks','katAdet'].forEach(id=>$(id).dispatchEvent(new Event('input')));
+});
 </script>
 </body>
 </html>
