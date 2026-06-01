@@ -385,6 +385,16 @@
         <h2>Mahal Listesi <span class="badge" id="floorBadge"></span></h2>
         <ul class="roomlist" id="roomlist"></ul>
       </div>
+
+      <div class="card" id="feasCard" style="display:none">
+        <h2>💰 Fizibilite & Maliyet</h2>
+        <div class="row3">
+          <label class="field"><span class="lbl">İnşaat <span class="hint">₺/m²</span></span><input type="text" id="costBuild" placeholder="18000" inputmode="numeric"></label>
+          <label class="field"><span class="lbl">Satış <span class="hint">₺/m²</span></span><input type="text" id="costSale" placeholder="55000" inputmode="numeric"></label>
+          <label class="field"><span class="lbl">Arsa <span class="hint">₺</span></span><input type="text" id="costLand" placeholder="0" inputmode="numeric"></label>
+        </div>
+        <div class="metrics" id="feasMetrics"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -1343,6 +1353,56 @@ function showMetrics(C){
     `<div class="note" style="grid-column:1/-1">Hmax, Planlı Alanlar İmar Yönetmeliği'nin kat adedine göre azami yükseklik kuralından (3,00·kat+3,50 m) türetilmiştir. TAKS/KAKS değerleri parselin bağlı olduğu <b>imar planından</b> gelir; buradakiler girdiğiniz/temsili değerlerdir. Kesin değerler için ilgili belediyenin imar durumu belgesi esastır.</div>`;
 }
 
+/* ---------- Fizibilite & Maliyet ---------- */
+function trMoney(n){ if(!isFinite(n)) return '—'; const a=Math.abs(n); if(a>=1e9) return (n/1e9).toLocaleString('tr-TR',{maximumFractionDigits:2})+' Mr₺'; if(a>=1e6) return (n/1e6).toLocaleString('tr-TR',{maximumFractionDigits:2})+' M₺'; if(a>=1e3) return (n/1e3).toLocaleString('tr-TR',{maximumFractionDigits:0})+' B₺'; return fmt(n)+' ₺'; }
+function feasibility(C){
+  const insBirim=imarNum($('costBuild').value)||0, satFiyat=imarNum($('costSale').value)||0, arsa=imarNum($('costLand').value)||0;
+  const emsalAlan=C.toplamInsaat;                 // emsale dahil (satılabilir) brüt
+  const toplamYapi=emsalAlan*1.35;                // + emsal harici (otopark/sığınak/ortak) ~%35
+  const satilabilir=emsalAlan*0.90;               // ortak alan düşülmüş net satış ~%90
+  const F=genFloor(C);
+  const dpkb=C.inp.kullanim==='ofis'?0:F.units.length;
+  const ust=C.inp.kullanim==='karma'?Math.max(0,C.katAdet-1):C.katAdet;
+  const toplamDaire=dpkb*ust*(C.blocks?C.blocks.length:1);
+  const ortDaire=toplamDaire? satilabilir/toplamDaire : 0;
+  const otopark=C.inp.kullanim==='ofis'? Math.ceil(emsalAlan/100) : Math.ceil(toplamDaire);
+  const otoparkAlan=otopark*25;
+  const siginakGerek=toplamDaire>12;
+  const siginakAlan=siginakGerek? Math.max(toplamDaire*3,20):0;
+  const insMaliyet=toplamYapi*insBirim, toplamMaliyet=insMaliyet+arsa;
+  const gelir=satilabilir*satFiyat, kar=gelir-toplamMaliyet;
+  const karlilik=toplamMaliyet? kar/toplamMaliyet*100 : 0;
+  return {insBirim,satFiyat,arsa,emsalAlan,toplamYapi,satilabilir,toplamDaire,ortDaire,otopark,otoparkAlan,siginakGerek,siginakAlan,insMaliyet,toplamMaliyet,gelir,kar,karlilik};
+}
+function showFeasibility(C){
+  if(!C){ $('feasCard').style.display='none'; return; }
+  $('feasCard').style.display='';
+  const f=feasibility(C);
+  const tiles=[
+    ['Toplam Yapı Alanı', fmt(f.toplamYapi), 'm² (kaba)'],
+    ['Satılabilir Alan', fmt(f.satilabilir), 'm² net'],
+    ['Bağımsız Bölüm', f.toplamDaire||'—', C.inp.kullanim==='ofis'?'(ofis)':'daire'],
+    ['Ort. Daire', f.ortDaire?fmt(f.ortDaire):'—', 'm²'],
+    ['Otopark', f.otopark, `araç · ${fmt(f.otoparkAlan)} m²`],
+    ['Sığınak', f.siginakGerek?'Gerekli':'Gerekmez', f.siginakGerek?`~${fmt(f.siginakAlan)} m²`:'(≤12 b.b.)'],
+  ];
+  const money = (f.insBirim||f.satFiyat) ? [
+    ['İnşaat Maliyeti', trMoney(f.insMaliyet), `${fmt(f.insBirim)} ₺/m²`],
+    ['Toplam Maliyet', trMoney(f.toplamMaliyet), f.arsa?'+arsa':'inşaat'],
+    ['Tahmini Gelir', trMoney(f.gelir), `${fmt(f.satFiyat)} ₺/m²`],
+    ['Kaba Kâr', trMoney(f.kar), f.karlilik?`%${fmt(f.karlilik)} kârlılık`:''],
+  ] : [];
+  const all=tiles.concat(money);
+  $('feasMetrics').innerHTML = all.map(x=>{
+    const v = x[0]==='Kaba Kâr' ? `<span style="color:${f.kar>=0?'var(--brand)':'var(--danger)'}">${x[1]}</span>` : x[1];
+    return `<div class="metric"><div class="k">${x[0]}</div><div class="v">${v} <span class="u">${x[2]}</span></div></div>`;
+  }).join('') + (money.length?'':`<div class="note" style="grid-column:1/-1">Maliyet/kâr için yukarıya inşaat (₺/m²) ve satış (₺/m²) fiyatı girin.</div>`)
+    + `<div class="note" style="grid-column:1/-1">Otopark: konutta ~1 araç/daire, ofiste ~1/100 m² (yönetmelik & yerel plana göre değişir). Sığınak: 12'den fazla bağımsız bölümde gerekir. Maliyet/gelir kaba tahmindir; kesin fizibilite için detaylı metraj ve güncel piyasa esastır.</div>`;
+}
+$('costBuild').addEventListener('input',()=>{ if(state.last) showFeasibility(state.last); });
+$('costSale').addEventListener('input',()=>{ if(state.last) showFeasibility(state.last); });
+$('costLand').addEventListener('input',()=>{ if(state.last) showFeasibility(state.last); });
+
 /* ---------- Oluştur ---------- */
 $('genBtn').onclick = () => {
   const inp=gather();
@@ -1354,6 +1414,7 @@ $('genBtn').onclick = () => {
   $('seedBadge').textContent = state.locLabel;
   $('legend').style.display='flex';
   showMetrics(C);
+  showFeasibility(C);
   render('kutle');
   // yumuşak kaydırma
   document.querySelector('.viewer').scrollIntoView({behavior:'smooth', block:'start'});
@@ -1578,7 +1639,7 @@ $('pdfBtn').onclick = () => {
 };
 
 /* ---------- Kaydet & Paylaş (localStorage + URL) ---------- */
-const SAVE_FIELDS=['lat','lng','ilce','ada','parsel','adaT','parselT','cephe','derinlik','yolYon','nizam','taks','kaks','katAdet','katH','onCekme','yanCekme','arkaCekme','kullanim','daireTip','oturum','imarNot'];
+const SAVE_FIELDS=['lat','lng','ilce','ada','parsel','adaT','parselT','cephe','derinlik','yolYon','nizam','taks','kaks','katAdet','katH','onCekme','yanCekme','arkaCekme','kullanim','daireTip','oturum','imarNot','costBuild','costSale','costLand'];
 function collectState(){
   const o={v:1};
   SAVE_FIELDS.forEach(id=>{ const el=$(id); if(el) o[id]=el.value; });
