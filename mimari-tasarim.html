@@ -174,10 +174,40 @@
         </div>
 
         <div id="parselInputs" style="display:none">
-          <div class="row3">
-            <label class="field"><span class="lbl">İl/İlçe</span><input type="text" id="ilce" placeholder="Kadıköy"></label>
-            <label class="field"><span class="lbl">Ada</span><input type="text" id="ada" placeholder="1234" inputmode="numeric"></label>
-            <label class="field"><span class="lbl">Parsel</span><input type="text" id="parsel" placeholder="56" inputmode="numeric"></label>
+          <div class="seg" id="srcSeg">
+            <button data-src="tkgm" class="active">TKGM'den çek (gerçek)</button>
+            <button data-src="manual">Manuel</button>
+          </div>
+
+          <div id="tkgmParsel">
+            <label class="field"><span class="lbl"><span>İl</span></span>
+              <select id="ilSel"><option value="">— yükleniyor —</option></select></label>
+            <label class="field"><span class="lbl"><span>İlçe</span></span>
+              <select id="ilceSel" disabled><option value="">— önce il seçin —</option></select></label>
+            <label class="field"><span class="lbl"><span>Mahalle</span></span>
+              <select id="mahSel" disabled><option value="">— önce ilçe seçin —</option></select></label>
+            <div class="row">
+              <label class="field"><span class="lbl">Ada</span><input type="text" id="adaT" placeholder="389" inputmode="numeric"></label>
+              <label class="field"><span class="lbl">Parsel</span><input type="text" id="parselT" placeholder="26" inputmode="numeric"></label>
+            </div>
+            <button class="btn" id="sorguBtn">🔎 TKGM'den Parsel Sorgula</button>
+            <div class="note" id="tkgmStatus"></div>
+            <div class="metric" id="parselInfo" style="display:none; margin-top:10px"></div>
+            <details style="margin-top:10px">
+              <summary class="note" style="cursor:pointer">⚙︎ Bağlantı ayarları (CORS)</summary>
+              <label class="field" style="margin-top:8px"><span class="lbl"><span>CORS proxy</span><span class="hint">gerekirse</span></span>
+                <input type="text" id="proxy" value="https://corsproxy.io/?url="></label>
+              <div class="note">Tarayıcı CORS nedeniyle TKGM'ye doğrudan erişemezse istek bu proxy üzerinden tekrar denenir. Boş bırakırsanız yalnız doğrudan denenir. Kendi proxy adresinizi de girebilirsiniz (örn. <code>https://api.allorigins.win/raw?url=</code>).</div>
+            </details>
+          </div>
+
+          <div id="manualParsel" style="display:none">
+            <div class="row3">
+              <label class="field"><span class="lbl">İl/İlçe</span><input type="text" id="ilce" placeholder="Kadıköy"></label>
+              <label class="field"><span class="lbl">Ada</span><input type="text" id="ada" placeholder="1234" inputmode="numeric"></label>
+              <label class="field"><span class="lbl">Parsel</span><input type="text" id="parsel" placeholder="56" inputmode="numeric"></label>
+            </div>
+            <div class="note">Manuel modda parsel ölçülerini (cephe/derinlik) aşağıdaki bölümden kendiniz girersiniz.</div>
           </div>
         </div>
       </div>
@@ -332,6 +362,7 @@ $('modeSeg').querySelectorAll('button').forEach(b => b.onclick = () => {
   state.mode = b.dataset.mode;
   $('coordInputs').style.display = state.mode==='coord' ? '' : 'none';
   $('parselInputs').style.display = state.mode==='parsel' ? '' : 'none';
+  if(state.mode==='parsel' && state.dataSrc==='tkgm') ensureIller();
 });
 
 /* ---------- Koordinat yapıştırma ayrıştırma ---------- */
@@ -375,6 +406,191 @@ $('randBtn').onclick = () => {
   updParselAlan();
 };
 
+/* ==================================================================
+   TKGM (Tapu-Kadastro) GERÇEK PARSEL ENTEGRASYONU
+   Uçlar:  /api/idariYapi/ilListe  ·  /ilceListe/{ilId}  ·  /mahalleListe/{ilceId}
+           /api/parsel/{mahalleId}/{ada}/{parsel}  -> GeoJSON
+   Not: İstek kullanıcının tarayıcısından yapılır. TKGM CORS göndermezse
+        proxy üzerinden tekrar denenir.
+   ================================================================== */
+const TKGM_BASES = [
+  'https://cbsapi.tkgm.gov.tr/megsiswebapi.v3.1',
+  'https://cbsservis.tkgm.gov.tr/megsiswebapi.v3',
+];
+let TKGM_BASE = TKGM_BASES[0];
+
+function tkgmStatus(msg, kind){
+  const el=$('tkgmStatus'); if(!el) return;
+  el.style.color = kind==='err' ? 'var(--danger)' : kind==='ok' ? 'var(--brand)' : 'var(--muted)';
+  el.innerHTML = msg;
+}
+
+// Doğrudan dene, olmazsa proxy ile tekrar dene
+async function tkgmGet(path){
+  const proxy=($('proxy')?.value||'').trim();
+  const errs=[];
+  for(const base of TKGM_BASES){
+    const url=base+path;
+    const tries=[url];
+    if(proxy) tries.push(proxy+encodeURIComponent(url));
+    for(const u of tries){
+      try{
+        const r=await fetch(u,{headers:{'Accept':'application/json'}, mode:'cors'});
+        if(!r.ok){ errs.push('HTTP '+r.status); continue; }
+        const t=await r.text();
+        const j=JSON.parse(t);
+        TKGM_BASE=base;
+        return j;
+      }catch(e){ errs.push(e.message||String(e)); }
+    }
+  }
+  throw new Error(errs.join(' / '));
+}
+
+// Liste öğelerini esnek ayrıştır ({value,text} / {id,ad} / {Id,Ad} ...)
+function normList(data){
+  let arr = Array.isArray(data) ? data : (data.features||data.data||data.result||[]);
+  return arr.map(it=>{
+    const id = it.value ?? it.id ?? it.Id ?? it.ID ?? it.kod ?? it.no;
+    const name = it.text ?? it.ad ?? it.Ad ?? it.name ?? it.aciklama ?? it.adi;
+    return {id:String(id), name:String(name)};
+  }).filter(x=>x.id!=='undefined' && x.name!=='undefined')
+    .sort((a,b)=>a.name.localeCompare(b.name,'tr'));
+}
+
+function fillSel(sel, items, placeholder){
+  sel.innerHTML = `<option value="">— ${placeholder} —</option>` +
+    items.map(i=>`<option value="${i.id}">${i.name}</option>`).join('');
+  sel.disabled = items.length===0;
+}
+
+async function loadIller(){
+  try{
+    tkgmStatus('İller yükleniyor…');
+    const items=normList(await tkgmGet('/api/idariYapi/ilListe'));
+    fillSel($('ilSel'), items, 'il seçin');
+    tkgmStatus(`${items.length} il yüklendi. İl → ilçe → mahalle seçip ada/parsel girin.`, 'ok');
+  }catch(e){
+    $('ilSel').innerHTML='<option value="">— yüklenemedi —</option>';
+    tkgmStatus('İl listesi alınamadı. CORS engeli olabilir — ayarlardan bir proxy girip tekrar deneyin. ('+e.message+')','err');
+  }
+}
+async function loadIlce(ilId){
+  fillSel($('ilceSel'), [], 'yükleniyor'); $('ilceSel').disabled=true;
+  fillSel($('mahSel'), [], 'önce ilçe seçin'); $('mahSel').disabled=true;
+  if(!ilId) return;
+  try{
+    const items=normList(await tkgmGet('/api/idariYapi/ilceListe/'+ilId));
+    fillSel($('ilceSel'), items, 'ilçe seçin');
+  }catch(e){ tkgmStatus('İlçe listesi alınamadı: '+e.message,'err'); }
+}
+async function loadMah(ilceId){
+  fillSel($('mahSel'), [], 'yükleniyor'); $('mahSel').disabled=true;
+  if(!ilceId) return;
+  try{
+    const items=normList(await tkgmGet('/api/idariYapi/mahalleListe/'+ilceId));
+    fillSel($('mahSel'), items, 'mahalle seçin');
+  }catch(e){ tkgmStatus('Mahalle listesi alınamadı: '+e.message,'err'); }
+}
+
+/* ---- GeoJSON geometri yardımcıları ---- */
+function outerRing(geom){
+  if(!geom) return null;
+  let c=geom.coordinates;
+  if(geom.type==='MultiPolygon') c=c[0];     // ilk poligon
+  if((geom.type==='Polygon')||Array.isArray(c?.[0]?.[0])) c=c[0]; // dış halka
+  return Array.isArray(c) ? c : null;
+}
+// lng/lat -> yerel metre (merkez etrafında eşdikdörtgen projeksiyon)
+function toMeters(ring){
+  const lat0=ring.reduce((s,p)=>s+p[1],0)/ring.length;
+  const lng0=ring.reduce((s,p)=>s+p[0],0)/ring.length;
+  const mPerLat=110540, mPerLng=111320*Math.cos(lat0*Math.PI/180);
+  return { pts: ring.map(p=>[(p[0]-lng0)*mPerLng, (p[1]-lat0)*mPerLat]), lat0, lng0 };
+}
+function shoelace(pts){
+  let a=0; for(let i=0,n=pts.length;i<n;i++){ const [x1,y1]=pts[i],[x2,y2]=pts[(i+1)%n]; a+=x1*y2-x2*y1; }
+  return Math.abs(a)/2;
+}
+// Minimum alanlı yönlü dikdörtgen (kenar açılarını tarayarak)
+function minAreaRect(pts){
+  let best=null;
+  for(let i=0;i<pts.length-1;i++){
+    const dx=pts[i+1][0]-pts[i][0], dy=pts[i+1][1]-pts[i][1];
+    const ang=Math.atan2(dy,dx); if(!isFinite(ang)) continue;
+    const c=Math.cos(-ang), s=Math.sin(-ang);
+    let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+    for(const p of pts){ const x=p[0]*c-p[1]*s, y=p[0]*s+p[1]*c; minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y); }
+    const w=maxX-minX, h=maxY-minY, area=w*h;
+    if(!best||area<best.area) best={area,ang,w,h,minX,minY,c,s};
+  }
+  return best;
+}
+// Poligonu OBB çerçevesine döndür + normalize et (x∈[0,w], y∈[0,h])
+function normalizeToRect(pts, rect){
+  const out=pts.map(p=>{ const x=p[0]*rect.c-p[1]*rect.s, y=p[0]*rect.s+p[1]*rect.c; return [x-rect.minX, y-rect.minY]; });
+  // y'yi çizim için yukarı-pozitiften alt-pozitife çevirmiyoruz; SVG'de invert ederiz
+  return out;
+}
+
+async function sorgulaParsel(){
+  const mahId=$('mahSel').value, ada=($('adaT').value||'').trim(), parsel=($('parselT').value||'').trim();
+  if(!mahId){ tkgmStatus('Lütfen önce il/ilçe/mahalle seçin.','err'); return; }
+  if(!ada||!parsel){ tkgmStatus('Ada ve parsel numarası girin.','err'); return; }
+  $('sorguBtn').disabled=true; tkgmStatus('Parsel sorgulanıyor…');
+  try{
+    const gj=await tkgmGet(`/api/parsel/${mahId}/${ada}/${parsel}`);
+    const feat = gj.type==='FeatureCollection' ? gj.features?.[0] : gj;
+    if(!feat || !feat.geometry) throw new Error('Parsel bulunamadı veya geometri yok.');
+    const ring=outerRing(feat.geometry);
+    if(!ring || ring.length<3) throw new Error('Geçersiz geometri.');
+    const m=toMeters(ring);
+    const rect=minAreaRect(m.pts);
+    const polyNorm=normalizeToRect(m.pts, rect);
+    const cephe=Math.max(rect.w,3), derinlik=Math.max(rect.h,3);
+    const props=feat.properties||{};
+    const alan = parseFloat(props.alan) || shoelace(m.pts);
+
+    state.realParcel = { polyNorm, cephe, derinlik, alan, props, centroid:{lat:m.lat0,lng:m.lng0} };
+
+    // Tasarım girdilerine yaz
+    $('cephe').value = cephe.toFixed(1);
+    $('derinlik').value = derinlik.toFixed(1);
+    updParselAlan();
+    // Koordinat alanlarını da doldur
+    $('lat').value=m.lat0.toFixed(6); $('lng').value=m.lng0.toFixed(6);
+
+    const info=$('parselInfo'); info.style.display='';
+    info.innerHTML=`<div class="k">${(props.ilAd||'')} / ${(props.ilceAd||'')} / ${(props.mahalleAd||'')}</div>
+      <div class="v" style="font-size:15px">Ada ${props.adaNo||ada} · Parsel ${props.parselNo||parsel}</div>
+      <div class="u">Alan: ${fmt(alan)} m² · Nitelik: ${props.nitelik||'—'}<br>
+      Yönlü dikdörtgen ≈ ${cephe.toFixed(1)} × ${derinlik.toFixed(1)} m · Mevkii: ${props.mevkii||'—'}</div>`;
+    tkgmStatus('✓ Parsel bulundu. Gerçek sınır vaziyet planında çizilecek. “Tasarımı Oluştur”a basın.','ok');
+    state.locLabel=`🗺️ ${props.ilceAd||''} · Ada ${props.adaNo||ada}/${props.parselNo||parsel}`;
+  }catch(e){
+    state.realParcel=null;
+    tkgmStatus('Sorgu başarısız: '+e.message+'. (CORS engeli ise ayarlardan proxy deneyin; veya parsel mevcut olmayabilir.)','err');
+    $('parselInfo').style.display='none';
+  }finally{ $('sorguBtn').disabled=false; }
+}
+
+/* ---- Olay bağlama (parsel modu) ---- */
+let illerLoaded=false;
+function ensureIller(){ if(!illerLoaded){ illerLoaded=true; loadIller(); } }
+$('srcSeg').querySelectorAll('button').forEach(b=> b.onclick=()=>{
+  $('srcSeg').querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  state.dataSrc=b.dataset.src;
+  const tk=state.dataSrc==='tkgm';
+  $('tkgmParsel').style.display=tk?'':'none';
+  $('manualParsel').style.display=tk?'none':'';
+  if(tk) ensureIller(); else state.realParcel=null;
+});
+state.dataSrc='tkgm';
+$('ilSel').addEventListener('change', e=>{ state.realParcel=null; $('parselInfo').style.display='none'; loadIlce(e.target.value); });
+$('ilceSel').addEventListener('change', e=>{ loadMah(e.target.value); });
+$('sorguBtn').onclick=sorgulaParsel;
+
 /* ---------- Girdileri topla ---------- */
 function gather(){
   const cephe=Math.max(3,parseFloat($('cephe').value)||20);
@@ -385,6 +601,11 @@ function gather(){
     const lng=($('lng').value||'').trim()||'28.979530';
     key=`coord:${lat},${lng}`;
     state.locLabel=`📍 ${lat}, ${lng}`;
+  } else if(state.dataSrc==='tkgm' && state.realParcel){
+    const p=state.realParcel.props;
+    key=`tkgm:${$('mahSel').value}/${$('adaT').value}/${$('parselT').value}`;
+    // locLabel sorgu sırasında ayarlandı
+    if(!state.locLabel) state.locLabel=`🗺️ Ada ${p.adaNo}/${p.parselNo}`;
   } else {
     const ilce=($('ilce').value||'').trim();
     const ada=($('ada').value||'').trim()||'0';
@@ -545,7 +766,14 @@ function viewVaziyet(C){
   // ölçü etiketleri
   let s=svgEl(W,H);
   s+=`<rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/>`;
-  s+=`<rect x="${ox}" y="${oy}" width="${PW}" height="${PD}" fill="${garden}" opacity="0.28" stroke="${muted}" stroke-width="1.4" stroke-dasharray="6 4"/>`;
+  // Gerçek TKGM poligonu varsa onu çiz, yoksa dikdörtgen parsel
+  if(C.realParcel && C.realParcel.polyNorm){
+    const pts=C.realParcel.polyNorm.map(p=>`${(ox+p[0]*scale).toFixed(1)},${(oy+PD-p[1]*scale).toFixed(1)}`).join(' ');
+    s+=`<polygon points="${pts}" fill="${garden}" opacity="0.30" stroke="${muted}" stroke-width="1.6"/>`;
+    s+=`<polygon points="${pts}" fill="none" stroke="${cssvar('--brand-deep')}" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.5"/>`;
+  } else {
+    s+=`<rect x="${ox}" y="${oy}" width="${PW}" height="${PD}" fill="${garden}" opacity="0.28" stroke="${muted}" stroke-width="1.4" stroke-dasharray="6 4"/>`;
+  }
   s+=roadLine;
   // bina
   s+=`<rect x="${bx}" y="${by}" width="${bbw}" height="${bbd}" rx="2" fill="${brand}" opacity="0.92"/>`;
@@ -686,6 +914,7 @@ function showMetrics(C){
 $('genBtn').onclick = () => {
   const inp=gather();
   const C=compute(inp);
+  C.realParcel = (state.mode==='parsel' && state.dataSrc==='tkgm') ? state.realParcel : null;
   state.last=C;
   $('seedBadge').textContent = state.locLabel;
   $('legend').style.display='flex';
