@@ -535,6 +535,17 @@
         <h2>📊 Senaryo Karşılaştırma</h2>
         <div id="scenBody"></div>
       </div>
+
+      <div class="card" id="cfCard" style="display:none">
+        <h2>📈 Nakit Akışı & Finansman</h2>
+        <div class="row3">
+          <label class="field"><span class="lbl">İnşaat <span class="hint">ay</span></span><input type="text" id="cfBuild" placeholder="18" inputmode="numeric"></label>
+          <label class="field"><span class="lbl">Satış <span class="hint">ay</span></span><input type="text" id="cfSale" placeholder="24" inputmode="numeric"></label>
+          <label class="field"><span class="lbl">Ön satış <span class="hint">%</span></span><input type="text" id="cfPre" placeholder="40" inputmode="numeric"></label>
+        </div>
+        <button class="btn ghost" id="cfBtn">📈 Nakit akışını hesapla</button>
+        <div id="cfBody" style="margin-top:10px"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -1686,6 +1697,63 @@ function compareScenarios(){
 }
 $('scenBtn').onclick=compareScenarios;
 
+/* ---------- Nakit Akışı & Finansman ---------- */
+function cashFlow(C){
+  const f=feasibility(C); if(!(f.insBirim&&f.satFiyat)) return null;
+  const insSure=Math.max(1,parseInt($('cfBuild').value)||18);
+  const satSure=Math.max(1,parseInt($('cfSale').value)||24);
+  const onSat=Math.max(0,Math.min(100,parseFloat(($('cfPre').value||'').replace(',','.'))||40))/100;
+  const months=insSure+satSure+1;   // satış teslimden (insSure) sonra satSure ay sürer
+  const out=new Array(months).fill(0), inn=new Array(months).fill(0);
+  out[0]+= f.arsa + f.ruhsatProje;
+  let w=[]; for(let m=0;m<insSure;m++){ w.push(Math.sin(Math.PI*(m+0.5)/insSure)); } const ws=w.reduce((a,b)=>a+b,0)||1;
+  for(let m=0;m<insSure;m++) out[m]+= f.insMaliyet*w[m]/ws;
+  const presale=f.gelir*onSat, rest=f.gelir-presale;
+  for(let m=0;m<insSure;m++) inn[m]+= presale/insSure;       // ön satış: inşaat boyunca
+  for(let m=0;m<satSure;m++) inn[insSure+m]+= rest/satSure;   // kalan: teslimden sonra
+  const cum=[], net=[]; let c=0;
+  for(let m=0;m<months;m++){ const nt=inn[m]-out[m]; net.push(nt); c+=nt; cum.push(c); }
+  const maxNeed=-Math.min(0,...cum);
+  let be=-1; for(let m=0;m<months;m++){ if(cum[m]>=0){ be=m; break; } }
+  return {months,out,inn,net,cum,maxNeed,beMonth:be,insSure,satSure,sonKar:cum[months-1]};
+}
+function renderCashFlow(){
+  const C=state.last; if(!C){ toast('Önce tasarım oluşturun','err'); return; }
+  const cf=cashFlow(C);
+  if(!cf){ $('cfBody').innerHTML='<div class="note" style="color:var(--danger)">Fizibilitede inşaat (₺/m²) ve satış (₺/m²) fiyatı girin.</div>'; $('cfCard').style.display=''; return; }
+  $('cfCard').style.display='';
+  // grafik
+  const W=560,H=180,pad=30, n=cf.months;
+  const mn=Math.min(0,...cf.cum), mx=Math.max(0,...cf.cum), rng=(mx-mn)||1;
+  const X=i=>pad+ i*(W-2*pad)/(n-1||1);
+  const Y=v=>H-pad-(v-mn)/rng*(H-2*pad);
+  const muted=cssvar('--muted'), brand=cssvar('--brand'), danger=cssvar('--danger'), line=cssvar('--line'), fg=cssvar('--fg');
+  let g=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">`;
+  g+=`<line x1="${pad}" y1="${Y(0)}" x2="${W-pad}" y2="${Y(0)}" stroke="${muted}" stroke-dasharray="3 3"/>`;
+  // alan
+  let area=`${X(0)},${Y(0)} `+cf.cum.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ')+` ${X(n-1)},${Y(0)}`;
+  g+=`<polygon points="${area}" fill="${cf.sonKar>=0?brand:danger}" opacity="0.12"/>`;
+  g+=`<polyline points="${cf.cum.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ')}" fill="none" stroke="${cf.sonKar>=0?brand:danger}" stroke-width="2"/>`;
+  // azami finansman noktası
+  const minI=cf.cum.indexOf(Math.min(...cf.cum));
+  g+=`<circle cx="${X(minI)}" cy="${Y(cf.cum[minI])}" r="3.5" fill="${danger}"/>`;
+  if(cf.beMonth>=0){ g+=`<line x1="${X(cf.beMonth)}" y1="${pad-6}" x2="${X(cf.beMonth)}" y2="${H-pad}" stroke="${brand}" stroke-dasharray="2 3" opacity=".6"/>`; }
+  g+=`<text x="${pad}" y="${H-8}" font-size="10" fill="${muted}">0. ay</text><text x="${W-pad}" y="${H-8}" text-anchor="end" font-size="10" fill="${muted}">${n-1}. ay</text>`;
+  g+=`<text x="${W/2}" y="${H-8}" text-anchor="middle" font-size="10" fill="${fg}">Kümülatif nakit (₺)</text>`;
+  g+=`</svg>`;
+  const tiles=[
+    ['Proje Süresi', cf.months-1, 'ay'],
+    ['Azami Finansman', trMoney(cf.maxNeed), 'ihtiyaç'],
+    ['Başabaş', cf.beMonth>=0?cf.beMonth:'—', cf.beMonth>=0?'. ay':'(yok)'],
+    ['Dönem Sonu', trMoney(cf.sonKar), 'net'],
+  ];
+  $('cfBody').innerHTML=g+`<div class="metrics" style="margin-top:8px">`+
+    tiles.map(t=>`<div class="metric"><div class="k">${t[0]}</div><div class="v">${t[1]} <span class="u">${t[2]}</span></div></div>`).join('')+
+    `</div><div class="note">İnşaat harcaması S-eğrisiyle dağıtılır; ön satış inşaat boyunca, kalan gelir teslimle başlar. <b>Azami finansman</b> = en düşük kümülatif (kırmızı nokta). Kaba tahmindir.</div>`;
+}
+$('cfBtn').onclick=renderCashFlow;
+['cfBuild','cfSale','cfPre'].forEach(id=>$(id).addEventListener('input',()=>{ if($('cfCard').style.display!=='none' && state.last) renderCashFlow(); }));
+
 /* ---------- Oluştur ---------- */
 $('genBtn').onclick = () => {
   const inp=gather();
@@ -2080,7 +2148,7 @@ function exportJSON(){
 $('expDXF').onclick=exportDXF; $('expOBJ').onclick=exportOBJ; $('expKML').onclick=exportKML; $('expJSON').onclick=exportJSON;
 
 /* ---------- Kaydet & Paylaş (localStorage + URL) ---------- */
-const SAVE_FIELDS=['lat','lng','ilce','ada','parsel','adaT','parselT','cephe','derinlik','yolYon','nizam','taks','kaks','katAdet','katH','onCekme','yanCekme','arkaCekme','kullanim','daireTip','oturum','catiTipi','imarNot','costBuild','costSale','costLand'];
+const SAVE_FIELDS=['lat','lng','ilce','ada','parsel','adaT','parselT','cephe','derinlik','yolYon','nizam','taks','kaks','katAdet','katH','onCekme','yanCekme','arkaCekme','kullanim','daireTip','oturum','catiTipi','imarNot','costBuild','costSale','costLand','cfBuild','cfSale','cfPre'];
 function collectState(){
   const o={v:1};
   SAVE_FIELDS.forEach(id=>{ const el=$(id); if(el) o[id]=el.value; });
