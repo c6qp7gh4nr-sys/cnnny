@@ -139,6 +139,65 @@
   .note { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
   .badge { display:inline-block; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
   .coord-readout { font-size: 12px; color: var(--muted); margin-top: -4px; margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+
+  /* ===== Frontend cilası ===== */
+  :root{ --ring: 0 0 0 3px rgba(31,111,92,.16); --shadow-sm:0 2px 10px rgba(20,64,52,.07); }
+  [data-theme="dark"]{ --ring:0 0 0 3px rgba(70,184,150,.22); --shadow-sm:0 2px 12px rgba(0,0,0,.5); }
+  body{
+    background:
+      radial-gradient(1100px 460px at 100% -6%, var(--brand-soft), transparent 60%),
+      radial-gradient(820px 460px at -12% -2%, var(--accent-soft), transparent 55%),
+      var(--bg);
+    background-attachment: fixed; padding-bottom: 100px;
+  }
+  header{ position:sticky; top:0; z-index:50; border-radius:0 0 22px 22px; box-shadow:0 8px 26px rgba(19,64,52,.30); }
+  header::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+    background:radial-gradient(560px 130px at 82% -10%, rgba(255,255,255,.14), transparent 70%); }
+  header .wrap{ position:relative; z-index:1; }
+  .brand-title{ font-size:21px; letter-spacing:.3px; }
+  .icon-btn{ transition:.15s; } .icon-btn:hover{ background:rgba(255,255,255,.27); }
+
+  .card{ border-radius:18px; box-shadow:var(--shadow-sm); transition:box-shadow .2s, transform .2s; }
+  .card:hover{ box-shadow:var(--shadow); }
+  .card h2{ display:flex; align-items:center; gap:9px; font-size:13px; }
+  .card h2::before{ content:""; width:4px; height:15px; border-radius:3px; background:linear-gradient(var(--brand),var(--accent)); }
+
+  input[type=text],input[type=number],select,textarea{ transition:border-color .15s, box-shadow .15s, background .15s; }
+  input:focus,select:focus,textarea:focus{ border-color:var(--brand)!important; box-shadow:var(--ring); background:var(--card); }
+
+  .seg button{ transition:.2s; } .seg button.active{ box-shadow:0 3px 11px rgba(31,111,92,.30); transform:translateY(-1px); }
+
+  .btn{ background:linear-gradient(135deg,var(--brand),var(--brand-deep)); letter-spacing:.2px; box-shadow:0 6px 16px rgba(31,111,92,.30); transition:transform .12s, box-shadow .2s, filter .2s; }
+  .btn:hover{ filter:brightness(1.06); box-shadow:0 9px 24px rgba(31,111,92,.40); }
+  .btn:active{ transform:translateY(1px) scale(.995); }
+  .btn.ghost{ background:var(--brand-soft); box-shadow:none; border:1px solid var(--line); }
+  .btn.ghost:hover{ filter:none; background:var(--card); border-color:var(--brand); }
+
+  @media(min-width:861px){ .grid2>div:last-child{ position:sticky; top:90px; align-self:start; max-height:calc(100vh - 104px); overflow:auto; padding-right:2px; } }
+  .canvas-host{ background:radial-gradient(var(--line) 1px, transparent 1.5px) 0 0/20px 20px, var(--card); }
+  .tab-btn{ transition:.15s; white-space:nowrap; } .tab-btn:hover{ border-color:var(--brand); color:var(--brand); }
+  .tab-btn.active{ box-shadow:0 3px 10px rgba(31,111,92,.30); }
+  .viewer-head .tabs{ overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .viewer-head .tabs::-webkit-scrollbar{ display:none; }
+
+  .metric{ border:1px solid var(--line); transition:.15s; } .metric:hover{ border-color:var(--brand); transform:translateY(-1px); }
+
+  /* Yapışkan Oluştur çubuğu */
+  .fab{ position:fixed; left:50%; transform:translateX(-50%); bottom:14px; z-index:60; width:min(94%,440px); display:flex; gap:10px; }
+  .fab button{ flex:1; padding:15px; border:none; border-radius:16px; font-size:16px; font-weight:800; cursor:pointer;
+    background:linear-gradient(135deg,var(--brand),var(--brand-deep)); color:#fff; box-shadow:0 12px 32px rgba(19,64,52,.45); }
+  .fab .alt{ flex:0 0 54px; font-size:20px; background:var(--card); color:var(--brand); border:1px solid var(--line); box-shadow:0 8px 24px rgba(0,0,0,.18); }
+  .fab button:active{ transform:translateY(1px); }
+  @media(min-width:861px){ .fab{ display:none; } body{ padding-bottom:40px; } }
+
+  /* Toast */
+  #toast{ position:fixed; left:50%; transform:translateX(-50%); bottom:86px; z-index:200; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none; }
+  @media(min-width:861px){ #toast{ bottom:24px; } }
+  .toast{ background:var(--fg); color:var(--bg); padding:11px 16px; border-radius:12px; font-size:13.5px; font-weight:600;
+    box-shadow:0 10px 28px rgba(0,0,0,.32); opacity:0; transform:translateY(10px); transition:.25s; max-width:90vw; text-align:center; }
+  .toast.show{ opacity:1; transform:none; }
+  .toast.ok{ background:var(--brand); color:#fff; } .toast.err{ background:var(--danger); color:#fff; }
+  *::-webkit-scrollbar{ width:8px; height:8px; } *::-webkit-scrollbar-thumb{ background:var(--line); border-radius:8px; }
 </style>
 </head>
 <body>
@@ -415,11 +474,23 @@
   </div>
 </div>
 
+<div class="fab">
+  <button id="fabGen">⚡ Tasarımı Oluştur</button>
+  <button class="alt" id="fabView" title="Önizlemeye git">👁</button>
+</div>
+<div id="toast"></div>
+
 <script>
 "use strict";
 /* ---------- Yardımcılar ---------- */
 const $ = id => document.getElementById(id);
 const fmt = (n, d=0) => Number(n).toLocaleString('tr-TR', {maximumFractionDigits:d, minimumFractionDigits:d});
+function toast(msg, kind, ms){
+  const host=$('toast'); if(!host) return;
+  const t=document.createElement('div'); t.className='toast '+(kind||''); t.innerHTML=msg; host.appendChild(t);
+  requestAnimationFrame(()=>t.classList.add('show'));
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),300); }, ms||2600);
+}
 
 // Deterministik sayı üretici (girdiye bağlı tekrarlanabilir tasarım)
 function hashStr(s){ let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
@@ -1496,7 +1567,10 @@ $('genBtn').onclick = () => {
   render('kutle');
   // yumuşak kaydırma
   document.querySelector('.viewer').scrollIntoView({behavior:'smooth', block:'start'});
+  toast('✓ Tasarım oluşturuldu', 'ok');
 };
+$('fabGen').onclick=()=>$('genBtn').click();
+$('fabView').onclick=()=>document.querySelector('.viewer').scrollIntoView({behavior:'smooth', block:'start'});
 
 /* ---------- Görünüm sekmeleri ---------- */
 $('viewTabs').querySelectorAll('.tab-btn').forEach(b=> b.onclick=()=>{ if(state.last) render(b.dataset.view); });
@@ -1764,6 +1838,7 @@ function downloadFile(name, content, mime){
   const url=URL.createObjectURL(blob), a=document.createElement('a');
   a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
+  toast('⬇︎ '+name, 'ok');
 }
 function massRings(C){
   // metre cinsinden oturum poligon(lar)ı (x sağ, y üst)
@@ -1882,7 +1957,7 @@ $('shareBtn').onclick=()=>{
   saveLocal();
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(url).then(
-      ()=>alert('🔗 Bağlantı panoya kopyalandı!\nBu bağlantıyı açan herkes aynı parsel + imar + tasarımı görür. (Tarayıcı yerelinde de otomatik kaydedildi.)'),
+      ()=>toast('🔗 Bağlantı panoya kopyalandı','ok',3200),
       ()=>prompt('Bağlantıyı kopyalayın:',url));
   } else prompt('Bağlantıyı kopyalayın:',url);
 };
