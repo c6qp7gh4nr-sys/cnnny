@@ -490,13 +490,19 @@ async function proxyFetch(url){
       let t=await r.text();
       if(px.wrap){ try{ t=JSON.parse(t).contents; }catch(e){} }
       let j; try{ j=JSON.parse(t); }catch(e){ errs.push(`${px.name}:JSON?`); continue; }
-      // TKGM .NET hata gövdesini (ör. {"Message":"..."}) başarı sayma
       if(j && !Array.isArray(j) && (j.Message||j.message||j.error) && !(j.features||j.data||j.result)){
-        errs.push(`${px.name}:${String(j.Message||j.message||j.error).slice(0,40)}`); continue;
+        const msg=String(j.Message||j.message||j.error);
+        // Proxy TKGM'ye ulaştı (gerçek uygulama yanıtı). Geçersiz-istek/teknik hata ise sıradakini dene;
+        // "bulunamadı" gibi kesin yanıtsa hemen bildir.
+        if(/bulunama|kayıt yok|not found/i.test(msg)){
+          TKGM_COMBO=px.name; state.lastProxy=px.name;
+          throw Object.assign(new Error(msg), {tkgm:true});
+        }
+        errs.push(`${px.name}:${msg.slice(0,40)}`); continue;
       }
       TKGM_COMBO=px.name; state.lastProxy=px.name;
       return j;
-    }catch(e){ errs.push(`${px.name}:${(e.name==='AbortError'?'zaman aşımı':e.message||e)}`); }
+    }catch(e){ if(e.tkgm) throw e; errs.push(`${px.name}:${(e.name==='AbortError'?'zaman aşımı':e.message||e)}`); }
   }
   TKGM_COMBO=null;
   throw new Error(errs.slice(0,6).join(' · '));
@@ -505,7 +511,7 @@ async function proxyFetch(url){
 async function tkgmGet(path){
   const errs=[];
   for(const base of TKGM_BASES){
-    try{ return await proxyFetch(base+path); }catch(e){ errs.push(e.message); }
+    try{ return await proxyFetch(base+path); }catch(e){ if(e.tkgm) throw e; errs.push(e.message); }
   }
   throw new Error(errs.slice(0,3).join(' · '));
 }
@@ -637,7 +643,11 @@ async function sorgulaParsel(){
     state.locLabel=`🗺️ ${props.ilceAd||''} · Ada ${props.adaNo||ada}/${props.parselNo||parsel}`;
   }catch(e){
     state.realParcel=null;
-    tkgmStatus('Sorgu başarısız: '+e.message+'. (CORS engeli ise ayarlardan proxy deneyin; veya parsel mevcut olmayabilir.)','err');
+    if(e.tkgm || /bulunama/i.test(e.message)){
+      tkgmStatus(`⚠︎ TKGM: bu Ada/Parsel bu mahallede bulunamadı. Numaraları kontrol edin — gerçek, var olan bir ada/parsel girin. <small style="opacity:.7">(${e.message})</small>`,'err');
+    } else {
+      tkgmStatus('Sorgu başarısız: '+e.message+'. (CORS engeli ise ayarlardan proxy deneyin.)','err');
+    }
     $('parselInfo').style.display='none';
   }finally{ $('sorguBtn').disabled=false; }
 }
