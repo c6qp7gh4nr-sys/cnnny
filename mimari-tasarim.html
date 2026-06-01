@@ -283,7 +283,10 @@
 
       <div class="card">
         <h2>3b · Plan Notu / İmar Durumu — Otomatik Yorumla</h2>
-        <div class="note" style="margin-bottom:8px">Belediye e-imar / e-Plan'dan aldığınız <b>imar durumu yazısını / plan notlarını</b> aşağıya yapıştırın; uygulama TAKS, KAKS, Hmax, nizam, kullanım ve çekme mesafelerini bulup üstteki alanları otomatik doldurur.</div>
+        <div class="note" style="margin-bottom:8px">İmar durumu belgesinin <b>fotoğrafını yükleyin</b> (OCR ile okunur) ya da metnini aşağıya <b>yapıştırın</b>; uygulama TAKS, KAKS, Hmax, nizam, kullanım ve çekmeleri bulup üstteki alanları otomatik doldurur.</div>
+        <label class="btn ghost" for="imarFoto" style="display:block;text-align:center;margin-bottom:10px;cursor:pointer">📷 İmar belgesi fotoğrafı yükle (OCR)</label>
+        <input type="file" id="imarFoto" accept="image/*" style="display:none">
+        <img id="imarPreview" style="display:none;max-width:100%;border-radius:10px;margin-bottom:10px;border:1px solid var(--line)">
         <textarea id="imarNot" rows="5" placeholder="Örn: Ayrık nizam, TAKS: 0.30, KAKS (Emsal): 1.05, Yençok: 4 kat, ön bahçe 5 m, yan bahçe 3 m, konut alanı..." style="width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:var(--bg);color:var(--fg);font-size:14px;font-family:inherit;outline:none;resize:vertical;"></textarea>
         <button class="btn" id="imarParseBtn" style="margin-top:10px">🧠 Yorumla ve Otomatik Doldur</button>
         <div class="note" id="imarParseOut" style="margin-top:8px"></div>
@@ -1354,6 +1357,42 @@ function parseImarNotes(raw){
   return f;
 }
 function imarOut(msg,kind){ const el=$('imarParseOut'); el.style.color=kind==='err'?'var(--danger)':kind==='ok'?'var(--brand)':'var(--muted)'; el.innerHTML=msg; }
+
+/* ---------- İmar belgesi fotoğrafı → OCR ---------- */
+let tesseractLoad=null;
+function loadTesseract(){
+  if(window.Tesseract) return Promise.resolve();
+  if(tesseractLoad) return tesseractLoad;
+  tesseractLoad=new Promise((res,rej)=>{
+    const sc=document.createElement('script');
+    sc.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    sc.onload=()=>res(); sc.onerror=()=>rej(new Error('OCR motoru indirilemedi (internet gerekli)'));
+    document.head.appendChild(sc);
+  });
+  return tesseractLoad;
+}
+$('imarFoto').addEventListener('change', async e=>{
+  const file=e.target.files && e.target.files[0]; if(!file) return;
+  const url=URL.createObjectURL(file);
+  const pv=$('imarPreview'); pv.src=url; pv.style.display='block';
+  imarOut('📷 OCR motoru hazırlanıyor… (ilk seferinde indirilir, 20-60 sn; internet gerekli)');
+  try{
+    await loadTesseract();
+    imarOut('🔎 Fotoğraftaki metin okunuyor… %0');
+    const { data } = await Tesseract.recognize(file, 'tur', {
+      logger:m=>{ if(m.status==='recognizing text') imarOut('🔎 Metin okunuyor… %'+Math.round((m.progress||0)*100)); }
+    });
+    URL.revokeObjectURL(url);
+    const text=((data&&data.text)||'').trim();
+    $('imarNot').value=text;
+    if(text.length<3){ imarOut('Fotoğraftan metin okunamadı. Daha net/yakın bir görsel deneyin; ya da iPad\'de belgeye basılı tutup “Metni Kopyala” deyip kutuya yapıştırın.','err'); return; }
+    imarOut('✓ Metin okundu, yorumlanıyor…');
+    $('imarParseBtn').click();
+  }catch(err){
+    URL.revokeObjectURL(url);
+    imarOut('OCR başarısız: '+err.message+'. Alternatif: iPad\'de belge fotoğrafına basılı tutun → “Metni Kopyala” → kutuya yapıştırın.','err');
+  }
+});
 $('imarParseBtn').onclick=()=>{
   const f=parseImarNotes($('imarNot').value);
   // TAKS verilmemiş ama emsal+kat varsa türet (örn. E:2.0 / 17 kat → TAKS≈0.12)
