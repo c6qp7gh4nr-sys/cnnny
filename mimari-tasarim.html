@@ -566,6 +566,15 @@
           <label class="field"><span class="lbl">Satış <span class="hint">₺/m²</span></span><input type="text" id="costSale" placeholder="55000" inputmode="numeric"></label>
           <label class="field"><span class="lbl">Arsa <span class="hint">₺</span></span><input type="text" id="costLand" placeholder="0" inputmode="numeric"></label>
         </div>
+        <details style="margin-bottom:10px">
+          <summary class="note" style="cursor:pointer">⚙︎ Maliyet ayarları (düzenlenebilir)</summary>
+          <div class="row3" style="margin-top:8px">
+            <label class="field"><span class="lbl">Emsal harici <span class="hint">%</span></span><input type="text" id="costExtra" placeholder="35" inputmode="numeric"></label>
+            <label class="field"><span class="lbl">Ruhsat+Proje <span class="hint">%</span></span><input type="text" id="costPermit" placeholder="6" inputmode="numeric"></label>
+            <label class="field"><span class="lbl">Ortak alan <span class="hint">%</span></span><input type="text" id="costCommon" placeholder="10" inputmode="numeric"></label>
+          </div>
+          <div class="note">Emsal harici: otopark/sığınak/ortak alan oranı (toplam yapı = emsal×(1+oran)). Ruhsat+Proje: inşaata ek %. Ortak alan: satılabilir alandan düşülen %.</div>
+        </details>
         <div class="metrics" id="feasMetrics"></div>
         <button class="btn ghost" id="scenBtn" style="margin-top:12px">📊 Kat senaryolarını karşılaştır</button>
       </div>
@@ -1264,6 +1273,15 @@ function solarPos(lat, month, hour){
   if(H>0) az=2*Math.PI-az;                                  // öğleden sonra batıya
   return { alt, az, altDeg:alt*180/Math.PI, azDeg:az*180/Math.PI };
 }
+// Seçili ay için gün uzunluğu ve ön cepheye doğrudan güneş düşen saat
+function sunHours(lat, month, yol){
+  const normAz=({S:180,N:0,E:90,W:270})[yol]!=null?({S:180,N:0,E:90,W:270})[yol]:180;
+  let day=0, fac=0;
+  for(let h=4; h<=20; h+=0.25){ const sp=solarPos(lat, month, h); if(sp.alt<=0) continue; day+=0.25;
+    let diff=Math.abs(sp.azDeg-normAz)%360; if(diff>180) diff=360-diff;
+    if(diff<88) fac+=0.25; }
+  return { day, facade:fac };
+}
 
 /* ---------- Görünüm: Vaziyet Planı ---------- */
 function viewVaziyet(C){
@@ -1746,7 +1764,7 @@ function metricRows(C){
     ['Tahmini Birim', C.toplamDaire, C.inp.kullanim==='ofis'?'birim':'daire'],
     ['Blok Adedi', (C.blocks?C.blocks.length:1), (C.blocks&&C.blocks.length>1)?`~${fmt(C.planW*C.planD)} m²/blok`:'tek kütle'],
     ['Oturum', C.footprintMode==='poly'?'forma uygun':`${fmt(C.planW||C.bw,0)}×${fmt(C.planD||C.bd,0)} m`, ''],
-  ];
+  ].concat(C.sunHours?[['Güneşlenme', fmt(C.sunHours.facade,1), `sa cephe · ${fmt(C.sunHours.day,1)} sa gün`]]:[]);
 }
 function showMetrics(C){
   $('metricCard').style.display='';
@@ -1762,9 +1780,12 @@ function showMetrics(C){
 function trMoney(n){ if(!isFinite(n)) return '—'; const a=Math.abs(n); if(a>=1e9) return (n/1e9).toLocaleString('tr-TR',{maximumFractionDigits:2})+' Mr₺'; if(a>=1e6) return (n/1e6).toLocaleString('tr-TR',{maximumFractionDigits:2})+' M₺'; if(a>=1e3) return (n/1e3).toLocaleString('tr-TR',{maximumFractionDigits:0})+' B₺'; return fmt(n)+' ₺'; }
 function feasibility(C){
   const insBirim=imarNum($('costBuild').value)||0, satFiyat=imarNum($('costSale').value)||0, arsa=imarNum($('costLand').value)||0;
-  const emsalAlan=C.toplamInsaat;                 // emsale dahil (satılabilir) brüt
-  const toplamYapi=emsalAlan*1.35;                // + emsal harici (otopark/sığınak/ortak) ~%35
-  const satilabilir=emsalAlan*0.90;               // ortak alan düşülmüş net satış ~%90
+  const extraP=(imarNum($('costExtra').value)>=0&&$('costExtra').value!=='')?imarNum($('costExtra').value):35;
+  const permitP=(imarNum($('costPermit').value)>=0&&$('costPermit').value!=='')?imarNum($('costPermit').value):6;
+  const commonP=(imarNum($('costCommon').value)>=0&&$('costCommon').value!=='')?imarNum($('costCommon').value):10;
+  const emsalAlan=C.toplamInsaat;                 // emsale dahil brüt
+  const toplamYapi=emsalAlan*(1+extraP/100);       // + emsal harici (otopark/sığınak/ortak)
+  const satilabilir=emsalAlan*(1-commonP/100);     // ortak alan düşülmüş net satış
   const F=genFloor(C);
   const dpkb=C.inp.kullanim==='ofis'?0:F.units.length;
   const ust=C.inp.kullanim==='karma'?Math.max(0,C.katAdet-1):C.katAdet;
@@ -1775,7 +1796,7 @@ function feasibility(C){
   const siginakGerek=toplamDaire>12;
   const siginakAlan=siginakGerek? Math.max(toplamDaire*3,20):0;
   const insMaliyet=toplamYapi*insBirim;
-  const ruhsatProje=insMaliyet*0.06;                 // ruhsat/harç + proje/müşavirlik ~%6
+  const ruhsatProje=insMaliyet*(permitP/100);
   const toplamYatirim=arsa+insMaliyet+ruhsatProje;
   const gelir=satilabilir*satFiyat, kar=gelir-toplamYatirim;
   const karlilik=toplamYatirim? kar/toplamYatirim*100 : 0;   // ROI
@@ -1826,6 +1847,7 @@ function showFeasibility(C){
 $('costBuild').addEventListener('input',()=>{ if(state.last) showFeasibility(state.last); });
 $('costSale').addEventListener('input',()=>{ if(state.last) showFeasibility(state.last); });
 $('costLand').addEventListener('input',()=>{ if(state.last) showFeasibility(state.last); });
+['costExtra','costPermit','costCommon'].forEach(id=>$(id).addEventListener('input',()=>{ if(state.last) showFeasibility(state.last); }));
 
 function compareScenarios(){
   const base=state.last; if(!base){ toast('Önce tasarım oluşturun','err'); return; }
@@ -1916,6 +1938,7 @@ $('genBtn').onclick = () => {
   const C=compute(inp, rp);
   C.realParcel = rp;
   C.sun = inp.sunOn ? solarPos(inp.lat, inp.sunAy, inp.sunSaat) : null;
+  C.sunHours = inp.sunOn ? sunHours(inp.lat, inp.sunAy, inp.yol) : null;
   state.last=C;
   $('seedBadge').textContent = state.locLabel;
   $('legend').style.display='flex';
@@ -1969,7 +1992,7 @@ const EN={
   'Satılabilir Alan':'Sellable Area','Bağımsız Bölüm':'Units','Ort. Daire':'Avg Unit','Otopark':'Parking','Sığınak':'Shelter',
   'İnşaat Maliyeti':'Construction Cost','Ruhsat + Proje':'Permit + Design','Toplam Yatırım':'Total Investment',
   'Tahmini Gelir':'Est. Revenue','Kaba Kâr':'Gross Profit','Proje Süresi':'Project Duration','Azami Finansman':'Peak Financing',
-  'Başabaş':'Break-even','Dönem Sonu':'Period End'
+  'Başabaş':'Break-even','Dönem Sonu':'Period End','Güneşlenme':'Sun Hours'
 };
 function t(s){ return (state.lang==='en' && EN[s]!==undefined) ? EN[s] : s; }
 function applyLang(lang){
@@ -2454,7 +2477,7 @@ function exportCSV(){
 $('expDXF').onclick=exportDXF; $('expOBJ').onclick=exportOBJ; $('expKML').onclick=exportKML; $('expJSON').onclick=exportJSON; $('expCSV').onclick=exportCSV;
 
 /* ---------- Kaydet & Paylaş (localStorage + URL) ---------- */
-const SAVE_FIELDS=['lat','lng','ilce','ada','parsel','adaT','parselT','cephe','derinlik','yolYon','nizam','taks','kaks','katAdet','katH','onCekme','yanCekme','arkaCekme','kullanim','daireTip','oturum','catiTipi','imarNot','costBuild','costSale','costLand','cfBuild','cfSale','cfPre'];
+const SAVE_FIELDS=['lat','lng','ilce','ada','parsel','adaT','parselT','cephe','derinlik','yolYon','nizam','taks','kaks','katAdet','katH','onCekme','yanCekme','arkaCekme','kullanim','daireTip','oturum','catiTipi','imarNot','costBuild','costSale','costLand','costExtra','costPermit','costCommon','cfBuild','cfSale','cfPre'];
 function collectState(){
   const o={v:1};
   SAVE_FIELDS.forEach(id=>{ const el=$(id); if(el) o[id]=el.value; });
