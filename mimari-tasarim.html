@@ -6,6 +6,14 @@
 <meta name="theme-color" content="#1f6f5c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Mimari Tasarım Üretici · Koordinat / Ada-Parsel</title>
+<meta name="theme-color" content="#1f6f5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mimari">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="mimari-manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -638,6 +646,9 @@
 
 <script>
 "use strict";
+/* ---------- PWA service worker (varsa) ---------- */
+if('serviceWorker' in navigator){ try{ navigator.serviceWorker.register('mimari-sw.js').catch(()=>{}); }catch(e){} }
+
 /* ---------- Yardımcılar ---------- */
 const $ = id => document.getElementById(id);
 const fmt = (n, d=0) => Number(n).toLocaleString('tr-TR', {maximumFractionDigits:d, minimumFractionDigits:d});

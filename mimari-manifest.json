@@ -1,0 +1,15 @@
+{
+  "name": "Mimari Tasarım Üretici",
+  "short_name": "Mimari",
+  "description": "Koordinat/ada-parsel girince otomatik mimari tasarım, 3B render ve fizibilite üretir.",
+  "start_url": "./mimari-tasarim.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#eef2f0",
+  "theme_color": "#1f6f5c",
+  "lang": "tr",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
