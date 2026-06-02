@@ -1367,26 +1367,27 @@ function viewVaziyet(C){
   const lbl=(C.blocks&&C.blocks.length>1)?`${C.blocks.length} blok · ${fmt(C.tabanAlan)} m²`:`${fmt(C.tabanAlan)} m²${C.footprintMode==='poly'?' · forma uygun':''}`;
   s+=`<text x="${cxL.toFixed(0)}" y="${cyL.toFixed(0)}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" paint-order="stroke" stroke="${cssvar('--brand-deep')}" stroke-width="2.5">${lbl}</text>`;
 
-  // ---- otopark + peyzaj + çekme ----
+  // ---- otopark (gereken sayıyı bahçe şeritlerine yerleştir) + peyzaj ----
   let bMinX=1e9,bMaxX=-1e9,bMinY=1e9,bMaxY=-1e9;
   foots.forEach(fp=>fp.forEach(p=>{bMinX=Math.min(bMinX,p[0]);bMaxX=Math.max(bMaxX,p[0]);bMinY=Math.min(bMinY,p[1]);bMaxY=Math.max(bMaxY,p[1]);}));
   const pL=ox,pR=ox+PW,pT=oy,pB=oy+PD;
-  let strip=null, horiz=true;
-  if(C.inp.yol==='S'){ strip={x0:pL+2,x1:pR-2,y0:bMaxY+3,y1:pB-2}; horiz=true; }
-  else if(C.inp.yol==='N'){ strip={x0:pL+2,x1:pR-2,y0:pT+2,y1:bMinY-3}; horiz=true; }
-  else if(C.inp.yol==='E'){ strip={x0:bMaxX+3,x1:pR-2,y0:pT+2,y1:pB-2}; horiz=false; }
-  else { strip={x0:pL+2,x1:bMinX-3,y0:pT+2,y1:pB-2}; horiz=false; }
-  const stallW=2.5*scale, stallD=5*scale; let parkN=0;
-  if(strip && strip.x1>strip.x0 && strip.y1>strip.y0){
-    if(horiz){ const depth=strip.y1-strip.y0;
-      if(depth>stallD*0.55){ const cnt=Math.floor((strip.x1-strip.x0)/stallW), h=Math.min(stallD,depth-4);
-        for(let i=0;i<cnt;i++){ s+=`<rect x="${(strip.x0+i*stallW+1).toFixed(1)}" y="${(strip.y0+2).toFixed(1)}" width="${(stallW-2).toFixed(1)}" height="${h.toFixed(1)}" fill="none" stroke="${muted}" stroke-width="0.6"/>`; parkN++; } }
-    } else { const wid=strip.x1-strip.x0;
-      if(wid>stallD*0.55){ const cnt=Math.floor((strip.y1-strip.y0)/stallW), w=Math.min(stallD,wid-4);
-        for(let i=0;i<cnt;i++){ s+=`<rect x="${(strip.x0+2).toFixed(1)}" y="${(strip.y0+i*stallW+1).toFixed(1)}" width="${w.toFixed(1)}" height="${(stallW-2).toFixed(1)}" fill="none" stroke="${muted}" stroke-width="0.6"/>`; parkN++; } }
+  let gerekenOto=12; try{ gerekenOto=feasibility(C).otopark; }catch(e){}
+  // bahçe şeritleri: önce yol cephesi, sonra yanlar, sonra arka
+  const front=C.inp.yol;
+  const stripDefs={
+    S:{x0:pL+2,x1:pR-2,y0:bMaxY+3,y1:pB-2,h:true}, N:{x0:pL+2,x1:pR-2,y0:pT+2,y1:bMinY-3,h:true},
+    E:{x0:bMaxX+3,x1:pR-2,y0:pT+2,y1:pB-2,h:false}, W:{x0:pL+2,x1:bMinX-3,y0:pT+2,y1:pB-2,h:false}
+  };
+  const order=[front].concat(['S','N','E','W'].filter(d=>d!==front));
+  const stallW=2.4*scale, stallD=5*scale; let parkN=0;
+  for(const d of order){ if(parkN>=gerekenOto) break; const st=stripDefs[d]; if(!st||st.x1<=st.x0||st.y1<=st.y0) continue;
+    if(st.h){ const depth=st.y1-st.y0; if(depth<stallD*0.5) continue; const cnt=Math.floor((st.x1-st.x0)/stallW), hh=Math.min(stallD,depth-4);
+      for(let i=0;i<cnt && parkN<gerekenOto;i++){ s+=`<rect x="${(st.x0+i*stallW+1).toFixed(1)}" y="${(st.y0+2).toFixed(1)}" width="${(stallW-2).toFixed(1)}" height="${hh.toFixed(1)}" fill="none" stroke="${muted}" stroke-width="0.6"/>`; parkN++; }
+    } else { const wid=st.x1-st.x0; if(wid<stallD*0.5) continue; const cnt=Math.floor((st.y1-st.y0)/stallW), ww=Math.min(stallD,wid-4);
+      for(let i=0;i<cnt && parkN<gerekenOto;i++){ s+=`<rect x="${(st.x0+2).toFixed(1)}" y="${(st.y0+i*stallW+1).toFixed(1)}" width="${ww.toFixed(1)}" height="${(stallW-2).toFixed(1)}" fill="none" stroke="${muted}" stroke-width="0.6"/>`; parkN++; }
     }
-    if(parkN>0) s+=`<text x="${((strip.x0+strip.x1)/2).toFixed(0)}" y="${((strip.y0+strip.y1)/2+3).toFixed(0)}" text-anchor="middle" font-size="9" fill="${muted}">🅿 ${parkN}</text>`;
   }
+  { const fs=stripDefs[front]; if(fs) s+=`<text x="${((fs.x0+fs.x1)/2).toFixed(0)}" y="${((fs.y0+fs.y1)/2+3).toFixed(0)}" text-anchor="middle" font-size="9" fill="${parkN>=gerekenOto?muted:'var(--danger)'}">🅿 ${parkN}/${gerekenOto}</text>`; }
   const tr=Math.max(4,Math.min(8,C.inp.yan*scale*0.4));
   s+=[[pL+9,pT+9],[pR-9,pT+9],[pL+9,pB-9],[pR-9,pB-9]].map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="${tr}" fill="#4f8f63" opacity="0.5" stroke="#2f5b40" stroke-width="0.6"/>`).join('');
   if(C.sun){ s+=`<text x="10" y="16" font-size="10" fill="${muted}">☀︎ ${AYLAR[C.inp.sunAy-1]} ${fmt(C.inp.sunSaat,1)}h · α=${fmt(C.sun.altDeg,0)}° az=${fmt(C.sun.azDeg,0)}°${C.sun.alt>0.05?` · gölge ${fmt(C.yukseklik/Math.tan(C.sun.alt),1)} m`:' · güneş ufuk altı'}</text>`; }
