@@ -549,6 +549,7 @@
           <span id="rotCtl" style="display:none;gap:4px">
             <button class="tab-btn" id="rotL" title="Sola döndür">⟲</button>
             <button class="tab-btn" id="rotR" title="Sağa döndür">⟳</button>
+            <button class="tab-btn" id="geceBtn" title="Gündüz/Gece">🌙</button>
           </span>
           <span id="katFloorCtl" style="display:none;gap:4px">
             <button class="tab-btn" id="kfZemin" title="Zemin (ticari)">Zemin</button>
@@ -1582,10 +1583,13 @@ function viewKutle(C){
   const PS=(x,y,z)=>{const p=P(x,y,z);return p[0].toFixed(1)+','+p[1].toFixed(1);};
   const quad=(a1,a2,a3,a4)=>`${PS(...a1)} ${PS(...a2)} ${PS(...a3)} ${PS(...a4)}`;
 
-  const sky1=isDark?'#0c1822':'#bfe0f2', sky2=isDark?'#101a16':'#eef6ef';
+  const gece=!!state.gece;
+  const sky1= gece?'#0a1430':(isDark?'#0c1822':'#bfe0f2'), sky2= gece?'#050a18':(isDark?'#101a16':'#eef6ef');
   const glassA=isDark?'#3a5a6a':'#e2eefa', glassB=isDark?'#22414e':'#a9c8df';
   const glass='url(#mtglass)', frame=bd;
-  const shadowCol=isDark?'#000':'#1a3a30';
+  const shadowCol= gece?'#000':(isDark?'#000':'#1a3a30');
+  const litCol=['#ffd98a','#ffe7b0','#f6c66a'];
+  function winFill(seed){ if(!gece) return glass; const r=Math.abs(Math.sin(seed*12.9898)*43758.5453)%1; return r<0.38 ? '#0e1c30' : litCol[Math.floor(r*3)%3]; }
 
   let s=svgEl(W,H);
   s+=`<defs>
@@ -1595,13 +1599,15 @@ function viewKutle(C){
     <radialGradient id="mtsun" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#fff4d0"/><stop offset=".5" stop-color="${accent}"/><stop offset="1" stop-color="${accent}" stop-opacity="0"/></radialGradient>
   </defs>`;
   s+=`<rect x="0" y="0" width="${W}" height="${H}" fill="url(#mtsky)"/>`;
-  s+=`<circle cx="${W-66}" cy="62" r="48" fill="url(#mtsun)"/><circle cx="${W-66}" cy="62" r="18" fill="#fff4d0"/>`;
+  if(gece){ for(let i=0;i<26;i++){ const sx=(Math.sin(i*53.13)*0.5+0.5)*W, sy=(Math.sin(i*97.7)*0.5+0.5)*(H*0.45); s+=`<circle cx="${sx.toFixed(0)}" cy="${sy.toFixed(0)}" r="${(0.6+ (i%3)*0.5).toFixed(1)}" fill="#fff" opacity="${0.5+(i%3)*0.15}"/>`; }
+    s+=`<circle cx="${W-66}" cy="62" r="20" fill="#f3f0e0"/><circle cx="${W-74}" cy="58" r="17" fill="${sky1}"/>`; }
+  else { s+=`<circle cx="${W-66}" cy="62" r="48" fill="url(#mtsun)"/><circle cx="${W-66}" cy="62" r="18" fill="#fff4d0"/>`; }
 
   // --- zemin / parsel ---
   let gp;
   if(C.realParcel && C.realParcel.polyNorm){ gp=C.realParcel.polyNorm.map(p=>PS(p[0],p[1],0)).join(' '); }
   else { gp=[PS(0,0,0),PS(cw,0,0),PS(cw,cd,0),PS(0,cd,0)].join(' '); }
-  s+=`<polygon points="${gp}" fill="${plot}" opacity=".6" stroke="${muted}" stroke-width="1.2"/>`;
+  s+=`<polygon points="${gp}" fill="${gece?'#16241c':plot}" opacity="${gece?'0.9':'0.6'}" stroke="${gece?'#0c160f':muted}" stroke-width="1.2"/>`;
   // çekme/bahçe sınırı (inşa edilebilir zarf)
   const bx1F=C.setX0+(C.bwFull||C.bw), by1F=C.setY0+(C.bdFull||C.bd);
   s+=`<polygon points="${quad([bx0,by0,0],[bx1F,by0,0],[bx1F,by1F,0],[bx0,by1F,0])}" fill="none" stroke="${accent}" stroke-width="1" stroke-dasharray="4 3" opacity=".7"/>`;
@@ -1663,13 +1669,13 @@ function viewKutle(C){
       if(floors<=24){
         for(let f=fStart;f<floors;f++){ const wz0=z0+f*fhL+fhL*0.3, wz1=z0+f*fhL+fhL*0.82;
           for(let i=0;i<nw;i++){ const p0=ptOn((i+0.24)/nw), p1=ptOn((i+0.76)/nw);
-            g+=`<polygon points="${quad([p0[0],p0[1],wz0],[p1[0],p1[1],wz0],[p1[0],p1[1],wz1],[p0[0],p0[1],wz1])}" fill="${glass}" stroke="${frame}" stroke-width=".35"/>`; }
+            g+=`<polygon points="${quad([p0[0],p0[1],wz0],[p1[0],p1[1],wz0],[p1[0],p1[1],wz1],[p0[0],p0[1],wz1])}" fill="${winFill(f*97+i*7+e.A[0])}" stroke="${frame}" stroke-width=".35"/>`; }
         }
       } else {
         // yüksek bina LOD: sürekli düşey cam şeritleri (kat çizgileri yatay denyeyi verir)
         const gz0=z0+(fStart?fhL*1.05:fhL*0.06), gz1=z1-fhL*0.18;
         for(let i=0;i<nw;i++){ const p0=ptOn((i+0.22)/nw), p1=ptOn((i+0.78)/nw);
-          g+=`<polygon points="${quad([p0[0],p0[1],gz0],[p1[0],p1[1],gz0],[p1[0],p1[1],gz1],[p0[0],p0[1],gz1])}" fill="${glass}" stroke="${frame}" stroke-width=".3"/>`; }
+          g+=`<polygon points="${quad([p0[0],p0[1],gz0],[p1[0],p1[1],gz0],[p1[0],p1[1],gz1],[p0[0],p0[1],gz1])}" fill="${gece?winFill(i*9+e.A[0]):glass}" stroke="${frame}" stroke-width=".3"/>`; }
       }
       // zemin ticari vitrini (tam genişlik cam bant)
       if(ground && ticari){ const p0=ptOn(0.05), p1=ptOn(0.95), vz0=z0+fhL*0.10, vz1=z0+fhL*0.92;
@@ -2193,6 +2199,7 @@ $('projCompareBtn').onclick=()=>{
 $('viewTabs').querySelectorAll('.tab-btn').forEach(b=> b.onclick=()=>{ if(state.last) render(b.dataset.view); });
 $('rotL').onclick=()=>{ state.kutleAngle=((state.kutleAngle||0)-30); if(state.last) render('kutle'); };
 $('rotR').onclick=()=>{ state.kutleAngle=((state.kutleAngle||0)+30); if(state.last) render('kutle'); };
+$('geceBtn').onclick=()=>{ state.gece=!state.gece; $('geceBtn').textContent=state.gece?'☀︎':'🌙'; if(state.last) render('kutle'); };
 $('kfZemin').onclick=()=>{ state.katFloor='zemin'; if(state.last) render('kat'); };
 $('kfTip').onclick=()=>{ state.katFloor='tip'; if(state.last) render('kat'); };
 
