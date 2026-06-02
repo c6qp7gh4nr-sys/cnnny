@@ -282,6 +282,7 @@
         <div class="brand-title">⌖ Mimari Tasarım Üretici</div>
         <div class="brand-sub">Koordinat veya Ada/Parsel girin · otomatik vaziyet planı, kat planı ve kütle</div>
       </div>
+      <button class="icon-btn" id="projBtn" title="Projelerim">📁</button>
       <button class="icon-btn" id="langBtn" title="Language / Dil" style="width:auto;padding:0 12px;font-size:13px;font-weight:700">EN</button>
       <button class="icon-btn" id="helpBtn" title="Yardım">❔</button>
       <button class="icon-btn" id="themeBtn" title="Tema">◐</button>
@@ -484,6 +485,7 @@
             <div class="rng"><input type="range" id="sunAy" min="1" max="12" step="1" value="6"><span class="val" id="sunAyVal">6</span></div></label>
           <label class="field"><span class="lbl"><span>Saat (güneş saati)</span><span class="hint" id="saatHint">12:00</span></span>
             <div class="rng"><input type="range" id="sunSaat" min="6" max="20" step="0.5" value="12"><span class="val" id="sunSaatVal">12</span></div></label>
+          <label class="field"><span class="lbl"><span>Gün boyu gölge taraması</span><span class="hint"><input type="checkbox" id="sunSweep" style="vertical-align:middle"> aç</span></span></label>
         </div>
         <button class="btn" id="genBtn">⚡ Tasarımı Oluştur</button>
         <button class="btn ghost" id="randBtn" style="margin-top:10px">🎲 Örnek doldur</button>
@@ -607,6 +609,19 @@
     </ol>
     <p style="font-size:11.5px;color:var(--muted)">Tüm hesaplar tarayıcıda yapılır. Sonuçlar kavramsaldır; resmî proje için yetkili mimar ve belediye imar durumu esastır.</p>
     <button class="btn" id="helpDemo" style="margin-top:8px">🎲 Örnekle hemen dene</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="projModal">
+  <div class="modal">
+    <button class="x" id="projClose">✕</button>
+    <h3>📁 Projelerim</h3>
+    <p style="font-size:12.5px;color:var(--muted)">Mevcut tasarımı isimle kaydedin; birden çok parseli karşılaştırın. (Tarayıcıda saklanır.)</p>
+    <div style="display:flex;gap:8px;margin:10px 0">
+      <input type="text" id="projName" placeholder="Proje adı (örn. Çankaya 44540/4)" style="flex:1">
+      <button class="btn" id="projSave" style="width:auto;padding:11px 16px">💾 Kaydet</button>
+    </div>
+    <div id="projList"></div>
   </div>
 </div>
 
@@ -1016,6 +1031,7 @@ function gather(){
     sunOn: $('sunOn').checked,
     sunAy: parseInt($('sunAy').value),
     sunSaat: parseFloat($('sunSaat').value),
+    sunSweep: $('sunSweep').checked,
   };
 }
 
@@ -1295,7 +1311,14 @@ function viewVaziyet(C){
     const x0=C.setX0, x1=C.setX0+C.bw, yT=C.inp.derinlik-C.setY0, yB=yT-C.bd;
     foots=[[toScr(x0,yT),toScr(x1,yT),toScr(x1,yB),toScr(x0,yB)]];
   }
-  // güneş gölgesi
+  // gün boyu gölge taraması (faint)
+  if(C.inp.sunSweep && C.sun){
+    [9,11,13,15,17].forEach(h=>{ const sp=solarPos(C.inp.lat||41, C.inp.sunAy, h); if(sp.alt<=0.08) return;
+      const d=C.yukseklik/Math.tan(sp.alt), dx=-Math.sin(sp.az)*d*scale, dy=Math.cos(sp.az)*d*scale;
+      for(const fp of foots){ const hull=convexHull(fp.concat(fp.map(p=>[p[0]+dx,p[1]+dy])));
+        s+=`<polygon points="${hull.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="#1a3a30" opacity="0.06"/>`; } });
+  }
+  // güneş gölgesi (seçili saat)
   if(C.sun && C.sun.alt>0.05){
     const d=C.yukseklik/Math.tan(C.sun.alt);
     const dx=-Math.sin(C.sun.az)*d*scale, dy=Math.cos(C.sun.az)*d*scale;
@@ -1970,6 +1993,39 @@ function applyLang(lang){
 $('langBtn').onclick=()=>applyLang(state.lang==='en'?'tr':'en');
 try{ const sl=localStorage.getItem('mt-lang'); if(sl==='en') applyLang('en'); }catch(e){}
 
+/* ---------- Çoklu proje galerisi ---------- */
+function loadProjects(){ try{ return JSON.parse(localStorage.getItem('mt-projects')||'[]'); }catch(e){ return []; } }
+function saveProjects(a){ try{ localStorage.setItem('mt-projects', JSON.stringify(a)); }catch(e){ toast('Kayıt alanı dolu olabilir','err'); } }
+function renderProjectList(){
+  const list=loadProjects(); const el=$('projList');
+  if(!list.length){ el.innerHTML='<div class="note">Henüz kayıtlı proje yok.</div>'; return; }
+  el.innerHTML=list.map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px dashed var(--line)">
+    <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13.5px">${(p.name||'Proje').replace(/</g,'&lt;')}</div>
+    <div style="font-size:11px;color:var(--muted)">${(p.loc||'').replace(/[📍🗺️<]/g,'').trim()} · ${new Date(p.savedAt).toLocaleDateString('tr-TR')}</div></div>
+    <button class="btn ghost" data-load="${p.id}" style="width:auto;padding:7px 12px">Yükle</button>
+    <button class="btn ghost" data-del="${p.id}" style="width:auto;padding:7px 10px;color:var(--danger)">Sil</button>
+  </div>`).join('');
+  el.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>loadProject(b.dataset.load));
+  el.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ saveProjects(loadProjects().filter(x=>x.id!==b.dataset.del)); renderProjectList(); toast('Silindi'); });
+}
+function saveCurrentProject(){
+  const name=($('projName').value||'').trim() || (state.locLabel||'Proje').replace(/[📍🗺️]/g,'').trim() || ('Proje '+new Date().toLocaleDateString('tr-TR'));
+  const list=loadProjects();
+  list.unshift({ id:'p'+Date.now(), name, loc:state.locLabel||'', savedAt:Date.now(), state:collectState() });
+  saveProjects(list.slice(0,40));
+  $('projName').value=''; renderProjectList(); toast('💾 Proje kaydedildi','ok');
+}
+function loadProject(id){
+  const p=loadProjects().find(x=>x.id===id); if(!p) return;
+  applyState(p.state); $('projModal').classList.remove('show');
+  toast('Proje yüklendi — “Oluştur”a basın','ok');
+  document.querySelector('header').scrollIntoView({behavior:'smooth'});
+}
+$('projBtn').onclick=()=>{ renderProjectList(); $('projModal').classList.add('show'); };
+$('projClose').onclick=()=>$('projModal').classList.remove('show');
+$('projModal').addEventListener('click', e=>{ if(e.target===$('projModal')) $('projModal').classList.remove('show'); });
+$('projSave').onclick=saveCurrentProject;
+
 /* ---------- Görünüm sekmeleri ---------- */
 $('viewTabs').querySelectorAll('.tab-btn').forEach(b=> b.onclick=()=>{ if(state.last) render(b.dataset.view); });
 $('rotL').onclick=()=>{ state.kutleAngle=((state.kutleAngle||0)-30); if(state.last) render('kutle'); };
@@ -2402,7 +2458,7 @@ const SAVE_FIELDS=['lat','lng','ilce','ada','parsel','adaT','parselT','cephe','d
 function collectState(){
   const o={v:1};
   SAVE_FIELDS.forEach(id=>{ const el=$(id); if(el) o[id]=el.value; });
-  o.sunOn=$('sunOn').checked; o.sunAy=$('sunAy').value; o.sunSaat=$('sunSaat').value; o.cekmeKat=$('cekmeKat').checked;
+  o.sunOn=$('sunOn').checked; o.sunAy=$('sunAy').value; o.sunSaat=$('sunSaat').value; o.cekmeKat=$('cekmeKat').checked; o.sunSweep=$('sunSweep').checked;
   o.mode=state.mode||'coord'; o.dataSrc=state.dataSrc||'tkgm';
   o.theme=document.documentElement.getAttribute('data-theme')||'';
   if(state.realParcel) o.rp=state.realParcel;
@@ -2442,6 +2498,7 @@ function applyState(o){
   SAVE_FIELDS.forEach(id=>{ if(o[id]!=null && $(id)) $(id).value=o[id]; });
   if(o.sunOn!=null){ $('sunOn').checked=!!o.sunOn; $('sunControls').style.display=o.sunOn?'':'none'; }
   if(o.cekmeKat!=null) $('cekmeKat').checked=!!o.cekmeKat;
+  if(o.sunSweep!=null) $('sunSweep').checked=!!o.sunSweep;
   if(o.sunAy!=null) $('sunAy').value=o.sunAy;
   if(o.sunSaat!=null) $('sunSaat').value=o.sunSaat;
   if(o.theme){ document.documentElement.setAttribute('data-theme',o.theme); }
