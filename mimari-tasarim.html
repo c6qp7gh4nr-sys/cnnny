@@ -606,6 +606,11 @@
   </div>
 </div>
 
+<footer style="text-align:center;padding:22px 14px 30px;color:var(--muted);font-size:13px">
+  <div style="height:1px;max-width:280px;margin:0 auto 14px;background:var(--line)"></div>
+  Powered By <b style="color:var(--brand)">Can Tosun</b> — <b style="letter-spacing:.5px">ANGİM</b>
+</footer>
+
 <div class="fab">
   <button id="fabGen">⚡ Tasarımı Oluştur</button>
   <button class="alt" id="fabView" title="Önizlemeye git">👁</button>
@@ -1808,6 +1813,11 @@ function feasibility(C, ov){
   const otoparkAlan=otopark*25;
   const siginakGerek=toplamDaire>12;
   const siginakAlan=siginakGerek? Math.max(toplamDaire*3,20):0;
+  // otopark yerleşim tahmini: yer üstü kapasite + gereken bodrum kat
+  const bahceAlan=Math.max(0, C.parselAlan - C.tabanAlan);
+  const yerUstuOto=Math.floor(bahceAlan*0.40/20);
+  const bodrumPerKat=Math.max(1, Math.floor(C.tabanAlan/30));
+  const bodrumOto=Math.ceil(Math.max(0, otopark - yerUstuOto)/bodrumPerKat);
   const insMaliyet=toplamYapi*insBirim;
   const ruhsatProje=insMaliyet*(permitP/100);
   const toplamYatirim=arsa+insMaliyet+ruhsatProje;
@@ -1817,7 +1827,7 @@ function feasibility(C, ov){
   const m2Maliyet=satilabilir? toplamYatirim/satilabilir : 0;
   // kaba inşaat maliyet dağılımı (bilgilendirme)
   const kalemler=[['Kaba yapı',insMaliyet*0.45],['İnce işler',insMaliyet*0.35],['Mekanik/Elektrik',insMaliyet*0.14],['Çevre/Altyapı',insMaliyet*0.06]];
-  return {insBirim,satFiyat,arsa,emsalAlan,toplamYapi,satilabilir,toplamDaire,ortDaire,otopark,otoparkAlan,siginakGerek,siginakAlan,insMaliyet,ruhsatProje,toplamYatirim,gelir,kar,karlilik,karMarji,m2Maliyet,kalemler};
+  return {insBirim,satFiyat,arsa,emsalAlan,toplamYapi,satilabilir,toplamDaire,ortDaire,otopark,otoparkAlan,yerUstuOto,bodrumOto,siginakGerek,siginakAlan,insMaliyet,ruhsatProje,toplamYatirim,gelir,kar,karlilik,karMarji,m2Maliyet,kalemler};
 }
 function showFeasibility(C){
   if(!C){ $('feasCard').style.display='none'; return; }
@@ -1855,7 +1865,7 @@ function showFeasibility(C){
     const v = (x[0]==='Kaba Kâr'||x[0]==='ROI') ? `<span style="color:${f.kar>=0?'var(--brand)':'var(--danger)'}">${x[1]}</span>` : x[1];
     return `<div class="metric"><div class="k">${t(x[0])}</div><div class="v">${v} <span class="u">${x[2]}</span></div></div>`;
   }).join('') + bar + (money.length?'':`<div class="note" style="grid-column:1/-1">Maliyet/kâr için yukarıya inşaat (₺/m²) ve satış (₺/m²) fiyatı girin.</div>`)
-    + `<div class="note" style="grid-column:1/-1">Otopark: konutta ~1 araç/daire, ofiste ~1/100 m². Sığınak: 12'den fazla b.b. ROI = kâr / toplam yatırım. Tahminler kabadır; kesin fizibilite için detaylı metraj ve güncel piyasa esastır.</div>`;
+    + `<div class="note" style="grid-column:1/-1">🅿 Otopark: gereken <b>${f.otopark}</b> · yer üstü ~${f.yerUstuOto}${f.bodrumOto>0?` → kalan için ~<b>${f.bodrumOto} bodrum kat</b> önerilir`:` (yer üstü yeterli)`}. Konutta ~1 araç/daire, ofiste ~1/100 m². Sığınak: 12'den fazla b.b. ROI = kâr / toplam yatırım. Tahminler kabadır.</div>`;
 }
 $('costBuild').addEventListener('input',()=>{ if(state.last) showFeasibility(state.last); });
 $('costSale').addEventListener('input',()=>{ if(state.last) showFeasibility(state.last); });
