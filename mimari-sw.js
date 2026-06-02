@@ -1,5 +1,5 @@
-/* Mimari Tasarım Üretici — basit service worker (çevrimdışı önbellek) */
-const CACHE = 'mimari-v1';
+/* Mimari Tasarım Üretici — service worker (yalnız kendi dosyalarını önbellekler) */
+const CACHE = 'mimari-v2';
 const CORE = ['./mimari-tasarim.html', './icon.svg', './mimari-manifest.json'];
 
 self.addEventListener('install', e => {
@@ -12,6 +12,11 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  let url;
+  try { url = new URL(e.request.url); } catch(_) { return; }
+  // Çapraz-köken istekleri (TKGM, proxy'ler, harita/3D CDN) SW'ye hiç uğramasın
+  if (url.origin !== self.location.origin) return;
+  // Kendi dosyalar: ağ-öncelikli, çevrimdışıysa önbellek
   e.respondWith(
     fetch(e.request).then(resp => {
       const cp = resp.clone();
