@@ -2384,7 +2384,7 @@ $('pdfBtn').onclick = () => {
       <div class="fig"><div class="n">${fmt(C.toplamInsaat)}</div><div class="l">İnşaat (m²)</div></div>
       ${hasMoney?`<div class="fig"><div class="n">${trMoney(f.kar)}</div><div class="l">Kaba Kâr</div></div>`:''}
     </div>
-    <div class="cov-foot">Tarih: ${tarih} · Bu rapor kavramsal/şematiktir, resmî proje değildir.</div>
+    <div class="cov-foot">Tarih: ${tarih} · Bu rapor kavramsal/şematiktir, resmî proje değildir.<br><b>Powered By Can Tosun — ANGİM</b></div>
   </div></div>
 
   <div class="page">
@@ -2405,7 +2405,7 @@ $('pdfBtn').onclick = () => {
         <h3 style="margin-top:8px">Fizibilite</h3><table>${feasHtml}</table>
       </div>
     </div>
-    <div class="foot">Hmax, Planlı Alanlar İmar Yönetmeliği (3,00·kat+3,50 m) ile türetilmiştir; TAKS/KAKS imar planından gelir. Maliyet/gelir kaba tahmindir. Resmî projeler için yetkili mimar ve belediye imar durumu esastır.</div>
+    <div class="foot">Hmax, Planlı Alanlar İmar Yönetmeliği (3,00·kat+3,50 m) ile türetilmiştir; TAKS/KAKS imar planından gelir. Maliyet/gelir kaba tahmindir. Resmî projeler için yetkili mimar ve belediye imar durumu esastır. · <b>Powered By Can Tosun — ANGİM</b></div>
     <button class="noprint" onclick="window.print()" style="margin-top:8px;padding:8px 16px;border:none;border-radius:8px;background:#1f6f5c;color:#fff;font-weight:700;cursor:pointer;">🖨️ Yazdır / PDF kaydet</button>
   </div>
   ${cfBlock}
