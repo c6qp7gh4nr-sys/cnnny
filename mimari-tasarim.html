@@ -714,8 +714,9 @@ $('themeBtn').onclick = () => {
   const cur = document.documentElement.getAttribute('data-theme');
   const next = cur === 'dark' ? '' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
+  _cssCache={};
   try{ localStorage.setItem('mt-theme', next); }catch(e){}
-  if(state.last) render(state.activeView || 'vaziyet');
+  if(state.last){ render(state.activeView || 'vaziyet'); showMetrics(state.last); showFeasibility(state.last); }
 };
 try{ const t=localStorage.getItem('mt-theme'); if(t) document.documentElement.setAttribute('data-theme',t); }catch(e){}
 
@@ -1285,7 +1286,8 @@ function genFloor(C, floorType){
 }
 
 /* ---------- SVG yardımcı ---------- */
-function cssvar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+let _cssCache={};
+function cssvar(name){ if(_cssCache[name]!==undefined) return _cssCache[name]; const v=getComputedStyle(document.documentElement).getPropertyValue(name).trim(); _cssCache[name]=v; return v; }
 function svgEl(w,h){ return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Roboto,sans-serif">`; }
 
 /* ---------- Geometri: poligon ofset / alan / merkez / convex hull ---------- */
@@ -1575,17 +1577,20 @@ function viewKutle(C){
   const PS=(x,y,z)=>{const p=P(x,y,z);return p[0].toFixed(1)+','+p[1].toFixed(1);};
   const quad=(a1,a2,a3,a4)=>`${PS(...a1)} ${PS(...a2)} ${PS(...a3)} ${PS(...a4)}`;
 
-  const sky1=isDark?'#0c1822':'#cfe6f3', sky2=isDark?'#101a16':'#eef6ef';
-  const glass=isDark?'#34525f':'#cfe2ef', frame=bd;
+  const sky1=isDark?'#0c1822':'#bfe0f2', sky2=isDark?'#101a16':'#eef6ef';
+  const glassA=isDark?'#3a5a6a':'#e2eefa', glassB=isDark?'#22414e':'#a9c8df';
+  const glass='url(#mtglass)', frame=bd;
   const shadowCol=isDark?'#000':'#1a3a30';
 
   let s=svgEl(W,H);
   s+=`<defs>
-    <linearGradient id="mtsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sky1}"/><stop offset="1" stop-color="${sky2}"/></linearGradient>
+    <linearGradient id="mtsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sky1}"/><stop offset=".6" stop-color="${sky2}"/><stop offset="1" stop-color="${sky2}"/></linearGradient>
     <linearGradient id="mttop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${soft}"/><stop offset="1" stop-color="${brand}" stop-opacity=".85"/></linearGradient>
+    <linearGradient id="mtglass" x1="0" y1="0" x2="0.25" y2="1"><stop offset="0" stop-color="${glassA}"/><stop offset="1" stop-color="${glassB}"/></linearGradient>
+    <radialGradient id="mtsun" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#fff4d0"/><stop offset=".5" stop-color="${accent}"/><stop offset="1" stop-color="${accent}" stop-opacity="0"/></radialGradient>
   </defs>`;
   s+=`<rect x="0" y="0" width="${W}" height="${H}" fill="url(#mtsky)"/>`;
-  s+=`<circle cx="${W-66}" cy="62" r="20" fill="${accent}" opacity=".8"/>`;
+  s+=`<circle cx="${W-66}" cy="62" r="48" fill="url(#mtsun)"/><circle cx="${W-66}" cy="62" r="18" fill="#fff4d0"/>`;
 
   // --- zemin / parsel ---
   let gp;
@@ -1596,10 +1601,31 @@ function viewKutle(C){
   const bx1F=C.setX0+(C.bwFull||C.bw), by1F=C.setY0+(C.bdFull||C.bd);
   s+=`<polygon points="${quad([bx0,by0,0],[bx1F,by0,0],[bx1F,by1F,0],[bx0,by1F,0])}" fill="none" stroke="${accent}" stroke-width="1" stroke-dasharray="4 3" opacity=".7"/>`;
 
-  // arka ağaçlar (bina arkasında: düşük y)
-  function tree(x,y){ const b=P(x,y,0), t=P(x,y,3.4), r=Math.max(6,Math.min(15,1.3*k));
-    return `<line x1="${b[0]}" y1="${b[1]}" x2="${t[0]}" y2="${t[1]}" stroke="${isDark?'#4a3a22':'#6b4f2a'}" stroke-width="2.2"/><circle cx="${t[0]}" cy="${t[1]}" r="${r}" fill="${isDark?'#2f5b40':'#4f8f63'}" opacity=".9"/>`; }
-  if(by0>2){ s+=tree(cw*0.12,by0*0.5)+tree(cw*0.85,by0*0.45); }
+  // katmanlı ağaç (gövde + 3 yaprak küresi + zemin gölgesi)
+  function tree(x,y){ const b=P(x,y,0), t1=P(x,y,2.4), t2=P(x,y,3.5), t3=P(x,y,4.3), r=Math.max(7,Math.min(17,1.5*k));
+    const trunk=isDark?'#4a3a22':'#6b4f2a';
+    return `<ellipse cx="${b[0]}" cy="${b[1]}" rx="${(r*0.95).toFixed(1)}" ry="${(r*0.42).toFixed(1)}" fill="#000" opacity="0.13"/>`+
+      `<line x1="${b[0]}" y1="${b[1]}" x2="${t1[0]}" y2="${t1[1]}" stroke="${trunk}" stroke-width="${(r*0.22).toFixed(1)}" stroke-linecap="round"/>`+
+      `<circle cx="${t1[0]}" cy="${t1[1]}" r="${(r*0.82).toFixed(1)}" fill="${isDark?'#244a36':'#3a7650'}"/>`+
+      `<circle cx="${t2[0]}" cy="${t2[1]}" r="${(r*0.98).toFixed(1)}" fill="${isDark?'#2f5b40':'#4f8f63'}"/>`+
+      `<circle cx="${(t3[0]-r*0.25).toFixed(1)}" cy="${t3[1]}" r="${(r*0.66).toFixed(1)}" fill="${isDark?'#3a6b4c':'#62a577'}"/>`; }
+  // araç (otopark girişine birkaç araç — entourage)
+  function car(x,y,rot2){ const w=2.0,d=4.4,hh=1.4; const ang=rot2||0; const c2=Math.cos(ang),s2=Math.sin(ang);
+    const RR=(dx,dy)=>[x+dx*c2-dy*s2, y+dx*s2+dy*c2];
+    const A=RR(-w/2,-d/2),B=RR(w/2,-d/2),Cc=RR(w/2,d/2),D=RR(-w/2,d/2);
+    const col=['#c0504d','#4a6fa5','#cccccc','#6b6b6b'][(Math.abs((x*7+y*13)|0))%4];
+    return `<polygon points="${PS(A[0],A[1],hh)} ${PS(B[0],B[1],hh)} ${PS(Cc[0],Cc[1],hh)} ${PS(D[0],D[1],hh)}" fill="${col}" stroke="#222" stroke-width=".4"/>`+
+      `<polygon points="${PS(D[0],D[1],0)} ${PS(Cc[0],Cc[1],0)} ${PS(Cc[0],Cc[1],hh)} ${PS(D[0],D[1],hh)}" fill="${col}" stroke="#222" stroke-width=".3" opacity="0.85"/>`+
+      `<polygon points="${PS(B[0],B[1],0)} ${PS(Cc[0],Cc[1],0)} ${PS(Cc[0],Cc[1],hh)} ${PS(B[0],B[1],hh)}" fill="#000" opacity="0.25"/>`; }
+  // bahçe ağaç konumları (parsel ile bina arasındaki boşluklar)
+  const treeSpots=[];
+  const gB=by0, gF=cd-by1F, gL=bx0, gR=cw-bx1F;
+  if(gB>1.6){ treeSpots.push([cw*0.14,gB*0.5],[cw*0.5,gB*0.5],[cw*0.86,gB*0.5]); }
+  if(gL>1.6){ treeSpots.push([gL*0.5,cd*0.34],[gL*0.5,cd*0.66]); }
+  if(gR>1.6){ treeSpots.push([bx1F+gR*0.5,cd*0.34],[bx1F+gR*0.5,cd*0.66]); }
+  if(gF>1.6){ treeSpots.push([cw*0.10,by1F+gF*0.55],[cw*0.90,by1F+gF*0.55]); }
+  // arka/yan ağaçları (binadan önce çiz)
+  treeSpots.filter(p=>p[1]<by1).forEach(p=>{ s+=tree(p[0],p[1]); });
 
   // --- kütle(ler) ---
   const fh=modelH/C.katAdet;
@@ -1700,8 +1726,9 @@ function viewKutle(C){
     }
   }
 
-  // ön ağaçlar (yüksek y)
-  if(cd-by1>2){ s+=tree(cw*0.18,(by1+cd)/2)+tree(cw*0.82,(by1+cd)/2+1); }
+  // ön bahçe araçları (otopark) + ön ağaçlar (binadan sonra çiz)
+  if(C.inp.yol==='S' && gF>4){ const yc=by1F+Math.min(2.6,gF*0.4); for(let i=0;i<Math.min(4,Math.floor(cw/7));i++){ s+=car(cw*0.14+i*(cw*0.72/3), yc, 0); } }
+  treeSpots.filter(p=>p[1]>=by1).forEach(p=>{ s+=tree(p[0],p[1]); });
 
   // --- Hmax kotu (sol ön kenar) ---
   const c0=P(bx0,by1,0), cM=P(bx0,by1,modelH), cH=P(bx0,by1,hmax);
@@ -1828,7 +1855,7 @@ function metricRows(C){
     ['KAKS / Emsal', C.inp.kaks.toFixed(2), `≈ TAKS×kat ${C.onerilenKaks.toFixed(2)}`],
     ['Kullanılan Emsal', C.emsalKullanim.toFixed(2), `/ ${C.inp.kaks.toFixed(2)}`],
     ['Maks. Kat (KAKS)', C.katKaks, 'kat'],
-    ['Tahmini Birim', C.toplamDaire, C.inp.kullanim==='ofis'?'birim':'daire'],
+    ['Bağımsız Bölüm', C.toplamDaire, C.inp.kullanim==='ofis'?'birim':'daire'],
     ['Blok Adedi', (C.blocks?C.blocks.length:1), (C.blocks&&C.blocks.length>1)?`~${fmt(C.planW*C.planD)} m²/blok`:'tek kütle'],
     ['Oturum', C.footprintMode==='poly'?'forma uygun':`${fmt(C.planW||C.bw,0)}×${fmt(C.planD||C.bd,0)} m`, ''],
   ].concat(C.sunHours?[['Güneşlenme', fmt(C.sunHours.facade,1), `sa cephe · ${fmt(C.sunHours.day,1)} sa gün`]]:[]);
@@ -1852,10 +1879,8 @@ function feasibility(C, ov){
   const emsalAlan=C.toplamInsaat;                 // emsale dahil brüt
   const toplamYapi=emsalAlan*(1+extraP/100);       // + emsal harici (otopark/sığınak/ortak)
   const satilabilir=emsalAlan*(1-commonP/100);     // ortak alan düşülmüş net satış
-  const F=genFloor(C);
-  const dpkb=C.inp.kullanim==='ofis'?0:F.units.length;
-  const ust=C.inp.kullanim==='karma'?Math.max(0,C.katAdet-1):C.katAdet;
-  const toplamDaire=dpkb*ust*(C.blocks?C.blocks.length:1);
+  // bağımsız bölüm: compute ile aynı kaynaktan (tutarlı)
+  const toplamDaire = C.inp.kullanim==='ofis' ? 0 : (C.toplamDaire||0);
   const ortDaire=toplamDaire? satilabilir/toplamDaire : 0;
   const otopark=C.inp.kullanim==='ofis'? Math.ceil(emsalAlan/100) : Math.ceil(toplamDaire);
   const otoparkAlan=otopark*25;
@@ -2167,7 +2192,7 @@ $('dlBtn').onclick = () => {
 $('pngBtn').onclick = () => {
   if(!state.lastSVG){ alert('Önce bir tasarım oluşturun.'); return; }
   const vb=state.lastSVG.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
-  const w=vb?+vb[1]:760, h=vb?+vb[2]:580, scale=2;
+  const w=vb?+vb[1]:760, h=vb?+vb[2]:580, scale=Math.min(4, Math.max(2, Math.round((window.devicePixelRatio||1)+2)));
   const blob=new Blob([state.lastSVG],{type:'image/svg+xml;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const img=new Image();
