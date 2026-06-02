@@ -756,9 +756,11 @@ function buildProxies(){
   const list=[];
   const custom=($('proxy')?.value||'').trim();
   if(custom) list.push({name:'özel', make:u=>custom+encodeURIComponent(u), wrap:false});
+  // Dahili ANGİM Worker proxy'si (yalnız tkgm.gov.tr; her adreste hazır)
+  list.push({name:'angim',        make:u=>'https://tgkm-angim.mzyfzmnddk.workers.dev/?url='+encodeURIComponent(u), wrap:false});
   list.push({name:'doğrudan',     make:u=>u, wrap:false});
-  list.push({name:'allorigins',   make:u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u), wrap:false});
   list.push({name:'codetabs',     make:u=>'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u), wrap:false});
+  list.push({name:'allorigins',   make:u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u), wrap:false});
   list.push({name:'corsproxy',    make:u=>'https://corsproxy.io/?url='+encodeURIComponent(u), wrap:false});
   list.push({name:'allorigins-json', make:u=>'https://api.allorigins.win/get?url='+encodeURIComponent(u), wrap:true});
   list.push({name:'thingproxy',   make:u=>'https://thingproxy.freeboard.io/fetch/'+u, wrap:false});
@@ -775,7 +777,7 @@ async function proxyFetch(url){
   const errs=[];
   for(const px of order){
     try{
-      const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), 13000);
+      const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), 8000);
       const r=await fetch(px.make(url), {headers:{'Accept':'application/json'}, signal:ctrl.signal});
       clearTimeout(to);
       if(!r.ok){ errs.push(`${px.name}:HTTP${r.status}`); continue; }
