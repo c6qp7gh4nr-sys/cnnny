@@ -631,6 +631,8 @@
       <button class="btn" id="projSave" style="width:auto;padding:11px 16px">💾 Kaydet</button>
     </div>
     <div id="projList"></div>
+    <button class="btn ghost" id="projCompareBtn" style="margin-top:10px">⚖️ Seçilenleri karşılaştır</button>
+    <div id="projCompare" style="margin-top:10px;overflow-x:auto"></div>
   </div>
 </div>
 
@@ -1778,11 +1780,10 @@ function showMetrics(C){
 
 /* ---------- Fizibilite & Maliyet ---------- */
 function trMoney(n){ if(!isFinite(n)) return '—'; const a=Math.abs(n); if(a>=1e9) return (n/1e9).toLocaleString('tr-TR',{maximumFractionDigits:2})+' Mr₺'; if(a>=1e6) return (n/1e6).toLocaleString('tr-TR',{maximumFractionDigits:2})+' M₺'; if(a>=1e3) return (n/1e3).toLocaleString('tr-TR',{maximumFractionDigits:0})+' B₺'; return fmt(n)+' ₺'; }
-function feasibility(C){
-  const insBirim=imarNum($('costBuild').value)||0, satFiyat=imarNum($('costSale').value)||0, arsa=imarNum($('costLand').value)||0;
-  const extraP=(imarNum($('costExtra').value)>=0&&$('costExtra').value!=='')?imarNum($('costExtra').value):35;
-  const permitP=(imarNum($('costPermit').value)>=0&&$('costPermit').value!=='')?imarNum($('costPermit').value):6;
-  const commonP=(imarNum($('costCommon').value)>=0&&$('costCommon').value!=='')?imarNum($('costCommon').value):10;
+function feasibility(C, ov){
+  const rv=(id,def)=>{ const raw = (ov && ov[id]!=null) ? ov[id] : $(id).value; const n=imarNum(raw); return (raw!=='' && raw!=null && isFinite(n)) ? n : (def!=null?def:0); };
+  const insBirim=rv('costBuild',0), satFiyat=rv('costSale',0), arsa=rv('costLand',0);
+  const extraP=rv('costExtra',35), permitP=rv('costPermit',6), commonP=rv('costCommon',10);
   const emsalAlan=C.toplamInsaat;                 // emsale dahil brüt
   const toplamYapi=emsalAlan*(1+extraP/100);       // + emsal harici (otopark/sığınak/ortak)
   const satilabilir=emsalAlan*(1-commonP/100);     // ortak alan düşülmüş net satış
@@ -2023,6 +2024,7 @@ function renderProjectList(){
   const list=loadProjects(); const el=$('projList');
   if(!list.length){ el.innerHTML='<div class="note">Henüz kayıtlı proje yok.</div>'; return; }
   el.innerHTML=list.map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px dashed var(--line)">
+    <input type="checkbox" data-cmp="${p.id}" style="width:18px;height:18px;flex:0 0 auto">
     <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13.5px">${(p.name||'Proje').replace(/</g,'&lt;')}</div>
     <div style="font-size:11px;color:var(--muted)">${(p.loc||'').replace(/[📍🗺️<]/g,'').trim()} · ${new Date(p.savedAt).toLocaleDateString('tr-TR')}</div></div>
     <button class="btn ghost" data-load="${p.id}" style="width:auto;padding:7px 12px">Yükle</button>
@@ -2048,6 +2050,29 @@ $('projBtn').onclick=()=>{ renderProjectList(); $('projModal').classList.add('sh
 $('projClose').onclick=()=>$('projModal').classList.remove('show');
 $('projModal').addEventListener('click', e=>{ if(e.target===$('projModal')) $('projModal').classList.remove('show'); });
 $('projSave').onclick=saveCurrentProject;
+function inpFromSaved(s){
+  return { key:'cmp', cephe:Math.max(3,imarNum(s.cephe)||20), derinlik:Math.max(3,imarNum(s.derinlik)||30), yol:s.yolYon||'S',
+    nizam:s.nizam||'ayrik', taks:parseFloat(s.taks)||0.3, kaks:parseFloat(s.kaks)||1.5, katAdet:parseInt(s.katAdet)||3,
+    katH:parseFloat(s.katH)||3, on:imarNum(s.onCekme)||0, yan:imarNum(s.yanCekme)||0, arka:imarNum(s.arkaCekme)||0,
+    kullanim:s.kullanim||'konut', daireTip:s.daireTip||'auto', oturum:s.oturum||'auto', catiTipi:s.catiTipi||'teras',
+    cekmeKat:!!s.cekmeKat, lat:parseFloat(s.lat)||41, sunOn:false };
+}
+$('projCompareBtn').onclick=()=>{
+  const ids=[...$('projList').querySelectorAll('[data-cmp]:checked')].map(b=>b.dataset.cmp);
+  if(ids.length<2){ toast('En az 2 proje seçin','err'); return; }
+  const list=loadProjects(), cols=ids.map(id=>{ const p=list.find(x=>x.id===id); const inp=inpFromSaved(p.state); const C=compute(inp,p.state.rp||null); const f=feasibility(C,p.state); return {name:p.name,C,f}; });
+  const rows=[
+    ['Parsel', c=>fmt(c.C.parselAlan)+' m²'],['Kat', c=>c.C.katAdet],['Emsal', c=>c.C.emsalKullanim.toFixed(2)],
+    ['Toplam İnşaat', c=>fmt(c.C.toplamInsaat)+' m²'],['Daire', c=>c.f.toplamDaire],['Otopark', c=>c.f.otopark],
+    ['Satılabilir', c=>fmt(c.f.satilabilir)+' m²'],['Toplam Yatırım', c=>trMoney(c.f.toplamYatirim)],
+    ['Gelir', c=>trMoney(c.f.gelir)],['Kâr', c=>trMoney(c.f.kar)],['ROI', c=>'%'+fmt(c.f.karlilik)]
+  ];
+  let h='<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr><th style="text-align:left;padding:6px;border-bottom:2px solid var(--brand)"></th>'+
+    cols.map(c=>`<th style="text-align:left;padding:6px;border-bottom:2px solid var(--brand);color:var(--brand)">${(c.name||'').slice(0,16)}</th>`).join('')+'</tr></thead><tbody>';
+  rows.forEach(r=>{ h+=`<tr><td style="padding:6px;border-bottom:1px solid var(--line);color:var(--muted)">${r[0]}</td>`+cols.map(c=>`<td style="padding:6px;border-bottom:1px solid var(--line)">${r[1](c)}</td>`).join('')+'</tr>'; });
+  h+='</tbody></table>';
+  $('projCompare').innerHTML=h;
+};
 
 /* ---------- Görünüm sekmeleri ---------- */
 $('viewTabs').querySelectorAll('.tab-btn').forEach(b=> b.onclick=()=>{ if(state.last) render(b.dataset.view); });
