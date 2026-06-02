@@ -816,7 +816,7 @@ async function proxyFetch(url){
   const errs=[];
   for(const px of order){
     try{
-      const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), 8000);
+      const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), 15000);
       const r=await fetch(px.make(url), {headers:{'Accept':'application/json'}, signal:ctrl.signal});
       clearTimeout(to);
       if(!r.ok){ errs.push(`${px.name}:HTTP${r.status}`); continue; }
@@ -870,15 +870,22 @@ function fillSel(sel, items, placeholder){
 }
 
 async function loadIller(){
+  // önbellekten anında doldur (varsa)
+  let cached=null; try{ cached=JSON.parse(localStorage.getItem('angim-iller')||'null'); }catch(e){}
+  if(cached && cached.length){ fillSel($('ilSel'), cached, 'il seçin'); tkgmStatus(`✓ ${cached.length} il (önbellek) · arka planda güncelleniyor…`,'ok'); }
+  else tkgmStatus('İller yükleniyor… (ilk seferinde 5-20 sn sürebilir)');
   try{
-    tkgmStatus('İller yükleniyor… (ilk seferinde 5-15 sn sürebilir)');
     const items=normList(await proxyFetch(IL_URL));
-    fillSel($('ilSel'), items, 'il seçin');
-    tkgmStatus(`✓ ${items.length} il yüklendi (kaynak: ${state.lastProxy}). İl → ilçe → mahalle seçip ada/parsel girin.`, 'ok');
+    if(items && items.length){
+      fillSel($('ilSel'), items, 'il seçin');
+      try{ localStorage.setItem('angim-iller', JSON.stringify(items)); }catch(e){}
+      tkgmStatus(`✓ ${items.length} il yüklendi (kaynak: ${state.lastProxy}). İl → ilçe → mahalle seçip ada/parsel girin.`, 'ok');
+    } else if(!cached){ throw new Error('boş yanıt'); }
   }catch(e){
+    if(cached && cached.length){ tkgmStatus(`✓ ${cached.length} il (önbellek). Güncelleme alınamadı ama liste hazır.`,'ok'); return; }
     $('ilSel').innerHTML='<option value="">— yüklenemedi —</option>';
-    illerLoaded=false; // tekrar denenebilsin
-    tkgmStatus('İl listesi alınamadı. Tüm proxy\'ler başarısız oldu — TKGM erişimi/aracı kısıtlamış olabilir. “Tekrar dene” düğmesine basın veya ayarlardan kendi proxy adresinizi girin.<br><button id="retryIl" style="margin-top:6px;padding:6px 12px;border:none;border-radius:8px;background:var(--brand);color:#fff;font-weight:700;cursor:pointer">↻ Tekrar dene</button><br><small style="opacity:.7">Ayrıntı: '+e.message+'</small>','err');
+    illerLoaded=false;
+    tkgmStatus('İl listesi alınamadı. Genel proxy\'ler şu an yavaş/kapalı olabilir — “Tekrar dene”ye basın ya da Bağlantı ayarlarına kendi proxy adresinizi girin.<br><button id="retryIl" style="margin-top:6px;padding:6px 12px;border:none;border-radius:8px;background:var(--brand);color:#fff;font-weight:700;cursor:pointer">↻ Tekrar dene</button><br><small style="opacity:.7">Ayrıntı: '+e.message+'</small>','err');
     const rb=$('retryIl'); if(rb) rb.onclick=()=>{ illerLoaded=true; loadIller(); };
   }
 }
