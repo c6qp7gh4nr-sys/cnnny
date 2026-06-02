@@ -1731,7 +1731,7 @@ function showMetrics(C){
   const uyari = (C.uyarilar && C.uyarilar.length)
     ? `<div style="grid-column:1/-1;background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:10px 12px;margin-top:2px"><b style="color:var(--accent)">⚠︎ İmar uyarıları</b><ul style="margin:6px 0 0 18px;font-size:12.5px;color:var(--fg)">${C.uyarilar.map(u=>`<li>${u}</li>`).join('')}</ul></div>`
     : `<div style="grid-column:1/-1;font-size:12.5px;color:var(--brand)">✓ İmar sınırlarıyla tutarlı (emsal/yençok/Hmax aşımı yok).</div>`;
-  $('metrics').innerHTML = m.map(x=>`<div class="metric"><div class="k">${x[0]}</div><div class="v">${x[1]} <span class="u">${x[2]}</span></div></div>`).join('') + uyari +
+  $('metrics').innerHTML = m.map(x=>`<div class="metric"><div class="k">${t(x[0])}</div><div class="v">${x[1]} <span class="u">${x[2]}</span></div></div>`).join('') + uyari +
     `<div class="note" style="grid-column:1/-1">Hmax, Planlı Alanlar İmar Yönetmeliği'nin kat adedine göre azami yükseklik kuralından (3,00·kat+3,50 m) türetilmiştir. TAKS/KAKS değerleri parselin bağlı olduğu <b>imar planından</b> gelir; buradakiler girdiğiniz/temsili değerlerdir. Kesin değerler için ilgili belediyenin imar durumu belgesi esastır.</div>`;
 }
 
@@ -1796,7 +1796,7 @@ function showFeasibility(C){
   const all=tiles.concat(money);
   $('feasMetrics').innerHTML = all.map(x=>{
     const v = (x[0]==='Kaba Kâr'||x[0]==='ROI') ? `<span style="color:${f.kar>=0?'var(--brand)':'var(--danger)'}">${x[1]}</span>` : x[1];
-    return `<div class="metric"><div class="k">${x[0]}</div><div class="v">${v} <span class="u">${x[2]}</span></div></div>`;
+    return `<div class="metric"><div class="k">${t(x[0])}</div><div class="v">${v} <span class="u">${x[2]}</span></div></div>`;
   }).join('') + bar + (money.length?'':`<div class="note" style="grid-column:1/-1">Maliyet/kâr için yukarıya inşaat (₺/m²) ve satış (₺/m²) fiyatı girin.</div>`)
     + `<div class="note" style="grid-column:1/-1">Otopark: konutta ~1 araç/daire, ofiste ~1/100 m². Sığınak: 12'den fazla b.b. ROI = kâr / toplam yatırım. Tahminler kabadır; kesin fizibilite için detaylı metraj ve güncel piyasa esastır.</div>`;
 }
@@ -1879,7 +1879,7 @@ function renderCashFlow(){
     ['Dönem Sonu', trMoney(cf.sonKar), 'net'],
   ];
   $('cfBody').innerHTML=g+`<div class="metrics" style="margin-top:8px">`+
-    tiles.map(t=>`<div class="metric"><div class="k">${t[0]}</div><div class="v">${t[1]} <span class="u">${t[2]}</span></div></div>`).join('')+
+    tiles.map(ti=>`<div class="metric"><div class="k">${t(ti[0])}</div><div class="v">${ti[1]} <span class="u">${ti[2]}</span></div></div>`).join('')+
     `</div><div class="note">İnşaat harcaması S-eğrisiyle dağıtılır; ön satış inşaat boyunca, kalan gelir teslimle başlar. <b>Azami finansman</b> = en düşük kümülatif (kırmızı nokta). Kaba tahmindir.</div>`;
 }
 $('cfBtn').onclick=renderCashFlow;
@@ -1938,8 +1938,17 @@ const EN={
   'Kat adedi':'Number of floors','Kat yüksekliği':'Floor height','Kullanım':'Use','Daire tipi (kat başına)':'Unit type (per floor)',
   'Yapı oturumu':'Building footprint','Çatı tipi':'Roof type','İl':'Province','İlçe':'District','Mahalle':'Neighborhood','Ada':'Block','Parsel':'Parcel',
   '🗲':'🗲','Zemin':'Ground','Tip kat':'Typical','⌖ Mimari Tasarım Üretici':'⌖ Architectural Design Generator',
-  '🎲 Örnek tasarımla başla':'🎲 Start with a sample','❔ Nasıl çalışır?':'❔ How it works?'
+  '🎲 Örnek tasarımla başla':'🎲 Start with a sample','❔ Nasıl çalışır?':'❔ How it works?',
+  // metrik / kart etiketleri (t())
+  'Parsel Alanı':'Parcel Area','Taban Alanı':'Footprint Area','Toplam İnşaat':'Total Construction','Kat Adedi':'Floors',
+  'Hmax (Yençok)':'Hmax','Bina Yüksekliği':'Building Height','Kullanılan Emsal':'Used FAR','Maks. Kat (KAKS)':'Max Floors (FAR)',
+  'Tahmini Birim':'Est. Units','Blok Adedi':'Blocks','Oturum':'Footprint','Toplam Yapı Alanı':'Total Built Area',
+  'Satılabilir Alan':'Sellable Area','Bağımsız Bölüm':'Units','Ort. Daire':'Avg Unit','Otopark':'Parking','Sığınak':'Shelter',
+  'İnşaat Maliyeti':'Construction Cost','Ruhsat + Proje':'Permit + Design','Toplam Yatırım':'Total Investment',
+  'Tahmini Gelir':'Est. Revenue','Kaba Kâr':'Gross Profit','Proje Süresi':'Project Duration','Azami Finansman':'Peak Financing',
+  'Başabaş':'Break-even','Dönem Sonu':'Period End'
 };
+function t(s){ return (state.lang==='en' && EN[s]!==undefined) ? EN[s] : s; }
 function applyLang(lang){
   const sel='.brand-title,.brand-sub,.card h2,.tab-btn,.seg button,.btn:not(.icon-btn),.fab button,summary,.lbl>span';
   document.querySelectorAll(sel).forEach(el=>{
@@ -1956,6 +1965,7 @@ function applyLang(lang){
   document.documentElement.lang = lang;
   try{ localStorage.setItem('mt-lang', lang); }catch(e){}
   state.lang=lang;
+  if(state.last){ try{ showMetrics(state.last); showFeasibility(state.last); if($('cfCard') && $('cfCard').style.display!=='none') renderCashFlow(); }catch(e){} }
 }
 $('langBtn').onclick=()=>applyLang(state.lang==='en'?'tr':'en');
 try{ const sl=localStorage.getItem('mt-lang'); if(sl==='en') applyLang('en'); }catch(e){}
