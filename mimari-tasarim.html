@@ -500,6 +500,9 @@
         </div>
         <div class="btn-row" style="margin-top:8px">
           <button class="btn ghost" id="expKML">🌍 KML (Earth)</button>
+          <button class="btn ghost" id="expCSV">📊 CSV (Excel)</button>
+        </div>
+        <div class="btn-row" style="margin-top:8px">
           <button class="btn ghost" id="expJSON">🗂 Proje JSON</button>
         </div>
         <div class="note">Bu araç imar parametrelerine göre <b>kavramsal/şematik</b> bir tasarım üretir. Resmî projeler için yetkili mimar ve yerel imar yönetmeliği esastır. Veriler tarayıcıda işlenir, sunucuya gönderilmez.</div>
@@ -2356,7 +2359,33 @@ function exportJSON(){
   const o=collectState(); o.exportedAt=new Date().toISOString();
   downloadFile('mimari-proje.json', JSON.stringify(o,null,2), 'application/json');
 }
-$('expDXF').onclick=exportDXF; $('expOBJ').onclick=exportOBJ; $('expKML').onclick=exportKML; $('expJSON').onclick=exportJSON;
+function exportCSV(){
+  const C=state.last; if(!C){ toast('Önce tasarım oluşturun','err'); return; }
+  const f=feasibility(C), p=(state.realParcel&&state.realParcel.props)||{};
+  const rows=[['Bölüm','Kalem','Değer','Birim']];
+  const add=(s,k,v,u)=>rows.push([s,k,v,u||'']);
+  add('Konum','İl/İlçe',`${p.ilAd||''} ${p.ilceAd||''}`.trim()||(state.locLabel||'').replace(/[📍🗺️]/g,'').trim(),'');
+  add('Konum','Ada/Parsel',`${p.adaNo||''}/${p.parselNo||''}`,'');
+  add('Parsel','Alan',fmt(C.parselAlan),'m²');
+  add('Parsel','Cephe×Derinlik',`${fmt(C.inp.cephe,1)}×${fmt(C.inp.derinlik,1)}`,'m');
+  add('İmar','TAKS',C.inp.taks.toFixed(2),''); add('İmar','KAKS/Emsal',C.inp.kaks.toFixed(2),'');
+  add('İmar','Kat',C.katAdet,''); add('İmar','Hmax',fmt(C.hmax,2),'m'); add('İmar','Nizam',C.inp.nizam,'');
+  add('Tasarım','Taban Alanı',fmt(C.tabanAlan),'m²'); add('Tasarım','Toplam İnşaat',fmt(C.toplamInsaat),'m²');
+  add('Tasarım','Kullanılan Emsal',C.emsalKullanim.toFixed(2),''); add('Tasarım','Blok Adedi',C.blocks?C.blocks.length:1,'');
+  add('Program','Bağımsız Bölüm',f.toplamDaire,'adet'); add('Program','Ort. Daire',fmt(f.ortDaire),'m²');
+  add('Program','Otopark',f.otopark,'araç'); add('Program','Sığınak',f.siginakGerek?fmt(f.siginakAlan):'0','m²');
+  add('Fizibilite','Satılabilir Alan',fmt(f.satilabilir),'m²');
+  if(f.insBirim||f.satFiyat){
+    add('Fizibilite','İnşaat Maliyeti',Math.round(f.insMaliyet),'₺'); add('Fizibilite','Toplam Yatırım',Math.round(f.toplamYatirim),'₺');
+    add('Fizibilite','Tahmini Gelir',Math.round(f.gelir),'₺'); add('Fizibilite','Kaba Kâr',Math.round(f.kar),'₺');
+    add('Fizibilite','ROI',f.karlilik.toFixed(1),'%');
+  }
+  // mahal listesi
+  (state.lastRooms||[]).forEach(r=> add('Mahal (tip daire)', r.name, fmt(r.w*r.h,1),'m²'));
+  const csv='﻿'+rows.map(r=>r.map(c=>{ const s=String(c); return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }).join(';')).join('\r\n');
+  downloadFile('mimari-metraj.csv', csv, 'text/csv;charset=utf-8');
+}
+$('expDXF').onclick=exportDXF; $('expOBJ').onclick=exportOBJ; $('expKML').onclick=exportKML; $('expJSON').onclick=exportJSON; $('expCSV').onclick=exportCSV;
 
 /* ---------- Kaydet & Paylaş (localStorage + URL) ---------- */
 const SAVE_FIELDS=['lat','lng','ilce','ada','parsel','adaT','parselT','cephe','derinlik','yolYon','nizam','taks','kaks','katAdet','katH','onCekme','yanCekme','arkaCekme','kullanim','daireTip','oturum','catiTipi','imarNot','costBuild','costSale','costLand','cfBuild','cfSale','cfPre'];
