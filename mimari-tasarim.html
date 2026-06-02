@@ -295,6 +295,11 @@
   .lg-field .lg-eye{ position:absolute; right:8px; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:18px; cursor:pointer; padding:8px; opacity:.55; }
   .login-card .btn{ margin-top:8px; padding:16px; font-size:16px; }
   .acct-tabs{ display:flex; gap:6px; margin:8px 0 12px; flex-wrap:wrap; }
+  /* üst ilerleme çubuğu */
+  #topbar{ position:fixed; top:0; left:0; height:3px; width:0; z-index:400; opacity:0;
+    background:linear-gradient(90deg,var(--brand),var(--accent),var(--brand)); box-shadow:0 0 10px var(--brand);
+    transition:width .35s ease, opacity .35s; pointer-events:none; }
+  .btn:active,.icon-btn:active,.tab-btn:active,.seg button:active,.fab button:active{ transform:scale(.97); }
 </style>
 </head>
 <body>
@@ -326,6 +331,9 @@
         </div>
 
         <div id="coordInputs">
+          <label class="field"><span class="lbl"><span>Adres / yer ara</span></span>
+            <div style="display:flex;gap:8px"><input type="text" id="geoQ" placeholder="örn. Çankaya, Ankara veya bir cadde adı" style="flex:1"><button class="btn" id="geoBtn" style="width:auto;padding:11px 14px">🔍</button></div>
+          </label>
           <div class="row">
             <label class="field"><span class="lbl">Enlem</span><input type="text" id="lat" placeholder="41.015137" inputmode="decimal"></label>
             <label class="field"><span class="lbl">Boylam</span><input type="text" id="lng" placeholder="28.979530" inputmode="decimal"></label>
@@ -633,6 +641,7 @@
   Powered By <b style="color:var(--brand)">Can Tosun</b> — <b style="letter-spacing:.5px">ANGİM</b>
 </footer>
 
+<div id="topbar"></div>
 <div class="fab">
   <button id="fabGen">⚡ Tasarımı Oluştur</button>
   <button class="alt" id="fabView" title="Önizlemeye git">👁</button>
@@ -702,6 +711,10 @@ if('serviceWorker' in navigator){ try{ navigator.serviceWorker.register('mimari-
 /* ---------- Yardımcılar ---------- */
 const $ = id => document.getElementById(id);
 const fmt = (n, d=0) => Number(n).toLocaleString('tr-TR', {maximumFractionDigits:d, minimumFractionDigits:d});
+function haptic(ms){ try{ if(navigator.vibrate) navigator.vibrate(ms||8); }catch(e){} }
+function progress(on){ const b=$('topbar'); if(!b) return; clearTimeout(b._t);
+  if(on){ b.style.opacity='1'; b.style.width='28%'; b._t=setTimeout(()=>{ b.style.width='72%'; },220); }
+  else { b.style.width='100%'; b._t=setTimeout(()=>{ b.style.opacity='0'; setTimeout(()=>b.style.width='0',350); },250); } }
 function toast(msg, kind, ms){
   const host=$('toast'); if(!host) return;
   const t=document.createElement('div'); t.className='toast '+(kind||''); t.innerHTML=msg; host.appendChild(t);
@@ -2054,6 +2067,7 @@ let cfTimer=null;
 
 /* ---------- Oluştur ---------- */
 $('genBtn').onclick = () => {
+  progress(true); haptic(12);
   const inp=gather();
   const rp = (state.mode==='parsel' && state.dataSrc==='tkgm') ? state.realParcel : null;
   const C=compute(inp, rp);
@@ -2068,7 +2082,7 @@ $('genBtn').onclick = () => {
   render('kutle');
   // yumuşak kaydırma
   document.querySelector('.viewer').scrollIntoView({behavior:'smooth', block:'start'});
-  toast('✓ Tasarım oluşturuldu', 'ok');
+  toast('✓ Tasarım oluşturuldu', 'ok'); progress(false);
   try{ archiveCurrent(); }catch(e){}
 };
 $('fabGen').onclick=()=>$('genBtn').click();
@@ -2196,7 +2210,7 @@ $('projCompareBtn').onclick=()=>{
 };
 
 /* ---------- Görünüm sekmeleri ---------- */
-$('viewTabs').querySelectorAll('.tab-btn').forEach(b=> b.onclick=()=>{ if(state.last) render(b.dataset.view); });
+$('viewTabs').querySelectorAll('.tab-btn').forEach(b=> b.onclick=()=>{ haptic(6); if(state.last) render(b.dataset.view); });
 $('rotL').onclick=()=>{ state.kutleAngle=((state.kutleAngle||0)-30); if(state.last) render('kutle'); };
 $('rotR').onclick=()=>{ state.kutleAngle=((state.kutleAngle||0)+30); if(state.last) render('kutle'); };
 $('geceBtn').onclick=()=>{ state.gece=!state.gece; $('geceBtn').textContent=state.gece?'☀︎':'🌙'; if(state.last) render('kutle'); };
@@ -2542,6 +2556,25 @@ async function drawNeighborsOnMap(list){
 $('mapWrap').addEventListener('toggle', ()=>{ if($('mapWrap').open) ensureMap().catch(()=>{}); });
 $('komsuBtn').onclick=fetchNeighbors;
 
+/* ---------- Adres arama (Nominatim/OSM geocoding) ---------- */
+async function geocode(){
+  const q=($('geoQ').value||'').trim(); if(!q) return;
+  progress(true);
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=tr&q='+encodeURIComponent(q),{headers:{'Accept':'application/json'}});
+    const a=await r.json();
+    if(a && a[0]){ const lat=parseFloat(a[0].lat), lng=parseFloat(a[0].lon);
+      $('lat').value=lat.toFixed(6); $('lng').value=lng.toFixed(6); $('lat').dispatchEvent(new Event('input'));
+      state.locLabel='📍 '+(a[0].display_name||q).split(',').slice(0,2).join(',').trim();
+      try{ await ensureMap(); if($('mapWrap')) $('mapWrap').open=true; mtMap.setView([lat,lng],17); if(mtMarker) mtMarker.setLatLng([lat,lng]); else mtMarker=L.marker([lat,lng]).addTo(mtMap); setTimeout(()=>mtMap.invalidateSize(),200); }catch(e){}
+      toast('✓ '+(a[0].display_name||'').split(',').slice(0,2).join(','),'ok',3200); haptic();
+    } else toast('Adres bulunamadı','err');
+  }catch(e){ toast('Arama başarısız (internet gerekli)','err'); }
+  finally{ progress(false); }
+}
+$('geoBtn').onclick=geocode;
+$('geoQ').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); geocode(); } });
+
 /* ---------- Dışa aktarma: DXF / OBJ / KML / JSON ---------- */
 function downloadFile(name, content, mime){
   const blob=new Blob([content],{type:mime||'text/plain;charset=utf-8'});
@@ -2730,7 +2763,7 @@ async function doLogin(){
   try{
     const j=await api('login',{u,p});
     setAuth(j.token,j.user,j.role); state.offline=false; hideLogin(); $('lgPass').value='';
-    toast('Hoş geldiniz, '+j.user, 'ok');
+    toast('Hoş geldiniz, '+j.user, 'ok'); haptic(15);
   }catch(e){
     if(e.status===401){ $('lgMsg').style.color='var(--danger)'; $('lgMsg').textContent='Hatalı kullanıcı adı veya şifre.'; }
     else { // backend'e ulaşılamadı → yerel acil giriş (angim/angim)
