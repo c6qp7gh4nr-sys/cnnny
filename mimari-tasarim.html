@@ -280,6 +280,16 @@
   .modal-bg.show .modal{ animation:mtPop .3s ease both; }
   .tab-btn,.btn,.seg button,.metric,.card,.icon-btn{ will-change:auto; }
   @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+
+  /* Giriş ekranı */
+  .login-ov{ position:fixed; inset:0; z-index:300; display:flex; align-items:center; justify-content:center; padding:18px; background:linear-gradient(135deg,#1f6f5c,#0a2a22); }
+  .login-card{ background:var(--card); border-radius:22px; padding:28px 24px; width:100%; max-width:380px; text-align:center; box-shadow:0 24px 70px rgba(0,0,0,.4); }
+  .login-card .mark{ font-size:44px; color:var(--brand); }
+  .login-card h2{ font-size:20px; margin:6px 0 2px; color:var(--brand-deep); }
+  [data-theme="dark"] .login-card h2{ color:var(--brand); }
+  .login-card .sub{ font-size:12.5px; color:var(--muted); letter-spacing:.5px; margin-bottom:16px; }
+  .login-card input{ margin-bottom:10px; text-align:center; }
+  .acct-tabs{ display:flex; gap:6px; margin:8px 0 12px; flex-wrap:wrap; }
 </style>
 </head>
 <body>
@@ -290,6 +300,7 @@
         <div class="brand-title">⌖ Mimari Tasarım Üretici</div>
         <div class="brand-sub">Koordinat veya Ada/Parsel girin · otomatik vaziyet planı, kat planı ve kütle</div>
       </div>
+      <button class="icon-btn" id="acctBtn" title="Hesap / Yönetim" style="display:none">👤</button>
       <button class="icon-btn" id="projBtn" title="Projelerim">📁</button>
       <button class="icon-btn" id="langBtn" title="Language / Dil" style="width:auto;padding:0 12px;font-size:13px;font-weight:700">EN</button>
       <button class="icon-btn" id="helpBtn" title="Yardım">❔</button>
@@ -631,6 +642,28 @@
     </ol>
     <p style="font-size:11.5px;color:var(--muted)">Tüm hesaplar tarayıcıda yapılır. Sonuçlar kavramsaldır; resmî proje için yetkili mimar ve belediye imar durumu esastır.</p>
     <button class="btn" id="helpDemo" style="margin-top:8px">🎲 Örnekle hemen dene</button>
+  </div>
+</div>
+
+<div class="login-ov" id="loginOverlay" style="display:none">
+  <div class="login-card">
+    <div class="mark">⌖</div>
+    <h2>Mimari Tasarım Üretici</h2>
+    <div class="sub">ANGİM · GİRİŞ</div>
+    <input type="text" id="lgUser" placeholder="Kullanıcı adı" autocomplete="username" autocapitalize="none">
+    <input type="password" id="lgPass" placeholder="Şifre" autocomplete="current-password">
+    <button class="btn" id="lgBtn">Giriş Yap</button>
+    <div class="note" id="lgMsg" style="min-height:16px"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="acctModal">
+  <div class="modal" style="max-width:680px">
+    <button class="x" id="acctClose">✕</button>
+    <h3>👤 <span id="acctTitle">Hesap</span></h3>
+    <div class="acct-tabs" id="acctTabs"></div>
+    <div id="acctBody"></div>
+    <button class="btn ghost" id="logoutBtn" style="margin-top:12px">🚪 Çıkış yap</button>
   </div>
 </div>
 
@@ -1973,6 +2006,7 @@ $('genBtn').onclick = () => {
   // yumuşak kaydırma
   document.querySelector('.viewer').scrollIntoView({behavior:'smooth', block:'start'});
   toast('✓ Tasarım oluşturuldu', 'ok');
+  try{ archiveCurrent(); }catch(e){}
 };
 $('fabGen').onclick=()=>$('genBtn').click();
 $('fabView').onclick=()=>document.querySelector('.viewer').scrollIntoView({behavior:'smooth', block:'start'});
@@ -2596,6 +2630,110 @@ $('shareBtn').onclick=()=>{
   try{ if(location.hash.indexOf('#d=')===0) o=JSON.parse(b64d(location.hash.slice(3))); }catch(e){}
   if(!o){ try{ o=JSON.parse(localStorage.getItem('mt-state')||'null'); }catch(e){} }
   if(o){ try{ applyState(o); }catch(e){} }
+})();
+
+/* ========== Giriş / Hesap / Arşiv (ANGİM backend) ========== */
+const ANGIM_API='https://tgkm-angim.mzyfzmnddk.workers.dev';
+state.token=localStorage.getItem('angim-token')||'';
+state.user=localStorage.getItem('angim-user')||''; state.role=localStorage.getItem('angim-role')||'';
+async function api(name, body){
+  const opt={ method: body?'POST':'GET', headers:{} };
+  if(state.token) opt.headers['authorization']='Bearer '+state.token;
+  if(body){ opt.headers['content-type']='application/json'; opt.body=JSON.stringify(body); }
+  const r=await fetch(ANGIM_API+'?api='+name, opt);
+  let j={}; try{ j=await r.json(); }catch(e){}
+  if(!r.ok) throw Object.assign(new Error(j.error||('HTTP '+r.status)),{status:r.status});
+  return j;
+}
+function setAuth(t,u,role){ state.token=t; state.user=u; state.role=role;
+  localStorage.setItem('angim-token',t); localStorage.setItem('angim-user',u); localStorage.setItem('angim-role',role); }
+function showLogin(){ $('loginOverlay').style.display='flex'; $('acctBtn').style.display='none'; }
+function hideLogin(){ $('loginOverlay').style.display='none'; $('acctBtn').style.display='grid'; }
+async function doLogin(){
+  const u=$('lgUser').value.trim(), p=$('lgPass').value;
+  $('lgMsg').textContent='Giriş yapılıyor…'; $('lgMsg').style.color='var(--muted)';
+  try{
+    const j=await api('login',{u,p});
+    setAuth(j.token,j.user,j.role); state.offline=false; hideLogin(); $('lgPass').value='';
+    toast('Hoş geldiniz, '+j.user, 'ok');
+  }catch(e){
+    if(e.status===401){ $('lgMsg').style.color='var(--danger)'; $('lgMsg').textContent='Hatalı kullanıcı adı veya şifre.'; }
+    else { // backend'e ulaşılamadı → yerel acil giriş (angim/angim)
+      if(u.toLowerCase()==='angim' && p==='angim'){ setAuth('local-'+Date.now(),'angim','admin'); state.offline=true; hideLogin();
+        toast('Backend yok — yerel admin modu','err',3500); }
+      else { $('lgMsg').style.color='var(--danger)'; $('lgMsg').innerHTML='Backend\'e ulaşılamadı. Kurulduysa tekrar deneyin.<br><small>'+(e.message||'')+'</small>'; }
+    }
+  }
+}
+$('lgBtn').onclick=doLogin;
+$('lgPass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+function logout(){ try{ if(!state.offline) api('logout'); }catch(e){} localStorage.removeItem('angim-token'); localStorage.removeItem('angim-user'); localStorage.removeItem('angim-role'); state.token=state.user=state.role=''; $('acctModal').classList.remove('show'); showLogin(); }
+$('logoutBtn').onclick=logout;
+
+/* ---- Hesap / yönetim paneli ---- */
+let acctTab='arsiv';
+function openAcct(){ $('acctTitle').textContent = state.role==='admin'?('Yönetim — '+state.user):('Hesap — '+state.user);
+  const tabs=[['arsiv','📦 Arşiv']].concat(state.role==='admin'?[['users','👥 Kullanıcılar'],['logins','🕘 Girişler']]:[]);
+  $('acctTabs').innerHTML=tabs.map(t=>`<button class="tab-btn ${t[0]===acctTab?'active':''}" data-at="${t[0]}">${t[1]}</button>`).join('');
+  $('acctTabs').querySelectorAll('[data-at]').forEach(b=>b.onclick=()=>{ acctTab=b.dataset.at; openAcct(); });
+  $('acctModal').classList.add('show'); renderAcctTab();
+}
+async function renderAcctTab(){
+  const el=$('acctBody'); el.innerHTML='<div class="note">Yükleniyor…</div>';
+  if(state.offline){ el.innerHTML='<div class="note" style="color:var(--danger)">Yerel admin modundasınız — backend kurulmadan kullanıcı/arşiv senkronu çalışmaz. Worker + KV kurulumunu tamamlayın.</div>'; return; }
+  try{
+    if(acctTab==='arsiv'){
+      const j=await api('archive'); const items=j.items||[];
+      el.innerHTML = items.length? items.map(i=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)">
+        <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13.5px">${(i.name||'').replace(/</g,'&lt;')}</div>
+        <div style="font-size:11px;color:var(--muted)">${state.role==='admin'?('👤 '+i.u+' · '):''}${(i.loc||'').replace(/[📍🗺️<]/g,'').trim()} · ${new Date(i.savedAt).toLocaleString('tr-TR')}</div></div>
+        <button class="btn ghost" data-la="${i.id}" style="width:auto;padding:6px 11px">Yükle</button>
+        <button class="btn ghost" data-da="${i.id}" style="width:auto;padding:6px 9px;color:var(--danger)">Sil</button></div>`).join('')
+        : '<div class="note">Henüz arşivlenmiş tasarım yok. Bir tasarım oluşturunca otomatik arşivlenir.</div>';
+      el.querySelectorAll('[data-la]').forEach(b=>b.onclick=()=>loadArchive(b.dataset.la));
+      el.querySelectorAll('[data-da]').forEach(b=>b.onclick=async()=>{ try{ await api('delarchive&id='+b.dataset.da,{id:b.dataset.da}); toast('Silindi'); renderAcctTab(); }catch(e){ toast(e.message,'err'); } });
+    } else if(acctTab==='users'){
+      const j=await api('users');
+      el.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <input type="text" id="nuUser" placeholder="yeni kullanıcı" autocapitalize="none" style="flex:1;min-width:110px">
+        <input type="text" id="nuPass" placeholder="şifre" style="flex:1;min-width:90px">
+        <select id="nuRole" style="width:auto"><option value="user">kullanıcı</option><option value="admin">admin</option></select>
+        <button class="btn" id="nuAdd" style="width:auto;padding:10px 14px">Ekle</button></div>`+
+        (j.users||[]).map(u=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line)">
+          <div style="flex:1"><b>${u.u}</b> <span style="font-size:11px;color:var(--muted)">${u.role}${u.createdAt?' · '+new Date(u.createdAt).toLocaleDateString('tr-TR'):''}</span></div>
+          ${u.u!=='angim'?`<button class="btn ghost" data-du="${u.u}" style="width:auto;padding:6px 9px;color:var(--danger)">Sil</button>`:''}</div>`).join('');
+      $('nuAdd').onclick=async()=>{ try{ await api('adduser',{u:$('nuUser').value,p:$('nuPass').value,role:$('nuRole').value}); toast('Kullanıcı eklendi','ok'); renderAcctTab(); }catch(e){ toast(e.message,'err'); } };
+      el.querySelectorAll('[data-du]').forEach(b=>b.onclick=async()=>{ if(confirm(b.dataset.du+' silinsin mi?')){ try{ await api('deluser',{u:b.dataset.du}); renderAcctTab(); }catch(e){ toast(e.message,'err'); } } });
+    } else if(acctTab==='logins'){
+      const j=await api('logins');
+      el.innerHTML=(j.logins||[]).map(l=>`<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px">
+        <span style="width:14px">${l.ok?'✅':'⛔'}</span><b style="flex:0 0 90px">${l.u||'?'}</b>
+        <span style="flex:1;color:var(--muted)">${new Date(l.ts).toLocaleString('tr-TR')} · ${l.ip||''}</span></div>`).join('')||'<div class="note">Kayıt yok.</div>';
+    }
+  }catch(e){ el.innerHTML='<div class="note" style="color:var(--danger)">Hata: '+(e.message||'')+'</div>'; }
+}
+async function loadArchive(id){
+  try{ const j=await api('archive&id='+id); if(j.item&&j.item.state){ applyState(j.item.state); $('acctModal').classList.remove('show'); toast('Arşivden yüklendi — “Oluştur”a basın','ok'); document.querySelector('header').scrollIntoView({behavior:'smooth'}); } }
+  catch(e){ toast(e.message,'err'); }
+}
+let archTimer=null;
+function archiveCurrent(){
+  if(!state.token || state.offline) return;
+  clearTimeout(archTimer); archTimer=setTimeout(async()=>{
+    try{ await api('archive',{ name:(state.locLabel||'Tasarım').replace(/[📍🗺️]/g,'').trim(), loc:state.locLabel||'', state:collectState() }); }catch(e){}
+  }, 1200);
+}
+$('acctBtn').onclick=openAcct;
+$('acctClose').onclick=()=>$('acctModal').classList.remove('show');
+$('acctModal').addEventListener('click',e=>{ if(e.target===$('acctModal')) $('acctModal').classList.remove('show'); });
+
+/* ---- açılışta oturum kontrol + kapı ---- */
+(async function gate(){
+  if(state.token && !state.token.startsWith('local-')){
+    try{ const me=await api('me'); setAuth(state.token, me.user, me.role); state.offline=false; hideLogin(); return; }
+    catch(e){ if(e.status===401){ /* oturum bitmiş */ } }
+  } else if(state.token && state.token.startsWith('local-')){ state.offline=true; hideLogin(); return; }
+  showLogin();
 })();
 </script>
 </body>
