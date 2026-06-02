@@ -283,12 +283,17 @@
 
   /* Giriş ekranı */
   .login-ov{ position:fixed; inset:0; z-index:300; display:flex; align-items:center; justify-content:center; padding:18px; background:linear-gradient(135deg,#1f6f5c,#0a2a22); }
-  .login-card{ background:var(--card); border-radius:22px; padding:28px 24px; width:100%; max-width:380px; text-align:center; box-shadow:0 24px 70px rgba(0,0,0,.4); }
-  .login-card .mark{ font-size:44px; color:var(--brand); }
-  .login-card h2{ font-size:20px; margin:6px 0 2px; color:var(--brand-deep); }
+  .login-card{ background:var(--card); border-radius:24px; padding:32px 26px 24px; width:100%; max-width:400px; text-align:center; box-shadow:0 26px 76px rgba(0,0,0,.45); }
+  .login-card .mark{ font-size:46px; color:var(--brand); line-height:1; }
+  .login-card h2{ font-size:21px; margin:8px 0 2px; color:var(--brand-deep); }
   [data-theme="dark"] .login-card h2{ color:var(--brand); }
-  .login-card .sub{ font-size:12.5px; color:var(--muted); letter-spacing:.5px; margin-bottom:16px; }
-  .login-card input{ margin-bottom:10px; text-align:center; }
+  .login-card .sub{ font-size:12px; color:var(--muted); letter-spacing:1px; margin-bottom:20px; }
+  .lg-field{ position:relative; margin-bottom:13px; }
+  .lg-field .lg-ic{ position:absolute; left:15px; top:50%; transform:translateY(-50%); font-size:16px; opacity:.55; pointer-events:none; }
+  .login-card input{ width:100%; padding:16px 16px 16px 44px; font-size:16px; text-align:left; border-radius:14px; border:1.5px solid var(--line); background:var(--bg); }
+  .login-card input:focus{ border-color:var(--brand); box-shadow:var(--ring); }
+  .lg-field .lg-eye{ position:absolute; right:8px; top:50%; transform:translateY(-50%); border:none; background:transparent; font-size:18px; cursor:pointer; padding:8px; opacity:.55; }
+  .login-card .btn{ margin-top:8px; padding:16px; font-size:16px; }
   .acct-tabs{ display:flex; gap:6px; margin:8px 0 12px; flex-wrap:wrap; }
 </style>
 </head>
@@ -650,10 +655,11 @@
     <div class="mark">⌖</div>
     <h2>Mimari Tasarım Üretici</h2>
     <div class="sub">ANGİM · GİRİŞ</div>
-    <input type="text" id="lgUser" placeholder="Kullanıcı adı" autocomplete="username" autocapitalize="none">
-    <input type="password" id="lgPass" placeholder="Şifre" autocomplete="current-password">
-    <button class="btn" id="lgBtn">Giriş Yap</button>
+    <div class="lg-field"><span class="lg-ic">👤</span><input type="text" id="lgUser" placeholder="Kullanıcı adı" autocomplete="username" autocapitalize="none" autocorrect="off"></div>
+    <div class="lg-field"><span class="lg-ic">🔒</span><input type="password" id="lgPass" placeholder="Şifre" autocomplete="current-password"><button type="button" class="lg-eye" id="lgEye" title="Göster/Gizle">👁</button></div>
+    <button class="btn" id="lgBtn">Giriş Yap →</button>
     <div class="note" id="lgMsg" style="min-height:16px"></div>
+    <div class="note" style="margin-top:12px;opacity:.65">Powered By <b>Can Tosun</b> — ANGİM</div>
   </div>
 </div>
 
@@ -2667,6 +2673,8 @@ async function doLogin(){
 }
 $('lgBtn').onclick=doLogin;
 $('lgPass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+$('lgUser').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('lgPass').focus(); } });
+$('lgEye').onclick=()=>{ const i=$('lgPass'); i.type = i.type==='password'?'text':'password'; $('lgEye').style.opacity = i.type==='text'?'1':'.55'; };
 function logout(){ try{ if(!state.offline) api('logout'); }catch(e){} localStorage.removeItem('angim-token'); localStorage.removeItem('angim-user'); localStorage.removeItem('angim-role'); state.token=state.user=state.role=''; $('acctModal').classList.remove('show'); showLogin(); }
 $('logoutBtn').onclick=logout;
 
