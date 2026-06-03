@@ -60,7 +60,7 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: var(--bg); color: var(--fg); line-height: 1.45; font-size: 15px;
     padding-bottom: 40px; transition: background .25s, color .25s;
-    overflow-x: hidden; width: 100%; max-width: 100vw;
+    overflow-x: hidden; width: 100%; max-width: 100%;
   }
   .wrap { max-width: 1080px; margin: 0 auto; padding: 0 14px; }
 
@@ -327,7 +327,7 @@
   }
   /* arka planda yumuşak ışık lekeleri — camın derinlik kazanması için */
   body::before{
-    content:""; position:fixed; inset:-12%; z-index:-1; pointer-events:none;
+    content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; overflow:hidden;
     background:
       radial-gradient(38% 34% at 12% 6%, rgba(31,111,92,.32), transparent 60%),
       radial-gradient(36% 30% at 88% 2%, rgba(120,180,255,.22), transparent 60%),
@@ -362,6 +362,35 @@
   .fab button.ghost{ background: var(--glass) !important; border: 1px solid var(--glass-brd); box-shadow: 0 10px 26px -10px rgba(16,40,33,.45), inset 0 1px 0 var(--glass-hi); }
   .btn{ box-shadow: 0 10px 24px -12px rgba(31,111,92,.6), inset 0 1px 0 rgba(255,255,255,.32); }
   .modal-bg{ -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+
+  /* görüntüleyici sekmeleri mobilde sarsın (yana kaydırma yerine) */
+  @media(max-width:860px){
+    .viewer-head{ gap:6px; }
+    .viewer-head .tabs{ overflow-x:visible; flex-wrap:wrap; flex:1 1 100%; }
+    .tab-btn{ flex:1 1 auto; text-align:center; padding:9px 10px; }
+    #rotCtl,#geceCtl,#katFloorCtl{ flex:0 0 auto; }
+  }
+
+  /* iOS tarzı toggle anahtarı (küçük onay kutusu yerine) */
+  .sw{ position:relative; display:inline-flex; width:50px; height:30px; flex:0 0 auto; vertical-align:middle; }
+  .sw input{ position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; z-index:2; }
+  .sw .tr{ position:absolute; inset:0; background:var(--line); border-radius:999px; transition:.22s; box-shadow:inset 0 1px 3px rgba(0,0,0,.18); }
+  .sw .tr::before{ content:""; position:absolute; width:24px; height:24px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.22s; box-shadow:0 2px 5px rgba(0,0,0,.3); }
+  .sw input:checked + .tr{ background:var(--brand); }
+  .sw input:checked + .tr::before{ transform:translateX(20px); }
+  .sw-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 0; }
+  .sw-row > span:first-child{ font-weight:600; }
+
+  /* ---- Liquid Glass yoğunlaştırma ---- */
+  :root{ --glass: rgba(255,255,255,.42); --glass-2: rgba(255,255,255,.30); --glass-brd: rgba(255,255,255,.85); --glass-blur: blur(30px) saturate(200%); }
+  [data-theme="dark"]{ --glass: rgba(36,50,45,.40); --glass-2: rgba(20,30,27,.34); --glass-brd: rgba(255,255,255,.18); }
+  .card, .modal, .login-card{
+    box-shadow: 0 18px 44px -18px rgba(16,40,33,.45), inset 0 1px 0 var(--glass-hi), inset 0 0 0 .5px rgba(255,255,255,.10) !important;
+    border-radius: 20px !important;
+  }
+  .btn{ border-radius:14px; }
+  .seg, .metric{ -webkit-backdrop-filter: blur(18px) saturate(180%); backdrop-filter: blur(18px) saturate(180%); }
+  .icon-btn{ background: rgba(255,255,255,.18) !important; }
 </style>
 </head>
 <body>
@@ -564,27 +593,29 @@
             <option value="poly">Parsel formuna uygun (içe ofset)</option>
           </select>
         </label>
-        <label class="field">
-          <span class="lbl"><span>Çatı tipi</span><span class="hint"><input type="checkbox" id="cekmeKat" style="vertical-align:middle"> son kat çekme (teras kat)</span></span>
+        <div class="field">
+          <span class="lbl"><span>Çatı tipi</span></span>
           <select id="catiTipi">
             <option value="teras">Teras (parapet)</option>
             <option value="duz">Düz</option>
             <option value="kirma">Kırma (eğimli)</option>
           </select>
-        </label>
+          <label class="sw-row" style="margin-top:8px"><span>Son kat çekme (teras kat)</span>
+            <span class="sw"><input type="checkbox" id="cekmeKat"><span class="tr"></span></span></label>
+        </div>
         <label class="field" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end">
           <span style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px">⛰️ Arazi eğimi (%)</span><input type="number" id="egim" min="0" max="60" step="1" value="0" placeholder="0"></span>
           <span style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;color:var(--muted)">Eğim yönü (alçalan)</span><select id="egimYon"><option value="S">Güney</option><option value="N">Kuzey</option><option value="E">Doğu</option><option value="W">Batı</option></select></span>
         </label>
-        <label class="field">
-          <span class="lbl"><span>☀︎ Güneş / gölge analizi</span><span class="hint"><input type="checkbox" id="sunOn" style="vertical-align:middle"> aç</span></span>
-        </label>
+        <label class="sw-row" style="margin:4px 0 12px"><span>☀︎ Güneş / gölge analizi</span>
+          <span class="sw"><input type="checkbox" id="sunOn"><span class="tr"></span></span></label>
         <div id="sunControls" style="display:none">
           <label class="field"><span class="lbl"><span>Ay</span><span class="hint" id="ayHint">Haziran</span></span>
             <div class="rng"><input type="range" id="sunAy" min="1" max="12" step="1" value="6"><span class="val" id="sunAyVal">6</span></div></label>
           <label class="field"><span class="lbl"><span>Saat (güneş saati)</span><span class="hint" id="saatHint">12:00</span></span>
             <div class="rng"><input type="range" id="sunSaat" min="6" max="20" step="0.5" value="12"><span class="val" id="sunSaatVal">12</span></div></label>
-          <label class="field"><span class="lbl"><span>Gün boyu gölge taraması</span><span class="hint"><input type="checkbox" id="sunSweep" style="vertical-align:middle"> aç</span></span></label>
+          <label class="sw-row"><span>Gün boyu gölge taraması</span>
+            <span class="sw"><input type="checkbox" id="sunSweep"><span class="tr"></span></span></label>
           <div class="field" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end">
             <label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;color:var(--muted)">Komşu bina (m)</span><input type="number" id="komsuYuk" min="0" max="120" step="1" value="0" placeholder="0"></label>
             <label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;color:var(--muted)">Yön</span><select id="komsuYon"><option value="S">Güney</option><option value="N">Kuzey</option><option value="E">Doğu</option><option value="W">Batı</option></select></label>
@@ -2804,8 +2835,7 @@ $('pdfBtn').onclick = () => {
     <tr><td>Parsel Alanı</td><td><b>${fmt(C.parselAlan)} m²</b></td></tr>
     <tr><td>Nitelik / Mevkii</td><td>${p.nitelik||'—'} · ${p.mevkii||'—'}</td></tr></table>`
     : `<table><tr><td>Parsel</td><td><b>${fmt(C.inp.cephe,1)} × ${fmt(C.inp.derinlik,1)} m</b></td></tr><tr><td>Alan</td><td><b>${fmt(C.parselAlan)} m²</b></td></tr></table>`;
-  const w=window.open('','_blank'); if(!w){ toast('Açılır pencere engellendi','err'); return; }
-  w.document.write(`<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Mimari Rapor · ${baslik}</title>
+  const doc=`<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Mimari Rapor · ${baslik}</title>
   <style>
     @page{ size:A4 landscape; margin:9mm; }
     *{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
@@ -2870,8 +2900,10 @@ $('pdfBtn').onclick = () => {
   </div>
   ${cfBlock}
   <script>setTimeout(()=>window.print(),500);<\/script>
-  </body></html>`);
-  w.document.close();
+  </body></html>`;
+  const w = window.open('', '_blank');
+  if(w){ w.document.write(doc); w.document.close(); }
+  else { downloadFile('mimari-rapor.html', doc, 'text/html;charset=utf-8'); toast('📄 Rapor indirildi — Dosyalar uygulamasinda acip Paylas/Yazdir ile PDF kaydedebilirsin','ok',6500); }
 };
 
 /* ---------- İnteraktif harita (Leaflet + uydu) ---------- */
@@ -2956,12 +2988,13 @@ $('geoQ').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(
 async function downloadFile(name, content, mime){
   const blob=new Blob([content],{type:mime||'text/plain;charset=utf-8'});
   // iOS/native: paylaşım sayfasıyla kullanıcı NEREYE ve hangi adla kaydedeceğini seçsin (Dosyalar, AirDrop, Mail…)
-  try{
-    if(navigator.canShare){
-      const file=new File([blob], name, {type:blob.type});
-      if(navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:name}); toast('📤 '+name,'ok'); return; }
-    }
-  }catch(e){ if(e && e.name==='AbortError') return; /* kullanıcı iptal etti */ }
+  if(navigator.share){
+    try{
+      const file=new File([blob], name, {type:blob.type||'application/octet-stream'});
+      await navigator.share({files:[file], title:name});
+      toast('📤 '+name,'ok'); return;
+    }catch(e){ if(e && e.name==='AbortError') return; /* paylaşım desteklemiyor → indirmeye düş */ }
+  }
   // masaüstü / yedek: doğrudan indir (İndirilenler klasörü)
   const url=URL.createObjectURL(blob), a=document.createElement('a');
   a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
@@ -3161,9 +3194,14 @@ function applyState(o){
   ['taks','kaks','katAdet','sunAy','sunSaat'].forEach(id=>{ const e=$(id); if(e) e.dispatchEvent(new Event('input')); });
   updParselAlan();
 }
-$('shareBtn').onclick=()=>{
+$('shareBtn').onclick=async ()=>{
   const url=location.origin+location.pathname+'#d='+b64e(JSON.stringify(collectState()));
   saveLocal();
+  // önce yerel paylaşım sayfası (iOS: Mesajlar/Mail/Notlar/Kopyala…)
+  if(navigator.share){
+    try{ await navigator.share({ title:'Mimari Tasarım', text:(state.locLabel||'Mimari tasarım'), url }); toast('🔗 Bağlantı paylaşıldı','ok'); return; }
+    catch(e){ if(e && e.name==='AbortError') return; }
+  }
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(url).then(
       ()=>toast('🔗 Bağlantı panoya kopyalandı','ok',3200),
@@ -3177,6 +3215,12 @@ $('shareBtn').onclick=()=>{
   if(!o){ try{ o=JSON.parse(localStorage.getItem('mt-state')||'null'); }catch(e){} }
   if(o){ try{ applyState(o); }catch(e){} }
 })();
+// Yatay taşma teşhisi: ekrandan geniş öğe kalırsa kullanıcıya bildir (geçici)
+setTimeout(()=>{ try{ const vw=document.documentElement.clientWidth;
+  const bad=[...document.querySelectorAll('body *')].filter(e=>{ const r=e.getBoundingClientRect(); return r.width>0 && r.right>vw+2 && getComputedStyle(e).position!=='fixed'; })
+    .sort((a,b)=>b.getBoundingClientRect().right-a.getBoundingClientRect().right).slice(0,3);
+  if(bad.length){ const names=bad.map(e=>e.tagName.toLowerCase()+(e.id?'#'+e.id:'')+(typeof e.className==='string'&&e.className.trim()?'.'+e.className.trim().split(/\s+/)[0]:'')); console.log('OVERFLOW',names,bad); try{ toast('↔︎ geniş öğe: '+names.join(' · '),'err',9000); }catch(_){}}
+}catch(e){} }, 1800);
 
 /* ========== Giriş / Hesap / Arşiv (ANGİM backend) ========== */
 const ANGIM_API='https://tgkm-angim.mzyfzmnddk.workers.dev';
