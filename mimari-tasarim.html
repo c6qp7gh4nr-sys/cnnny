@@ -1230,13 +1230,22 @@ function compute(inp, realParcel){
   const planW = (nBlok>1) ? blocks[0].w : bw;
   const planD = (nBlok>1) ? blocks[0].h : bd;
 
-  // --- İmar tutarlılık uyarıları (plan notundan gelen sınırlara göre) ---
-  const uyarilar=[];
-  if(katAdet > katFromKaks) uyarilar.push(`Emsal aşımı: KAKS ${inp.kaks.toFixed(2)} en çok <b>${katFromKaks} kat</b> destekliyor (girilen ${katAdet}). Taban alanını/katı düşürün.`);
+  // --- İmar tutarlılık denetimi (plan notundan gelen sınırlara + yönetmeliğe göre) ---
+  const uyarilar=[]; const U=(sev,msg)=>uyarilar.push({sev,msg});  // sev: 'err' ihlal · 'warn' uyarı · 'ok' bilgi
+  if(katAdet > katFromKaks) U('err',`Emsal aşımı: KAKS ${inp.kaks.toFixed(2)} en çok <b>${katFromKaks} kat</b> destekliyor (girilen ${katAdet}). Taban alanını/katı düşürün.`);
   const pl=state.planLimits||{};
-  if(pl.yencokKat && katAdet > pl.yencokKat) uyarilar.push(`Plan <b>Yençok ${pl.yencokKat} kat</b>; girilen ${katAdet} kat bunu aşıyor.`);
-  if(pl.hmaxM && yukseklik > pl.hmaxM+0.05) uyarilar.push(`Bina yüksekliği ${fmt(yukseklik,1)} m, plan <b>Hmax ${pl.hmaxM} m</b>'yi aşıyor.`);
-  if(pl.emsal && emsalKullanim > pl.emsal+0.02) uyarilar.push(`Kullanılan emsal ${emsalKullanim.toFixed(2)}, plan emsali <b>${pl.emsal}</b>'i aşıyor.`);
+  if(pl.yencokKat && katAdet > pl.yencokKat) U('err',`Plan <b>Yençok ${pl.yencokKat} kat</b>; girilen ${katAdet} kat bunu aşıyor.`);
+  if(pl.hmaxM && yukseklik > pl.hmaxM+0.05) U('err',`Bina yüksekliği ${fmt(yukseklik,1)} m, plan <b>Hmax ${pl.hmaxM} m</b>'yi aşıyor.`);
+  if(pl.emsal && emsalKullanim > pl.emsal+0.02) U('err',`Kullanılan emsal ${emsalKullanim.toFixed(2)}, plan emsali <b>${pl.emsal}</b>'i aşıyor.`);
+  // Çekme zarfı denetimi
+  if(bw<1.5 || bd<1.5) U('err',`Çekme mesafeleri parseli neredeyse kapatıyor (kalan inşa alanı ${fmt(Math.max(0,bw),1)}×${fmt(Math.max(0,bd),1)} m). Çekmeleri/parsel boyutunu kontrol edin.`);
+  // TAKS gerçekleşmesi
+  const taksReal=tabanAlan/parselAlan;
+  if(taksReal > inp.taks+0.015) U('warn',`Oturum TAKS ${taksReal.toFixed(2)}, hedef TAKS ${inp.taks.toFixed(2)}'nin üstünde — oturumu küçültün.`);
+  if(inp.taks>0.6) U('warn',`TAKS ${inp.taks.toFixed(2)} çoğu konut bölgesi için yüksek; plan notunu teyit edin.`);
+  // Emsal kullanımı verimliliği
+  if(emsalKullanim < inp.kaks*0.85 && katAdet>=katFromKaks-1) U('warn',`Emsal hakkı tam kullanılmıyor (${emsalKullanim.toFixed(2)}/${inp.kaks.toFixed(2)}). Kat/oturumu artırarak ~${fmt((inp.kaks-emsalKullanim)*parselAlan)} m² kazanabilirsiniz.`);
+  if(inp.cekmeKat && katAdet<3) U('warn','Son kat çekme (teras kat) için en az 3 kat önerilir.');
 
   return {
     inp, parselAlan, setX0,setX1,setY0,setY1, bw, bd, bwFull, bdFull, tabanAlan, maxTaban,
@@ -2009,12 +2018,31 @@ function metricRows(C){
   ].concat(C.sunHours?[['Güneşlenme', fmt(C.sunHours.facade,1), `sa cephe · ${fmt(C.sunHours.day,1)} sa gün${C.sunHours.blocked>0?` · 🏢−${fmt(C.sunHours.blocked,1)} sa komşu`:''}`]]:[])
    .concat((C.inp.egim>0)?[['Arazi Eğimi', '%'+fmt(C.inp.egim,0), `kot farkı ${fmt(C.kotFarki,1)} m`]]:[]);
 }
+function auditList(C){
+  // compute uyarıları (nesne) + fizibilite tabanlı denetimler
+  const list=(C.uyarilar||[]).map(u=> typeof u==='string'?{sev:'warn',msg:u}:u).slice();
+  try{ const f=feasibility(C);
+    if(f && f.otopark!=null){
+      if(f.bodrumOto>=3) list.push({sev:'warn',msg:`Otopark için ~<b>${f.bodrumOto} bodrum katı</b> gerekiyor (${f.otopark} araç). Maliyet/iksa açısından kritik — oturum/program gözden geçirin.`});
+      if(f.siginakGerek) list.push({sev:'ok',msg:`Sığınak gerekli (~${fmt(f.siginakAlan)} m², ${f.toplamDaire} b.b. > 12).`});
+    }
+  }catch(e){}
+  return list;
+}
 function showMetrics(C){
   $('metricCard').style.display='';
   const m=metricRows(C);
-  const uyari = (C.uyarilar && C.uyarilar.length)
-    ? `<div style="grid-column:1/-1;background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:10px 12px;margin-top:2px"><b style="color:var(--accent)">⚠︎ İmar uyarıları</b><ul style="margin:6px 0 0 18px;font-size:12.5px;color:var(--fg)">${C.uyarilar.map(u=>`<li>${u}</li>`).join('')}</ul></div>`
-    : `<div style="grid-column:1/-1;font-size:12.5px;color:var(--brand)">✓ İmar sınırlarıyla tutarlı (emsal/yençok/Hmax aşımı yok).</div>`;
+  const al=auditList(C);
+  const errs=al.filter(u=>u.sev==='err'), warns=al.filter(u=>u.sev!=='err');
+  const item=(u)=>`<li style="margin:2px 0">${u.sev==='err'?'⛔ ':u.sev==='ok'?'✓ ':'⚠︎ '}${u.msg}</li>`;
+  let uyari;
+  if(errs.length){
+    uyari=`<div style="grid-column:1/-1;background:rgba(214,69,69,.10);border:1px solid var(--danger);border-radius:12px;padding:10px 12px;margin-top:2px"><b style="color:var(--danger)">⛔ İmar ihlali (${errs.length})</b><ul style="margin:6px 0 0 18px;font-size:12.5px;color:var(--fg);list-style:none;padding-left:0">${errs.map(item).join('')}${warns.length?warns.map(item).join(''):''}</ul></div>`;
+  } else if(warns.length){
+    uyari=`<div style="grid-column:1/-1;background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:10px 12px;margin-top:2px"><b style="color:var(--accent)">⚠︎ Öneri / uyarı (${warns.length})</b><ul style="margin:6px 0 0 18px;font-size:12.5px;color:var(--fg);list-style:none;padding-left:0">${warns.map(item).join('')}</ul></div>`;
+  } else {
+    uyari=`<div style="grid-column:1/-1;background:rgba(31,111,92,.10);border:1px solid var(--brand);border-radius:12px;padding:8px 12px;font-size:12.5px;color:var(--brand)"><b>✓ İmar denetiminden geçti</b> — emsal, Yençok, Hmax ve çekme sınırları uygun.</div>`;
+  }
   $('metrics').innerHTML = m.map(x=>`<div class="metric"><div class="k">${t(x[0])}</div><div class="v">${x[1]} <span class="u">${x[2]}</span></div></div>`).join('') + uyari +
     `<div class="note" style="grid-column:1/-1">Hmax, Planlı Alanlar İmar Yönetmeliği'nin kat adedine göre azami yükseklik kuralından (3,00·kat+3,50 m) türetilmiştir. TAKS/KAKS değerleri parselin bağlı olduğu <b>imar planından</b> gelir; buradakiler girdiğiniz/temsili değerlerdir. Kesin değerler için ilgili belediyenin imar durumu belgesi esastır.</div>`;
 }
@@ -2417,33 +2445,39 @@ function parseImarNotes(raw){
   // Türkçe küçük harfe indir
   const t=(raw||'').replace(/İ/g,'i').replace(/I/g,'ı').replace(/Ş/g,'ş').replace(/Ğ/g,'ğ').replace(/Ü/g,'ü').replace(/Ö/g,'ö').replace(/Ç/g,'ç').toLowerCase();
   const f={}; let m;
-  // TAKS
+  // TAKS (ondalık ya da yüzde)
   if(m=t.match(/taks\s*[:=]?\s*(0?[.,]\d{1,2})/)) f.taks=imarNum(m[1]);
   else if(m=t.match(/taban\s*alan[ıi]?\s*kat\s*say[ıi]s[ıi]?\s*[:=]?\s*(0?[.,]\d{1,2})/)) f.taks=imarNum(m[1]);
+  else if(m=t.match(/taks\D{0,6}%\s*(\d{1,3})/)||(m=t.match(/%\s*(\d{1,3})\D{0,6}taks/))) f.taks=Math.min(0.9,parseInt(m[1])/100);
   // KAKS / Emsal / E
   if(m=t.match(/(?:kaks|emsal|k\.?\s*a\.?\s*k\.?\s*s)\s*[:=(]*\s*(\d{1,2}(?:[.,]\d{1,2})?)/)) f.kaks=imarNum(m[1]);
   else if(m=t.match(/\be\s*[:=]\s*(\d{1,2}(?:[.,]\d{1,2})?)/)) f.kaks=imarNum(m[1]);
-  // Hmax / Yençok
-  if(m=t.match(/(?:hmax|h\.?\s*maks?|yen[çc]ok|en\s*fazla\s*y[uü]kseklik|bina\s*y[uü]ksekli[gğ]i|y[eo]nçok)\s*[:=]?\s*(serbest|\d{1,2}\s*kat|\d{1,2}[.,]?\d{0,2}\s*m\b)/)){
+  // Hmax / Yençok / saçak
+  if(m=t.match(/(?:hmax|h\.?\s*maks?|yen[çc]ok|en\s*fazla\s*y[uü]kseklik|bina\s*y[uü]ksekli[gğ]i|sa[çc]ak\s*(?:seviyes[iı]|kotu)?|y[eo]nçok)\s*[:=]?\s*(serbest|\d{1,2}\s*kat|\d{1,3}[.,]?\d{0,2}\s*m\b)/)){
     const v=m[1];
     if(/serbest/.test(v)) f.hmaxNote='serbest';
     else if(/kat/.test(v)) f.kat=parseInt(v);
-    else { const h=imarNum(v); if(h>2) f.hmaxM=h; }
+    else { const h=imarNum(v); if(h>2 && h<200) f.hmaxM=h; }
   }
+  if(f.hmaxNote==null && /(?:y[uü]kseklik|yen[çc]ok|bina\s*y[uü]ksekli[gğ]i)\D{0,12}serbest/.test(t)) f.hmaxNote='serbest';
   // Kat adedi
   if(f.kat==null && (m=t.match(/kat\s*aded[iı]?\s*[:=]?\s*(\d{1,2})/))) f.kat=parseInt(m[1]);
   if(f.kat==null && (m=t.match(/(\d{1,2})\s*kat\b/))) f.kat=parseInt(m[1]);
   // Nizam
-  if(/ayr[ıi]k\s*niz/.test(t)||/ayr[ıi]k/.test(t)) f.nizam='ayrik';
+  if(/ayr[ıi]k\s*niz/.test(t)||/ayr[ıi]k/.test(t)||/ikiz/.test(t)) f.nizam='ayrik';
   else if(/biti[şs]ik/.test(t)) f.nizam='bitisik';
   else if(/blok/.test(t)) f.nizam='blok';
   // Kullanım
-  const tic=/ticaret|ticari|tic[ck]\b|t\+t|ticaret\+konut/.test(t), kon=/konut|mesken|t[ck]\b/.test(t);
+  const tic=/ticaret|ticari|tic[ck]\b|t\+t|ticaret\+konut|i[şs]\s*yeri/.test(t), kon=/konut|mesken|t[ck]\b/.test(t);
   if(tic&&kon) f.kullanim='karma'; else if(tic) f.kullanim='ofis'; else if(kon) f.kullanim='konut';
-  // Çekme mesafeleri
+  // Çekme / yapı yaklaşma mesafeleri
   if(m=t.match(/[öo]n\s*bah[çc]e\D{0,10}(\d{1,2}(?:[.,]\d)?)\s*m?/)) f.on=imarNum(m[1]);
   if(m=t.match(/yan\s*bah[çc]e\D{0,10}(\d{1,2}(?:[.,]\d)?)\s*m?/)) f.yan=imarNum(m[1]);
   if(m=t.match(/arka\s*bah[çc]e\D{0,10}(\d{1,2}(?:[.,]\d)?)\s*m?/)) f.arka=imarNum(m[1]);
+  // Yapı yaklaşma mesafesi (alternatif sözcükler)
+  if(f.on==null && (m=t.match(/(?:yol\s*(?:cephesi|taraf[ıi])?|[öo]n\s*yap[ıi]\s*yakla[şs]ma)\D{0,12}(\d{1,2}(?:[.,]\d)?)\s*m\b/))) f.on=imarNum(m[1]);
+  if(f.yan==null && (m=t.match(/(?:yan\s*yap[ıi]\s*yakla[şs]ma|kom[şs]u\D{0,8}yan)\D{0,12}(\d{1,2}(?:[.,]\d)?)\s*m\b/))) f.yan=imarNum(m[1]);
+  if(f.arka==null && (m=t.match(/(?:arka\s*yap[ıi]\s*yakla[şs]ma)\D{0,12}(\d{1,2}(?:[.,]\d)?)\s*m\b/))) f.arka=imarNum(m[1]);
   // Hmax (m) -> kat tahmini
   if(f.kat==null && f.hmaxM){ f.kat=Math.max(1,Math.round((f.hmaxM-3.5)/3)); f.katFromH=true; }
   return f;
