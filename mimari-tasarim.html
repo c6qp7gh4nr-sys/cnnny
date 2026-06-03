@@ -98,9 +98,12 @@
   label.field .lbl { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); margin-bottom: 5px; font-weight: 600; }
   label.field .lbl .hint { font-weight: 400; opacity: .8; }
   input[type=text], input[type=number], select {
-    width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 11px;
+    width: 100%; min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 11px;
     background: var(--bg); color: var(--fg); font-size: 15px; font-family: inherit; outline: none;
   }
+  /* grid/flex çocuklarının dar ekranda küçülebilmesi (sağ kesilmeyi önler) */
+  input, select, textarea { min-width: 0; }
+  .seg button, .row > *, .row3 > *, .grid2 > *, .metrics > *, .btn-row > * { min-width: 0; }
   input:focus, select:focus { border-color: var(--brand); }
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
