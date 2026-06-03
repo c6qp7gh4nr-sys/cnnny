@@ -175,6 +175,31 @@ test('genFloor: multi-storey konut produces a real core with spec', () => {
   assert.ok(F.core.spec.asansorAdet >= 1, 'elevator required at 6 storeys');
 });
 
+test('daireProgram: room program scales with bedroom count + min sizes', () => {
+  const p1 = S.daireProgram(1), p3 = S.daireProgram(3);
+  assert.equal(p1.tip, '1+1');
+  assert.equal(p3.tip, '3+1');
+  assert.ok(p3.minNet > p1.minNet, 'more bedrooms ⇒ larger min net area');
+  assert.ok(p3.rooms.some((r) => r.name === 'Salon' && r.min >= 12), 'salon ≥ 12 m²');
+  assert.ok(p3.rooms.filter((r) => /Yatak|Ebeveyn/.test(r.name)).length === 3, '3 bedrooms');
+  assert.ok(p3.minBrut > p3.minNet, 'gross > net (wall/circulation allowance)');
+});
+
+test('bedsFromArea: classifies typology by area', () => {
+  assert.equal(S.bedsFromArea(55), 1);
+  assert.equal(S.bedsFromArea(90), 2);
+  assert.equal(S.bedsFromArea(130), 3);
+  assert.equal(S.bedsFromArea(180), 4);
+});
+
+test('compute: exposes a dwelling typology label', () => {
+  const C = S.compute(makeInp({ daireTip: '2+1' }), null);
+  assert.equal(C.daireTipAd, '2+1');
+  assert.equal(C.daireBeds, 2);
+  const A = S.compute(makeInp({ daireTip: 'auto', taks: 0.4, kaks: 2 }), null);
+  assert.match(A.daireTipAd, /^\d\+1$/);
+});
+
 test('sunHours: a tall close neighbour reduces façade sun hours', () => {
   const open = S.sunHours(39.9, 12, 'S', { h: 0, yon: 'S', mes: 10 });
   const blocked = S.sunHours(39.9, 12, 'S', { h: 40, yon: 'S', mes: 4 });

@@ -1210,6 +1210,8 @@ function compute(inp, realParcel){
     case '4+1': unitArea=170; break;
     default: unitArea = inp.kullanim==='ofis'?70: (netKat>180?120:netKat>90?85:60);
   }
+  const daireBeds = (inp.daireTip && inp.daireTip!=='auto') ? parseInt(inp.daireTip) : bedsFromArea(unitArea);
+  const daireTipAd = inp.kullanim==='ofis' ? 'ofis' : (daireBeds+'+1');
   const daireKat = Math.max(1, Math.round(netKat / unitArea));
   const toplamDaire = daireKat * (inp.kullanim==='karma' ? Math.max(0,katAdet-1) : katAdet);
 
@@ -1250,7 +1252,7 @@ function compute(inp, realParcel){
   return {
     inp, parselAlan, setX0,setX1,setY0,setY1, bw, bd, bwFull, bdFull, tabanAlan, maxTaban,
     maxToplam, katAdet, katKaks: katFromKaks, toplamInsaat, emsalKullanim, kaksUyari,
-    daireKat, toplamDaire, unitArea, yukseklik, netKat, hmax, hmaxFloors, onerilenKaks,
+    daireKat, toplamDaire, unitArea, daireBeds, daireTipAd, yukseklik, netKat, hmax, hmaxFloors, onerilenKaks,
     footprintPoly, footprintMode, blocks, nBlok, planW, planD, uyarilar,
     kotFarki: (inp.egim>0 ? (inp.egim/100)*((inp.egimYon==='E'||inp.egimYon==='W')?inp.cephe:inp.derinlik) : 0),
   };
@@ -1276,6 +1278,18 @@ function layoutBlocks(x0,y0,W,D,totalArea,n){
 }
 
 /* ---------- Kat planı: tek daire mahal üretimi (yerel koord, ön=yol=alt) ---------- */
+// Daire tipolojisi: yatak odası sayısına göre min oda programı (PAİY yaklaşık)
+function daireProgram(beds){
+  beds=Math.max(1, beds|0);
+  const rooms=[
+    {name:'Salon', min:12}, {name:'Mutfak', min:4},
+    {name:'Banyo', min:3}, {name:'WC', min:1.2}, {name:'Antre/Hol', min:3},
+  ];
+  for(let i=0;i<beds;i++) rooms.push({name:i===0?'Ebeveyn Y.O.':'Yatak '+(i+1), min:i===0?12:9});
+  const minNet=rooms.reduce((a,r)=>a+r.min,0);
+  return { beds, tip:beds+'+1', rooms, minNet, minBrut:Math.round(minNet/0.82) }; // brüt ≈ net/0.82
+}
+function bedsFromArea(area){ return area>150?4 : area>110?3 : area>72?2 : 1; }
 function genApartment(W, H, beds, ku, shop){
   const R=[];
   if(shop){
@@ -2072,6 +2086,7 @@ function metricRows(C){
     ['Kullanılan Emsal', C.emsalKullanim.toFixed(2), `/ ${C.inp.kaks.toFixed(2)}`],
     ['Maks. Kat (KAKS)', C.katKaks, 'kat'],
     ['Bağımsız Bölüm', C.toplamDaire, C.inp.kullanim==='ofis'?'birim':'daire'],
+    ...(C.inp.kullanim==='ofis'?[]:[['Daire Tipi', C.daireTipAd||'—', `~${fmt(C.unitArea)} m²/daire`]]),
     ['Blok Adedi', (C.blocks?C.blocks.length:1), (C.blocks&&C.blocks.length>1)?`~${fmt(C.planW*C.planD)} m²/blok`:'tek kütle'],
     ['Oturum', C.footprintMode==='poly'?'forma uygun':`${fmt(C.planW||C.bw,0)}×${fmt(C.planD||C.bd,0)} m`, ''],
   ].concat(C.sunHours?[['Güneşlenme', fmt(C.sunHours.facade,1), `sa cephe · ${fmt(C.sunHours.day,1)} sa gün${C.sunHours.blocked>0?` · 🏢−${fmt(C.sunHours.blocked,1)} sa komşu`:''}`]]:[])
@@ -2086,6 +2101,10 @@ function auditList(C){
     if(C.inp.on>0 && C.inp.on < Y.minOn-0.01) list.push({sev:'err',msg:`Ön çekme ${fmt(C.inp.on,1)} m, yönetmelik önerisi ≥ <b>${fmt(Y.minOn,1)} m</b>.`});
     if(C.inp.yan>0 && C.inp.yan < Y.minYan-0.01) list.push({sev:'err',msg:`Yan çekme ${fmt(C.inp.yan,1)} m, ${C.katAdet} kat için ≥ <b>${fmt(Y.minYan,1)} m</b> olmalı (yan ≥ 3 + her kat>4 için +0.5).`});
     if(C.inp.arka>0 && C.inp.arka < Y.minArka-0.01) list.push({sev:'err',msg:`Arka çekme ${fmt(C.inp.arka,1)} m, ≥ <b>${fmt(Y.minArka,1)} m</b> olmalı.`});
+  }
+  // Daire tipolojisi: birim alan, tip için önerilen min brütün altında mı?
+  if(C.inp.kullanim!=='ofis' && C.unitArea){ const prog=daireProgram(C.daireBeds||bedsFromArea(C.unitArea));
+    if(C.unitArea < prog.minBrut-1) list.push({sev:'warn',msg:`Daire alanı ~${fmt(C.unitArea)} m², <b>${prog.tip}</b> için önerilen min ~${prog.minBrut} m² altında — oda programı (salon ≥12, yatak ≥9 m²) sığmayabilir.`});
   }
   if(Y.asansorGerek) list.push({sev:'ok',msg:`Asansör zorunlu: <b>${Y.asansorAdet} adet</b> (zemin üstü ${C.katAdet-1}+ kat).`});
   if(Y.ikinciKacis) list.push({sev:'warn',msg:`${Y.yuksekYapi?'Yüksek yapı (≥21,50 m)':'Çok katlı'}: <b>2. yangın kaçışı</b> + kaçış merdiveni basınçlandırması gerekir.`});
