@@ -1,0 +1,25 @@
+name: CI (tests)
+
+# Run the test suite on pull requests and on pushes to any non-main branch,
+# so regressions are caught before they reach main / production.
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run tests (real shipped code)
+        run: npm test

@@ -19,7 +19,21 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Gate: domain/worker tests must pass before anything is published.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run tests (real shipped code)
+        run: npm test
+
   deploy:
+    needs: test            # only deploy if tests are green
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

@@ -1,0 +1,10 @@
+{
+  "name": "mimari-tasarim",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Koordinat/ada-parsel girince otomatik mimari tasarım, 3B render ve fizibilite üretir.",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  }
+}
