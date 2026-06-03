@@ -1,7 +1,7 @@
 // ANGiM backend: TKGM proxy + auth + arsiv (Cloudflare KV binding: ANGIM)
 // Guvenlik: PBKDF2 sifre hash + brute-force kilidi + IP rate-limit + guvenlik basliklari.
 const SALT='angim-2026-salt-x7k9';          // yalnizca eski (legacy) hash dogrulamasi icin
-const PBKDF2_ITER=120000;
+const PBKDF2_ITER=10000;   // Cloudflare ucretsiz plan CPU limiti (10ms) icin dusuk tutuldu
 const H={
   'Access-Control-Allow-Origin':'*',
   'Access-Control-Allow-Methods':'GET,POST,OPTIONS',
@@ -32,6 +32,7 @@ export default {
     if(req.method==='OPTIONS') return new Response(null,{headers:H});
     const url=new URL(req.url), api=url.searchParams.get('api');
     if(api){
+     try{
       const KV=env.ANGIM;
       if(!KV) return J({error:'KV bagli degil - Worker ayarlarinda ANGIM bindingini ekleyin.'},500);
       const ip=req.headers.get('cf-connecting-ip')||'0';
@@ -107,6 +108,7 @@ export default {
         const o=JSON.parse(r);if(s.role!=='admin'&&o.u!==s.u)return J({error:'yetki yok'},403);
         await KV.delete('arch:'+id);return J({ok:true});}
       return J({error:'bilinmeyen api'},404);
+     }catch(e){ return J({error:'sunucu hatasi: '+((e&&e.message)||e)},500); }   // CORS baslikli 500 (basliksiz cokme olmasin)
     }
     const target=url.searchParams.get('url');
     if(!target) return new Response('Kullanim: ?url=<adres> veya ?api=...',{status:400,headers:H});
