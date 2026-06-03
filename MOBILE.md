@@ -54,9 +54,10 @@ Uygulama OCR için kamera/galeri ve koordinat için konum kullanabilir:
   - konum gerekiyorsa `ACCESS_FINE_LOCATION`
 
 ## Notlar
-- **CORS:** `capacitor.config.json` içinde `CapacitorHttp.enabled = true`
-  açık → native'de `fetch` yerel köprüden gider, **CORS kalkar**. TKGM'ye
-  doğrudan erişilebilir; proxy zinciri yine yedek olarak çalışır.
+- **CORS / backend:** Uygulamanın worker'ı ve kullandığı CORS-proxy'leri zaten
+  `Access-Control-Allow-Origin: *` gönderir; bu yüzden native WebView'de standart
+  `fetch` ile giriş/arşiv ve TKGM sorguları sorunsuz çalışır. (CapacitorHttp
+  eklentisi `fetch`'i değiştirip backend isteğini bozduğu için kapalı tutuldu.)
 - **Çevrimdışı:** three.js/Leaflet/Tesseract şu an CDN'den yüklenir (internet
   ister). Tamamen çevrimdışı istersek bu kütüphaneleri `www/`'e gömeriz (ayrı iş).
 - **Backend:** giriş/arşiv için Cloudflare Worker aynen kullanılır (adres
