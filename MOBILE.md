@@ -22,9 +22,8 @@ npm install
 npm run cap:add:android      # android/ klasörünü oluşturur
 npm run cap:add:ios          # ios/ klasörünü oluşturur (yalnız Mac'te)
 
-# 3) uygulama ikonları + splash üret (kaynak: assets/icon.png 1024x1024)
-#    icon.svg'yi 1024x1024 PNG olarak dışa aktarıp assets/icon.png yap.
-mkdir -p assets && cp icon.svg assets/   # veya kendi 1024px PNG'ini koy
+# 3) uygulama ikonları + splash üret
+#    assets/icon.png (1024x1024) ve assets/splash.png (2732x2732) repoda HAZIR.
 npx @capacitor/assets generate --iconBackgroundColor '#1f6f5c' --splashBackgroundColor '#eef2f0'
 ```
 
