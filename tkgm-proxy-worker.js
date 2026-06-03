@@ -44,13 +44,13 @@ export default {
         items.sort((a,b)=>b.ts-a.ts);return J({logins:items.slice(0,150)});}
       if(api==='archive'&&req.method==='POST'){const s=await sess();if(!s)return J({error:'oturum yok'},401);
         const id='a'+Date.now()+Math.random().toString(36).slice(2,6);
-        await KV.put('arch:'+id,JSON.stringify({id,u:s.u,name:(body.name||'Tasarim').slice(0,90),loc:(body.loc||'').slice(0,140),savedAt:Date.now(),state:body.state||{}}));
+        await KV.put('arch:'+id,JSON.stringify({id,u:s.u,name:(body.name||'Tasarim').slice(0,90),loc:(body.loc||'').slice(0,140),thumb:(body.thumb||'').slice(0,60000),savedAt:Date.now(),state:body.state||{}}));
         return J({ok:true,id});}
       if(api==='archive'){const s=await sess();if(!s)return J({error:'oturum yok'},401);
         const id=url.searchParams.get('id');
         if(id){const r=await KV.get('arch:'+id);if(!r)return J({error:'bulunamadi'},404);const o=JSON.parse(r);if(s.role!=='admin'&&o.u!==s.u)return J({error:'yetki yok'},403);return J({item:o});}
         const l=await KV.list({prefix:'arch:'}),items=[];
-        for(const k of l.keys){const o=JSON.parse(await KV.get(k.name));if(s.role==='admin'||o.u===s.u)items.push({id:o.id,u:o.u,name:o.name,loc:o.loc,savedAt:o.savedAt});}
+        for(const k of l.keys){const o=JSON.parse(await KV.get(k.name));if(s.role==='admin'||o.u===s.u)items.push({id:o.id,u:o.u,name:o.name,loc:o.loc,thumb:o.thumb||'',savedAt:o.savedAt});}
         items.sort((a,b)=>b.savedAt-a.savedAt);return J({items,role:s.role});}
       if(api==='delarchive'){const s=await sess();if(!s)return J({error:'oturum yok'},401);
         const id=url.searchParams.get('id')||body.id,r=await KV.get('arch:'+id);if(!r)return J({ok:true});

@@ -2224,11 +2224,20 @@ try{ const sl=localStorage.getItem('mt-lang'); if(sl==='en') applyLang('en'); }c
 /* ---------- Çoklu proje galerisi ---------- */
 function loadProjects(){ try{ return JSON.parse(localStorage.getItem('mt-projects')||'[]'); }catch(e){ return []; } }
 function saveProjects(a){ try{ localStorage.setItem('mt-projects', JSON.stringify(a)); }catch(e){ toast('Kayıt alanı dolu olabilir','err'); } }
+// SVG -> küçük önizleme (dataURL)
+function svgThumb(svgStr){ return new Promise(res=>{ try{
+  const vb=svgStr.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/); const w=vb?+vb[1]:760, h=vb?+vb[2]:560;
+  const tw=220, th=Math.max(40,Math.round(tw*h/w));
+  const blob=new Blob([svgStr],{type:'image/svg+xml;charset=utf-8'}), url=URL.createObjectURL(blob), img=new Image();
+  img.onload=()=>{ const cv=document.createElement('canvas'); cv.width=tw; cv.height=th; const x=cv.getContext('2d'); x.fillStyle='#eef2f0'; x.fillRect(0,0,tw,th); try{ x.drawImage(img,0,0,tw,th); }catch(_){} URL.revokeObjectURL(url); try{res(cv.toDataURL('image/png'));}catch(e){res('');} };
+  img.onerror=()=>{ URL.revokeObjectURL(url); res(''); }; img.src=url;
+}catch(e){res('');} }); }
 function renderProjectList(){
   const list=loadProjects(); const el=$('projList');
   if(!list.length){ el.innerHTML='<div class="note">Henüz kayıtlı proje yok.</div>'; return; }
-  el.innerHTML=list.map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px dashed var(--line)">
+  el.innerHTML=list.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line)">
     <input type="checkbox" data-cmp="${p.id}" style="width:18px;height:18px;flex:0 0 auto">
+    ${p.thumb?`<img src="${p.thumb}" alt="" style="width:58px;height:44px;object-fit:cover;border-radius:7px;border:1px solid var(--line);flex:0 0 auto;background:#eef2f0">`:`<div style="width:58px;height:44px;border-radius:7px;border:1px solid var(--line);flex:0 0 auto;display:grid;place-items:center;color:var(--muted);font-size:18px">🏠</div>`}
     <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13.5px">${(p.name||'Proje').replace(/</g,'&lt;')}</div>
     <div style="font-size:11px;color:var(--muted)">${(p.loc||'').replace(/[📍🗺️<]/g,'').trim()} · ${new Date(p.savedAt).toLocaleDateString('tr-TR')}</div></div>
     <button class="btn ghost" data-load="${p.id}" style="width:auto;padding:7px 12px">Yükle</button>
@@ -2237,10 +2246,11 @@ function renderProjectList(){
   el.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>loadProject(b.dataset.load));
   el.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ saveProjects(loadProjects().filter(x=>x.id!==b.dataset.del)); renderProjectList(); toast('Silindi'); });
 }
-function saveCurrentProject(){
+async function saveCurrentProject(){
   const name=($('projName').value||'').trim() || (state.locLabel||'Proje').replace(/[📍🗺️]/g,'').trim() || ('Proje '+new Date().toLocaleDateString('tr-TR'));
+  let thumb=''; try{ if(state.last) thumb=await svgThumb(viewKutle(state.last)); }catch(e){}
   const list=loadProjects();
-  list.unshift({ id:'p'+Date.now(), name, loc:state.locLabel||'', savedAt:Date.now(), state:collectState() });
+  list.unshift({ id:'p'+Date.now(), name, loc:state.locLabel||'', savedAt:Date.now(), thumb, state:collectState() });
   saveProjects(list.slice(0,40));
   $('projName').value=''; renderProjectList(); toast('💾 Proje kaydedildi','ok');
 }
@@ -2863,7 +2873,8 @@ async function renderAcctTab(){
   try{
     if(acctTab==='arsiv'){
       const j=await api('archive'); const items=j.items||[];
-      el.innerHTML = items.length? items.map(i=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)">
+      el.innerHTML = items.length? items.map(i=>`<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px dashed var(--line)">
+        ${i.thumb?`<img src="${i.thumb}" alt="" style="width:56px;height:42px;object-fit:cover;border-radius:7px;border:1px solid var(--line);flex:0 0 auto;background:#eef2f0">`:`<div style="width:56px;height:42px;border-radius:7px;border:1px solid var(--line);flex:0 0 auto;display:grid;place-items:center;color:var(--muted)">🏠</div>`}
         <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13.5px">${(i.name||'').replace(/</g,'&lt;')}</div>
         <div style="font-size:11px;color:var(--muted)">${state.role==='admin'?('👤 '+i.u+' · '):''}${(i.loc||'').replace(/[📍🗺️<]/g,'').trim()} · ${new Date(i.savedAt).toLocaleString('tr-TR')}</div></div>
         <button class="btn ghost" data-la="${i.id}" style="width:auto;padding:6px 11px">Yükle</button>
@@ -2899,7 +2910,8 @@ let archTimer=null;
 function archiveCurrent(){
   if(!state.token || state.offline) return;
   clearTimeout(archTimer); archTimer=setTimeout(async()=>{
-    try{ await api('archive',{ name:(state.locLabel||'Tasarım').replace(/[📍🗺️]/g,'').trim(), loc:state.locLabel||'', state:collectState() }); }catch(e){}
+    let thumb=''; try{ if(state.last) thumb=await svgThumb(viewKutle(state.last)); }catch(e){}
+    try{ await api('archive',{ name:(state.locLabel||'Tasarım').replace(/[📍🗺️]/g,'').trim(), loc:state.locLabel||'', thumb, state:collectState() }); }catch(e){}
   }, 1200);
 }
 $('acctBtn').onclick=openAcct;
