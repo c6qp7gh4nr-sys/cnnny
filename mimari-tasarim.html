@@ -543,6 +543,10 @@
           <button class="btn ghost" id="expOBJ">🧱 OBJ (3B)</button>
         </div>
         <div class="btn-row" style="margin-top:8px">
+          <button class="btn ghost" id="expIFC">🏛️ IFC (BIM / Revit)</button>
+        </div>
+        <div class="note" style="margin-top:6px;font-size:11px">IFC, Revit/ArchiCAD/Tekla'da açılır. DWG için DXF dosyasını AutoCAD'de açıp <b>DWG olarak kaydedin</b> (tarayıcıda DWG yazılamaz).</div>
+        <div class="btn-row" style="margin-top:8px">
           <button class="btn ghost" id="expKML">🌍 KML (Earth)</button>
           <button class="btn ghost" id="expCSV">📊 CSV (Excel)</button>
         </div>
@@ -2753,6 +2757,59 @@ function exportOBJ(){
   const obj=`# Mimari Tasarim Uretici - 3B kutle (metre)\n# ${C.katAdet} kat, Hmax ${fmt(C.hmax,2)} m\n${v}${f}`;
   downloadFile('mimari-kutle.obj', obj, 'text/plain');
 }
+function ifcGuid(){
+  const b=new Uint8Array(16); (crypto.getRandomValues?crypto.getRandomValues(b):b.forEach((_,i)=>b[i]=Math.random()*256));
+  const B64='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$';
+  let bits=''; for(const x of b) bits+=x.toString(2).padStart(8,'0');
+  let s=B64[parseInt(bits.slice(0,2),2)];
+  for(let i=2;i<128;i+=6) s+=B64[parseInt(bits.slice(i,i+6),2)];
+  return s;
+}
+function exportIFC(){
+  const C=state.last; if(!C){ alert('Önce bir tasarım oluşturun.'); return; }
+  const Hh=C.yukseklik, N=x=>(+x).toFixed(4), G=()=>ifcGuid();
+  let id=1; const L=[]; const add=s=>{ const n=id++; L.push(`#${n}=${s};`); return n; };
+  const u1=add('IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.)'), u2=add('IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.)'), u3=add('IFCSIUNIT(*,.VOLUMEUNIT.,$,.CUBIC_METRE.)');
+  const ua=add(`IFCUNITASSIGNMENT((#${u1},#${u2},#${u3}))`);
+  const org=add("IFCORGANIZATION($,'ANGIM',$,$,$)"), per=add("IFCPERSON($,'ANGIM',$,$,$,$,$,$)");
+  const po=add(`IFCPERSONANDORGANIZATION(#${per},#${org},$)`), app=add(`IFCAPPLICATION(#${org},'1.0','Mimari Tasarim Uretici','MTU')`);
+  const owner=add(`IFCOWNERHISTORY(#${po},#${app},$,.ADDED.,$,$,$,${Math.floor(Date.now()/1000)})`);
+  const o0=add('IFCCARTESIANPOINT((0.,0.,0.))'), dz=add('IFCDIRECTION((0.,0.,1.))'), dx=add('IFCDIRECTION((1.,0.,0.))');
+  const wcs=add(`IFCAXIS2PLACEMENT3D(#${o0},#${dz},#${dx})`);
+  const ctx=add(`IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.0E-5,#${wcs},$)`);
+  const plc=add(`IFCLOCALPLACEMENT($,#${wcs})`);
+  const proj=add(`IFCPROJECT('${G()}',#${owner},'${(state.locLabel||'Proje').replace(/[^\x20-\x7e]/g,'').replace(/'/g,'')||'Proje'}',$,$,$,$,(#${ctx}),#${ua})`);
+  const site=add(`IFCSITE('${G()}',#${owner},'Arsa',$,$,#${plc},$,$,.ELEMENT.,$,$,$,$,$)`);
+  const bldg=add(`IFCBUILDING('${G()}',#${owner},'Bina',$,$,#${plc},$,$,.ELEMENT.,$,$,$)`);
+  const storey=add(`IFCBUILDINGSTOREY('${G()}',#${owner},'Kat 0',$,$,#${plc},$,$,.ELEMENT.,0.)`);
+  add(`IFCRELAGGREGATES('${G()}',#${owner},$,$,#${proj},(#${site}))`);
+  add(`IFCRELAGGREGATES('${G()}',#${owner},$,$,#${site},(#${bldg}))`);
+  add(`IFCRELAGGREGATES('${G()}',#${owner},$,$,#${bldg},(#${storey}))`);
+  const proxies=[];
+  massRings(C).forEach((ring,bi)=>{
+    const pts=ring.map(p=>add(`IFCCARTESIANPOINT((${N(p[0])},${N(p[1])}))`));
+    const pl=add(`IFCPOLYLINE((${pts.map(p=>'#'+p).join(',')},#${pts[0]}))`);
+    const prof=add(`IFCARBITRARYCLOSEDPROFILEDEF(.AREA.,$,#${pl})`);
+    const sol=add(`IFCEXTRUDEDAREASOLID(#${prof},#${wcs},#${dz},${N(Hh)})`);
+    const sr=add(`IFCSHAPEREPRESENTATION(#${ctx},'Body','SweptSolid',(#${sol}))`);
+    const pds=add(`IFCPRODUCTDEFINITIONSHAPE($,$,(#${sr}))`);
+    proxies.push(add(`IFCBUILDINGELEMENTPROXY('${G()}',#${owner},'Kutle ${bi+1}',$,$,#${plc},#${pds},$,$)`));
+  });
+  add(`IFCRELCONTAINEDINSPATIALSTRUCTURE('${G()}',#${owner},$,$,(${proxies.map(p=>'#'+p).join(',')}),#${storey})`);
+  const now=new Date().toISOString();
+  const ifc=`ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('ViewDefinition [CoordinationView]'),'2;1');
+FILE_NAME('mimari.ifc','${now}',('ANGIM'),('ANGIM'),'Mimari Tasarim Uretici','MTU','');
+FILE_SCHEMA(('IFC4'));
+ENDSEC;
+DATA;
+${L.join('\n')}
+ENDSEC;
+END-ISO-10303-21;
+`;
+  downloadFile('mimari-bina.ifc', ifc, 'application/x-step');
+}
 function exportKML(){
   const C=state.last, rp=state.realParcel;
   if(!rp || !rp.geoRing){ alert('KML için TKGM\'den gerçek parsel çekmelisiniz (koordinatlı sınır gerekir).'); return; }
@@ -2796,7 +2853,7 @@ function exportCSV(){
   const csv='﻿'+rows.map(r=>r.map(c=>{ const s=String(c); return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }).join(';')).join('\r\n');
   downloadFile('mimari-metraj.csv', csv, 'text/csv;charset=utf-8');
 }
-$('expDXF').onclick=exportDXF; $('expOBJ').onclick=exportOBJ; $('expKML').onclick=exportKML; $('expJSON').onclick=exportJSON; $('expCSV').onclick=exportCSV;
+$('expDXF').onclick=exportDXF; $('expOBJ').onclick=exportOBJ; $('expKML').onclick=exportKML; $('expJSON').onclick=exportJSON; $('expCSV').onclick=exportCSV; $('expIFC').onclick=exportIFC;
 
 /* ---------- Kaydet & Paylaş (localStorage + URL) ---------- */
 const SAVE_FIELDS=['lat','lng','ilce','ada','parsel','adaT','parselT','cephe','derinlik','yolYon','nizam','taks','kaks','katAdet','katH','onCekme','yanCekme','arkaCekme','kullanim','daireTip','oturum','catiTipi','imarNot','costBuild','costSale','costLand','costExtra','costPermit','costCommon','cfBuild','cfSale','cfPre','cfRate','cfKdv','komsuYuk','komsuYon','komsuMes','egim','egimYon'];
