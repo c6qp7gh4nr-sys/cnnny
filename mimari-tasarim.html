@@ -510,6 +510,10 @@
             <option value="kirma">Kırma (eğimli)</option>
           </select>
         </label>
+        <label class="field" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end">
+          <span style="display:flex;flex-direction:column;gap:4px"><span style="font-size:12px">⛰️ Arazi eğimi (%)</span><input type="number" id="egim" min="0" max="60" step="1" value="0" placeholder="0"></span>
+          <span style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;color:var(--muted)">Eğim yönü (alçalan)</span><select id="egimYon"><option value="S">Güney</option><option value="N">Kuzey</option><option value="E">Doğu</option><option value="W">Batı</option></select></span>
+        </label>
         <label class="field">
           <span class="lbl"><span>☀︎ Güneş / gölge analizi</span><span class="hint"><input type="checkbox" id="sunOn" style="vertical-align:middle"> aç</span></span>
         </label>
@@ -519,6 +523,11 @@
           <label class="field"><span class="lbl"><span>Saat (güneş saati)</span><span class="hint" id="saatHint">12:00</span></span>
             <div class="rng"><input type="range" id="sunSaat" min="6" max="20" step="0.5" value="12"><span class="val" id="sunSaatVal">12</span></div></label>
           <label class="field"><span class="lbl"><span>Gün boyu gölge taraması</span><span class="hint"><input type="checkbox" id="sunSweep" style="vertical-align:middle"> aç</span></span></label>
+          <div class="field" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end">
+            <label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;color:var(--muted)">Komşu bina (m)</span><input type="number" id="komsuYuk" min="0" max="120" step="1" value="0" placeholder="0"></label>
+            <label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;color:var(--muted)">Yön</span><select id="komsuYon"><option value="S">Güney</option><option value="N">Kuzey</option><option value="E">Doğu</option><option value="W">Batı</option></select></label>
+            <label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;color:var(--muted)">Mesafe (m)</span><input type="number" id="komsuMes" min="0" max="60" step="0.5" value="10"></label>
+          </div>
         </div>
         <button class="btn" id="genBtn">⚡ Tasarımı Oluştur</button>
         <button class="btn ghost" id="randBtn" style="margin-top:10px">🎲 Örnek doldur</button>
@@ -1129,6 +1138,11 @@ function gather(){
     sunAy: parseInt($('sunAy').value),
     sunSaat: parseFloat($('sunSaat').value),
     sunSweep: $('sunSweep').checked,
+    komsuYuk: Math.max(0, parseFloat($('komsuYuk').value)||0),
+    komsuYon: $('komsuYon').value,
+    komsuMes: Math.max(0, parseFloat($('komsuMes').value)||0),
+    egim: Math.max(0, parseFloat($('egim').value)||0),
+    egimYon: $('egimYon').value,
   };
 }
 
@@ -1225,6 +1239,7 @@ function compute(inp, realParcel){
     maxToplam, katAdet, katKaks: katFromKaks, toplamInsaat, emsalKullanim, kaksUyari,
     daireKat, toplamDaire, unitArea, yukseklik, netKat, hmax, hmaxFloors, onerilenKaks,
     footprintPoly, footprintMode, blocks, nBlok, planW, planD, uyarilar,
+    kotFarki: (inp.egim>0 ? (inp.egim/100)*((inp.egimYon==='E'||inp.egimYon==='W')?inp.cephe:inp.derinlik) : 0),
   };
 }
 
@@ -1362,14 +1377,24 @@ function solarPos(lat, month, hour){
   if(H>0) az=2*Math.PI-az;                                  // öğleden sonra batıya
   return { alt, az, altDeg:alt*180/Math.PI, azDeg:az*180/Math.PI };
 }
-// Seçili ay için gün uzunluğu ve ön cepheye doğrudan güneş düşen saat
-function sunHours(lat, month, yol){
-  const normAz=({S:180,N:0,E:90,W:270})[yol]!=null?({S:180,N:0,E:90,W:270})[yol]:180;
-  let day=0, fac=0;
+// Seçili ay için gün uzunluğu ve ön cepheye doğrudan güneş düşen saat (komşu bina gölgesi düşülür)
+function sunHours(lat, month, yol, obs){
+  const DIR={S:180,N:0,E:90,W:270};
+  const normAz=DIR[yol]!=null?DIR[yol]:180;
+  const kH=obs&&obs.h>0?obs.h:0, kAz=DIR[obs&&obs.yon]!=null?DIR[obs.yon]:180, kMes=obs&&obs.mes>0?obs.mes:0;
+  let day=0, fac=0, blocked=0;
   for(let h=4; h<=20; h+=0.25){ const sp=solarPos(lat, month, h); if(sp.alt<=0) continue; day+=0.25;
     let diff=Math.abs(sp.azDeg-normAz)%360; if(diff>180) diff=360-diff;
-    if(diff<88) fac+=0.25; }
-  return { day, facade:fac };
+    if(diff<88){
+      // komşu bina cepheyi gölgeliyor mu? (güneş komşu yönündeyse ve gölgesi cepheye uzanıyorsa)
+      let block=false;
+      if(kH>0){ let dN=Math.abs(sp.azDeg-kAz)%360; if(dN>180) dN=360-dN;
+        const shadow=kH/Math.max(0.02,Math.tan(sp.alt));
+        if(dN<62 && shadow>=kMes) block=true; }
+      if(block) blocked+=0.25; else fac+=0.25;
+    }
+  }
+  return { day, facade:fac, blocked };
 }
 
 /* ---------- Görünüm: Vaziyet Planı ---------- */
@@ -1417,6 +1442,21 @@ function viewVaziyet(C){
   } else {
     const x0=C.setX0, x1=C.setX0+C.bw, yT=C.inp.derinlik-C.setY0, yB=yT-C.bd;
     foots=[[toScr(x0,yT),toScr(x1,yT),toScr(x1,yB),toScr(x0,yB)]];
+  }
+  // ---- komşu bina (bağlam) + gölgesi ----
+  if(C.inp.komsuYuk>0){
+    const km=C.inp.komsuMes, kw=12, W0=C.inp.cephe, D0=C.inp.derinlik; let nf=null;
+    if(C.inp.komsuYon==='S') nf=[[0,-km],[W0,-km],[W0,-km-kw],[0,-km-kw]];
+    else if(C.inp.komsuYon==='N') nf=[[0,D0+km],[W0,D0+km],[W0,D0+km+kw],[0,D0+km+kw]];
+    else if(C.inp.komsuYon==='E') nf=[[W0+km,0],[W0+km+kw,0],[W0+km+kw,D0],[W0+km,D0]];
+    else nf=[[-km,0],[-km-kw,0],[-km-kw,D0],[-km,D0]];
+    const nfs=nf.map(p=>toScr(p[0],p[1]));
+    if(C.sun && C.sun.alt>0.05){ const d=C.inp.komsuYuk/Math.tan(C.sun.alt), dx=-Math.sin(C.sun.az)*d*scale, dy=Math.cos(C.sun.az)*d*scale;
+      const hull=convexHull(nfs.concat(nfs.map(p=>[p[0]+dx,p[1]+dy])));
+      s+=`<polygon points="${hull.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="#26323a" opacity="0.14"/>`; }
+    s+=`<polygon points="${nfs.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}" fill="#8a9aa3" opacity="0.55" stroke="#5c6b73" stroke-width="1" stroke-dasharray="3 2"/>`;
+    const nc=nfs.reduce((q,p)=>[q[0]+p[0],q[1]+p[1]],[0,0]);
+    s+=`<text x="${(nc[0]/4).toFixed(0)}" y="${(nc[1]/4).toFixed(0)}" text-anchor="middle" font-size="8.5" fill="#445">🏢 ${fmt(C.inp.komsuYuk,0)}m</text>`;
   }
   // gün boyu gölge taraması (faint)
   if(C.inp.sunSweep && C.sun){
@@ -1823,11 +1863,19 @@ async function viewThree(C){
     const base=night?'#13201a':'#88a892'; g.fillStyle=base; g.fillRect(0,0,256,256);
     for(let i=0;i<2400;i++){ const v=(Math.random()*22-11)|0; g.fillStyle=`rgba(${night?40:120},${night?70:150},${night?55:120},${0.05+Math.random()*0.08})`; g.fillRect(Math.random()*256,Math.random()*256,2,2); }
     const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(8,8); return t; }
+  // arazi eğimi → zemini eğ
+  const egim=C.inp.egim>0?C.inp.egim/100:0, eYon=C.inp.egimYon||'S';
+  const slopeA=Math.atan(egim), sgn=(eYon==='S'||eYon==='W')?1:-1;
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(Math.max(cw,cd)*4,Math.max(cw,cd)*4), new THREE.MeshLambertMaterial({map:groundTex(),color:0xffffff}));
-  ground.rotation.x=-Math.PI/2; ground.position.set(cw/2,0,cd/2); ground.receiveShadow=true; sc.add(ground);
+  ground.position.set(cw/2,0,cd/2); ground.receiveShadow=true;
+  if(egim>0){ if(eYon==='S'||eYon==='N') ground.rotation.set(-Math.PI/2 + sgn*slopeA,0,0); else ground.rotation.set(-Math.PI/2,0,sgn*slopeA); }
+  else ground.rotation.x=-Math.PI/2;
+  sc.add(ground);
   // parsel zemini
   const par=(C.realParcel&&C.realParcel.polyNorm)?C.realParcel.polyNorm:[[0,0],[cw,0],[cw,cd],[0,cd]];
-  try{ const sh=new THREE.Shape(par.map(p=>new THREE.Vector2(p[0],p[1]))); const pg=new THREE.ShapeGeometry(sh); const pm=new THREE.Mesh(pg, new THREE.MeshLambertMaterial({color:night?0x1b2b22:0xb7c8c0})); pm.rotation.x=-Math.PI/2; pm.position.y=0.05; pm.receiveShadow=true; sc.add(pm); }catch(e){}
+  try{ const sh=new THREE.Shape(par.map(p=>new THREE.Vector2(p[0],p[1]))); const pg=new THREE.ShapeGeometry(sh); const pm=new THREE.Mesh(pg, new THREE.MeshLambertMaterial({color:night?0x1b2b22:0xb7c8c0})); pm.position.set(0,0.06,0);
+    if(egim>0){ if(eYon==='S'||eYon==='N') pm.rotation.set(-Math.PI/2 + sgn*slopeA,0,0); else pm.rotation.set(-Math.PI/2,0,sgn*slopeA); } else pm.rotation.x=-Math.PI/2;
+    pm.receiveShadow=true; sc.add(pm); }catch(e){}
   // çatı malzemeleri
   const roofMat=new THREE.MeshLambertMaterial({color:night?0x2a3a32:0xcfe2da}); const wallMat=new THREE.MeshLambertMaterial({color:night?0x24332e:0x6f9f8e});
   const roofPitchMat=new THREE.MeshLambertMaterial({color:night?0x4a3322:0xa9714b});
@@ -1869,6 +1917,9 @@ async function viewThree(C){
   if(C.blocks && C.blocks.length>1) C.blocks.forEach(bk=>addBox(bk.x,bk.y,bk.x+bk.w,bk.y+bk.h));
   else if(C.footprintPoly){ const bb=bbox(C.footprintPoly); addBox(bb[0],bb[1],bb[2],bb[3]); }
   else addBox(C.setX0,C.setY0,C.setX0+C.bw,C.setY0+C.bd);
+  // ---- arazi eğiminde temel/istinat (bina yüzmesin) ----
+  if(egim>0 && C.kotFarki>0){ const kot=C.kotFarki+0.5, fmat=new THREE.MeshLambertMaterial({color:night?0x2a2e30:0x9a988e});
+    brects.forEach(r=>{ const w=r[2]-r[0], d=r[3]-r[1], fb=new THREE.Mesh(new THREE.BoxGeometry(w,kot,d),fmat); fb.position.set((r[0]+r[2])/2,-kot/2,(r[1]+r[3])/2); fb.castShadow=true; fb.receiveShadow=true; sc.add(fb); }); }
   // ---- çevre: ağaçlar + arabalar (parsel içi, bina dışı) ----
   function pip(px,pz,poly){ let c=false; for(let i=0,j=poly.length-1;i<poly.length;j=i++){ const xi=poly[i][0],yi=poly[i][1],xj=poly[j][0],yj=poly[j][1]; if(((yi>pz)!==(yj>pz)) && (px<(xj-xi)*(pz-yi)/(yj-yi)+xi)) c=!c; } return c; }
   function inBldg(px,pz,m){ return brects.some(r=>px>r[0]-m&&px<r[2]+m&&pz>r[1]-m&&pz<r[3]+m); }
@@ -1951,7 +2002,8 @@ function metricRows(C){
     ['Bağımsız Bölüm', C.toplamDaire, C.inp.kullanim==='ofis'?'birim':'daire'],
     ['Blok Adedi', (C.blocks?C.blocks.length:1), (C.blocks&&C.blocks.length>1)?`~${fmt(C.planW*C.planD)} m²/blok`:'tek kütle'],
     ['Oturum', C.footprintMode==='poly'?'forma uygun':`${fmt(C.planW||C.bw,0)}×${fmt(C.planD||C.bd,0)} m`, ''],
-  ].concat(C.sunHours?[['Güneşlenme', fmt(C.sunHours.facade,1), `sa cephe · ${fmt(C.sunHours.day,1)} sa gün`]]:[]);
+  ].concat(C.sunHours?[['Güneşlenme', fmt(C.sunHours.facade,1), `sa cephe · ${fmt(C.sunHours.day,1)} sa gün${C.sunHours.blocked>0?` · 🏢−${fmt(C.sunHours.blocked,1)} sa komşu`:''}`]]:[])
+   .concat((C.inp.egim>0)?[['Arazi Eğimi', '%'+fmt(C.inp.egim,0), `kot farkı ${fmt(C.kotFarki,1)} m`]]:[]);
 }
 function showMetrics(C){
   $('metricCard').style.display='';
@@ -2142,7 +2194,7 @@ $('genBtn').onclick = () => {
   const C=compute(inp, rp);
   C.realParcel = rp;
   C.sun = inp.sunOn ? solarPos(inp.lat, inp.sunAy, inp.sunSaat) : null;
-  C.sunHours = inp.sunOn ? sunHours(inp.lat, inp.sunAy, inp.yol) : null;
+  C.sunHours = inp.sunOn ? sunHours(inp.lat, inp.sunAy, inp.yol, {h:inp.komsuYuk, yon:inp.komsuYon, mes:inp.komsuMes}) : null;
   state.last=C;
   $('seedBadge').textContent = state.locLabel;
   $('legend').style.display='flex';
@@ -2747,7 +2799,7 @@ function exportCSV(){
 $('expDXF').onclick=exportDXF; $('expOBJ').onclick=exportOBJ; $('expKML').onclick=exportKML; $('expJSON').onclick=exportJSON; $('expCSV').onclick=exportCSV;
 
 /* ---------- Kaydet & Paylaş (localStorage + URL) ---------- */
-const SAVE_FIELDS=['lat','lng','ilce','ada','parsel','adaT','parselT','cephe','derinlik','yolYon','nizam','taks','kaks','katAdet','katH','onCekme','yanCekme','arkaCekme','kullanim','daireTip','oturum','catiTipi','imarNot','costBuild','costSale','costLand','costExtra','costPermit','costCommon','cfBuild','cfSale','cfPre','cfRate','cfKdv'];
+const SAVE_FIELDS=['lat','lng','ilce','ada','parsel','adaT','parselT','cephe','derinlik','yolYon','nizam','taks','kaks','katAdet','katH','onCekme','yanCekme','arkaCekme','kullanim','daireTip','oturum','catiTipi','imarNot','costBuild','costSale','costLand','costExtra','costPermit','costCommon','cfBuild','cfSale','cfPre','cfRate','cfKdv','komsuYuk','komsuYon','komsuMes','egim','egimYon'];
 function collectState(){
   const o={v:1};
   SAVE_FIELDS.forEach(id=>{ const el=$(id); if(el) o[id]=el.value; });
