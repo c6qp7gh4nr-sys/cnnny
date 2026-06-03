@@ -34,6 +34,18 @@ export default {
       if(api==='deluser'){const s=await sess();if(!s||s.role!=='admin')return J({error:'yetki yok'},403);
         const u=(body.u||'').trim().toLowerCase();if(u==='angim')return J({error:'ana admin silinemez'},400);
         await KV.delete('user:'+u);return J({ok:true});}
+      if(api==='changepass'){const s=await sess();if(!s)return J({error:'oturum yok'},401);
+        const np=body.np||'';if(np.length<3)return J({error:'sifre en az 3 karakter'},400);
+        let tgt=s.u;
+        if(body.u&&s.role==='admin'){tgt=(body.u||'').trim().toLowerCase();}
+        else{const rec0=await KV.get('user:'+s.u);if(!rec0||JSON.parse(rec0).h!==await sha((body.op||'')+SALT))return J({error:'mevcut sifre hatali'},403);}
+        const rec=await KV.get('user:'+tgt);if(!rec)return J({error:'kullanici yok'},404);
+        const o=JSON.parse(rec);o.h=await sha(np+SALT);await KV.put('user:'+tgt,JSON.stringify(o));return J({ok:true});}
+      if(api==='setrole'){const s=await sess();if(!s||s.role!=='admin')return J({error:'yetki yok'},403);
+        const u=(body.u||'').trim().toLowerCase(),role=body.role==='admin'?'admin':'user';
+        if(u==='angim')return J({error:'ana admin rolu degistirilemez'},400);
+        const rec=await KV.get('user:'+u);if(!rec)return J({error:'kullanici yok'},404);
+        const o=JSON.parse(rec);o.role=role;await KV.put('user:'+u,JSON.stringify(o));return J({ok:true});}
       if(api==='users'){const s=await sess();if(!s||s.role!=='admin')return J({error:'yetki yok'},403);
         const l=await KV.list({prefix:'user:'}),users=[];
         for(const k of l.keys){const o=JSON.parse(await KV.get(k.name));users.push({u:o.u,role:o.role,createdAt:o.createdAt});}

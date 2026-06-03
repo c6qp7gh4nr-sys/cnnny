@@ -2914,7 +2914,7 @@ $('logoutBtn').onclick=logout;
 /* ---- Hesap / yönetim paneli ---- */
 let acctTab='arsiv';
 function openAcct(){ $('acctTitle').textContent = state.role==='admin'?('Yönetim — '+state.user):('Hesap — '+state.user);
-  const tabs=[['arsiv','📦 Arşiv']].concat(state.role==='admin'?[['users','👥 Kullanıcılar'],['logins','🕘 Girişler']]:[]);
+  const tabs=[['arsiv','📦 Arşiv'],['sifre','🔑 Şifre']].concat(state.role==='admin'?[['users','👥 Kullanıcılar'],['logins','🕘 Girişler']]:[]);
   $('acctTabs').innerHTML=tabs.map(t=>`<button class="tab-btn ${t[0]===acctTab?'active':''}" data-at="${t[0]}">${t[1]}</button>`).join('');
   $('acctTabs').querySelectorAll('[data-at]').forEach(b=>b.onclick=()=>{ acctTab=b.dataset.at; openAcct(); });
   $('acctModal').classList.add('show'); renderAcctTab();
@@ -2934,6 +2934,18 @@ async function renderAcctTab(){
         : '<div class="note">Henüz arşivlenmiş tasarım yok. Bir tasarım oluşturunca otomatik arşivlenir.</div>';
       el.querySelectorAll('[data-la]').forEach(b=>b.onclick=()=>loadArchive(b.dataset.la));
       el.querySelectorAll('[data-da]').forEach(b=>b.onclick=async()=>{ try{ await api('delarchive&id='+b.dataset.da,{id:b.dataset.da}); toast('Silindi'); renderAcctTab(); }catch(e){ toast(e.message,'err'); } });
+    } else if(acctTab==='sifre'){
+      el.innerHTML=`<div class="note" style="margin-bottom:10px">🔑 <b>${state.user}</b> hesabının şifresini değiştir.</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input type="password" id="cpOld" placeholder="mevcut şifre" autocomplete="current-password">
+          <input type="password" id="cpNew" placeholder="yeni şifre (en az 3 karakter)" autocomplete="new-password">
+          <input type="password" id="cpNew2" placeholder="yeni şifre (tekrar)" autocomplete="new-password">
+          <button class="btn" id="cpBtn">Şifreyi Güncelle</button>
+        </div>`;
+      $('cpBtn').onclick=async()=>{ const np=$('cpNew').value, np2=$('cpNew2').value;
+        if(np!==np2){ toast('Yeni şifreler eşleşmiyor','err'); return; }
+        if((np||'').length<3){ toast('Şifre en az 3 karakter','err'); return; }
+        try{ await api('changepass',{op:$('cpOld').value,np}); toast('✓ Şifre güncellendi','ok'); $('cpOld').value=$('cpNew').value=$('cpNew2').value=''; }catch(e){ toast(e.message,'err'); } };
     } else if(acctTab==='users'){
       const j=await api('users');
       el.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
@@ -2942,10 +2954,14 @@ async function renderAcctTab(){
         <select id="nuRole" style="width:auto"><option value="user">kullanıcı</option><option value="admin">admin</option></select>
         <button class="btn" id="nuAdd" style="width:auto;padding:10px 14px">Ekle</button></div>`+
         (j.users||[]).map(u=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line)">
-          <div style="flex:1"><b>${u.u}</b> <span style="font-size:11px;color:var(--muted)">${u.role}${u.createdAt?' · '+new Date(u.createdAt).toLocaleDateString('tr-TR'):''}</span></div>
-          ${u.u!=='angim'?`<button class="btn ghost" data-du="${u.u}" style="width:auto;padding:6px 9px;color:var(--danger)">Sil</button>`:''}</div>`).join('');
+          <div style="flex:1;min-width:0"><b>${u.u}</b> <span style="font-size:11px;color:var(--muted)">${u.role}${u.createdAt?' · '+new Date(u.createdAt).toLocaleDateString('tr-TR'):''}</span></div>
+          ${u.u!=='angim'?`<select data-sr="${u.u}" style="width:auto;font-size:11px;padding:5px"><option value="user"${u.role!=='admin'?' selected':''}>kullanıcı</option><option value="admin"${u.role==='admin'?' selected':''}>admin</option></select>
+          <button class="btn ghost" data-rp="${u.u}" style="width:auto;padding:6px 9px">🔑</button>
+          <button class="btn ghost" data-du="${u.u}" style="width:auto;padding:6px 9px;color:var(--danger)">Sil</button>`:'<span style="font-size:11px;color:var(--muted)">ana admin</span>'}</div>`).join('');
       $('nuAdd').onclick=async()=>{ try{ await api('adduser',{u:$('nuUser').value,p:$('nuPass').value,role:$('nuRole').value}); toast('Kullanıcı eklendi','ok'); renderAcctTab(); }catch(e){ toast(e.message,'err'); } };
       el.querySelectorAll('[data-du]').forEach(b=>b.onclick=async()=>{ if(confirm(b.dataset.du+' silinsin mi?')){ try{ await api('deluser',{u:b.dataset.du}); renderAcctTab(); }catch(e){ toast(e.message,'err'); } } });
+      el.querySelectorAll('[data-sr]').forEach(sel=>sel.onchange=async()=>{ try{ await api('setrole',{u:sel.dataset.sr,role:sel.value}); toast('Rol güncellendi','ok'); }catch(e){ toast(e.message,'err'); renderAcctTab(); } });
+      el.querySelectorAll('[data-rp]').forEach(b=>b.onclick=async()=>{ const np=prompt(b.dataset.rp+' için yeni şifre:'); if(np==null) return; if(np.length<3){ toast('En az 3 karakter','err'); return; } try{ await api('changepass',{u:b.dataset.rp,np}); toast('✓ Şifre sıfırlandı','ok'); }catch(e){ toast(e.message,'err'); } });
     } else if(acctTab==='logins'){
       const j=await api('logins');
       el.innerHTML=(j.logins||[]).map(l=>`<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px">
