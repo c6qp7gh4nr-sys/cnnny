@@ -429,6 +429,35 @@
   .fab button{ border-radius:18px !important; font-weight:600; }
   /* başlık alt yazı inceltme */
   .brand-sub{ letter-spacing:-.006em; opacity:.9; }
+
+  /* ============ Modern liste / form bileşenleri ============ */
+  .acct-tabs{ background:var(--glass-2); padding:4px; border-radius:14px; gap:3px; -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); }
+  .acct-tabs .tab-btn{ flex:1; border:none; background:transparent; border-radius:10px; padding:9px 8px; font-weight:600; color:var(--muted); }
+  .acct-tabs .tab-btn.active{ background:var(--card); color:var(--brand-deep); box-shadow:0 1px 5px rgba(0,0,0,.14); }
+  [data-theme="dark"] .acct-tabs .tab-btn.active{ background:rgba(255,255,255,.14); color:#fff; }
+
+  .lst{ display:flex; flex-direction:column; gap:8px; }
+  .lrow{ display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:15px; background:var(--glass-2); border:1px solid var(--glass-brd); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); }
+  .lr-ic{ width:48px; height:48px; border-radius:12px; flex:0 0 auto; object-fit:cover; display:grid; place-items:center; background:rgba(120,140,135,.16); color:var(--muted); font-size:19px; }
+  .lr-main{ flex:1; min-width:0; }
+  .lr-title{ font-weight:600; font-size:15px; letter-spacing:-.01em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lr-sub{ font-size:12px; color:var(--muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lr-act{ display:flex; align-items:center; gap:7px; flex:0 0 auto; }
+  .iact{ width:36px; height:36px; border-radius:50%; border:none; display:grid; place-items:center; cursor:pointer; background:rgba(120,140,135,.16); color:var(--fg); transition:transform .12s, background .15s; }
+  .iact.danger{ color:var(--danger); background:rgba(214,69,69,.13); }
+  .iact:active{ transform:scale(.9); }
+  .iact svg{ width:19px; height:19px; }
+  .rolesel{ width:auto !important; font-size:13px; padding:7px 8px !important; border-radius:10px !important; }
+
+  .fstack{ display:flex; flex-direction:column; gap:14px; }
+  .fld{ display:flex; flex-direction:column; gap:6px; }
+  .fld > label{ font-size:12.5px; font-weight:600; color:var(--muted); letter-spacing:-.01em; padding-left:3px; }
+  .mod-sub{ font-size:13px; color:var(--muted); margin:-2px 0 16px; letter-spacing:-.01em; }
+  .pill{ font-size:11.5px; font-weight:700; padding:4px 11px; border-radius:999px; letter-spacing:-.01em; white-space:nowrap; }
+  .pill.admin{ background:rgba(31,111,92,.16); color:var(--brand-deep); } [data-theme="dark"] .pill.admin{ color:#6fd6ba; }
+  .pill.user{ background:rgba(120,140,135,.16); color:var(--muted); }
+  .pill.ok{ background:rgba(31,111,92,.16); color:var(--brand-deep); } [data-theme="dark"] .pill.ok{ color:#6fd6ba; }
+  .pill.no{ background:rgba(214,69,69,.14); color:var(--danger); }
 </style>
 </head>
 <body>
@@ -2596,14 +2625,14 @@ function svgThumb(svgStr){ return new Promise(res=>{ try{
 function renderProjectList(){
   const list=loadProjects(); const el=$('projList');
   if(!list.length){ el.innerHTML='<div class="note">Henüz kayıtlı proje yok.</div>'; return; }
-  el.innerHTML=list.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line)">
-    <input type="checkbox" data-cmp="${p.id}" style="width:18px;height:18px;flex:0 0 auto">
-    ${p.thumb?`<img src="${p.thumb}" alt="" style="width:58px;height:44px;object-fit:cover;border-radius:7px;border:1px solid var(--line);flex:0 0 auto;background:#eef2f0">`:`<div style="width:58px;height:44px;border-radius:7px;border:1px solid var(--line);flex:0 0 auto;display:grid;place-items:center;color:var(--muted);font-size:18px">🏠</div>`}
-    <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13.5px">${(p.name||'Proje').replace(/</g,'&lt;')}</div>
-    <div style="font-size:11px;color:var(--muted)">${(p.loc||'').replace(/[📍🗺️<]/g,'').trim()} · ${new Date(p.savedAt).toLocaleDateString('tr-TR')}</div></div>
-    <button class="btn ghost" data-load="${p.id}" style="width:auto;padding:7px 12px">Yükle</button>
-    <button class="btn ghost" data-del="${p.id}" style="width:auto;padding:7px 10px;color:var(--danger)">Sil</button>
-  </div>`).join('');
+  el.innerHTML=`<div class="lst">`+list.map(p=>`<div class="lrow">
+    <input type="checkbox" data-cmp="${p.id}" title="Karşılaştır" style="flex:0 0 auto">
+    ${p.thumb?`<img class="lr-ic" src="${p.thumb}" alt="">`:`<div class="lr-ic">🏠</div>`}
+    <div class="lr-main"><div class="lr-title">${(p.name||'Proje').replace(/</g,'&lt;')}</div>
+    <div class="lr-sub">${(p.loc||'').replace(/[📍🗺️<]/g,'').trim()} · ${new Date(p.savedAt).toLocaleDateString('tr-TR')}</div></div>
+    <div class="lr-act"><button class="iact" title="Yükle" data-load="${p.id}">${IC.open}</button>
+    <button class="iact danger" title="Sil" data-del="${p.id}">${IC.trash}</button></div>
+  </div>`).join('')+`</div>`;
   el.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>loadProject(b.dataset.load));
   el.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ saveProjects(loadProjects().filter(x=>x.id!==b.dataset.del)); renderProjectList(); toast('Silindi'); });
 }
@@ -3322,54 +3351,66 @@ function openAcct(){ $('acctTitle').textContent = state.role==='admin'?('Yöneti
   $('acctTabs').querySelectorAll('[data-at]').forEach(b=>b.onclick=()=>{ acctTab=b.dataset.at; openAcct(); });
   $('acctModal').classList.add('show'); renderAcctTab();
 }
+const IC={
+  open:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10m0 0-4-4m4 4 4-4M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9.5 7V5.6A1.6 1.6 0 0 1 11 4h2a1.6 1.6 0 0 1 1.5 1.6V7M6.6 7l.7 12a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9L17.4 7"/></svg>',
+  key:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="14" r="3.4"/><path d="M10.4 11.6 19 3m-2.4 0H19v2.4M14.6 7.4l1.8 1.8"/></svg>'
+};
 async function renderAcctTab(){
   const el=$('acctBody'); el.innerHTML='<div class="note">Yükleniyor…</div>';
   if(state.offline){ el.innerHTML='<div class="note" style="color:var(--danger)">Yerel admin modundasınız — backend kurulmadan kullanıcı/arşiv senkronu çalışmaz. Worker + KV kurulumunu tamamlayın.</div>'; return; }
+  const esc=s=>String(s||'').replace(/</g,'&lt;');
   try{
     if(acctTab==='arsiv'){
       const j=await api('archive'); const items=j.items||[];
-      el.innerHTML = items.length? items.map(i=>`<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px dashed var(--line)">
-        ${i.thumb?`<img src="${i.thumb}" alt="" style="width:56px;height:42px;object-fit:cover;border-radius:7px;border:1px solid var(--line);flex:0 0 auto;background:#eef2f0">`:`<div style="width:56px;height:42px;border-radius:7px;border:1px solid var(--line);flex:0 0 auto;display:grid;place-items:center;color:var(--muted)">🏠</div>`}
-        <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13.5px">${(i.name||'').replace(/</g,'&lt;')}</div>
-        <div style="font-size:11px;color:var(--muted)">${state.role==='admin'?('👤 '+i.u+' · '):''}${(i.loc||'').replace(/[📍🗺️<]/g,'').trim()} · ${new Date(i.savedAt).toLocaleString('tr-TR')}</div></div>
-        <button class="btn ghost" data-la="${i.id}" style="width:auto;padding:6px 11px">Yükle</button>
-        <button class="btn ghost" data-da="${i.id}" style="width:auto;padding:6px 9px;color:var(--danger)">Sil</button></div>`).join('')
+      el.innerHTML = items.length? `<div class="lst">`+items.map(i=>`<div class="lrow">
+        ${i.thumb?`<img class="lr-ic" src="${i.thumb}" alt="">`:`<div class="lr-ic">🏠</div>`}
+        <div class="lr-main"><div class="lr-title">${esc(i.name)||'Tasarım'}</div>
+        <div class="lr-sub">${state.role==='admin'?esc(i.u)+' · ':''}${esc((i.loc||'').replace(/[📍🗺️]/g,'').trim())} · ${new Date(i.savedAt).toLocaleDateString('tr-TR')}</div></div>
+        <div class="lr-act"><button class="iact" title="Yükle" data-la="${i.id}">${IC.open}</button>
+        <button class="iact danger" title="Sil" data-da="${i.id}">${IC.trash}</button></div></div>`).join('')+`</div>`
         : '<div class="note">Henüz arşivlenmiş tasarım yok. Bir tasarım oluşturunca otomatik arşivlenir.</div>';
       el.querySelectorAll('[data-la]').forEach(b=>b.onclick=()=>loadArchive(b.dataset.la));
       el.querySelectorAll('[data-da]').forEach(b=>b.onclick=async()=>{ try{ await api('delarchive&id='+b.dataset.da,{id:b.dataset.da}); toast('Silindi'); renderAcctTab(); }catch(e){ toast(e.message,'err'); } });
     } else if(acctTab==='sifre'){
-      el.innerHTML=`<div class="note" style="margin-bottom:10px">🔑 <b>${state.user}</b> hesabının şifresini değiştir.</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <input type="password" id="cpOld" placeholder="mevcut şifre" autocomplete="current-password">
-          <input type="password" id="cpNew" placeholder="yeni şifre (en az 3 karakter)" autocomplete="new-password">
-          <input type="password" id="cpNew2" placeholder="yeni şifre (tekrar)" autocomplete="new-password">
+      el.innerHTML=`<div class="mod-sub">🔑 <b>${esc(state.user)}</b> hesabının şifresini güncelle.</div>
+        <div class="fstack">
+          <div class="fld"><label>Mevcut şifre</label><input type="password" id="cpOld" autocomplete="current-password" placeholder="••••••••"></div>
+          <div class="fld"><label>Yeni şifre</label><input type="password" id="cpNew" autocomplete="new-password" placeholder="en az 4 karakter"></div>
+          <div class="fld"><label>Yeni şifre (tekrar)</label><input type="password" id="cpNew2" autocomplete="new-password" placeholder="tekrar yaz"></div>
           <button class="btn" id="cpBtn">Şifreyi Güncelle</button>
         </div>`;
       $('cpBtn').onclick=async()=>{ const np=$('cpNew').value, np2=$('cpNew2').value;
         if(np!==np2){ toast('Yeni şifreler eşleşmiyor','err'); return; }
-        if((np||'').length<3){ toast('Şifre en az 3 karakter','err'); return; }
+        if((np||'').length<4){ toast('Şifre en az 4 karakter','err'); return; }
         try{ await api('changepass',{op:$('cpOld').value,np}); toast('✓ Şifre güncellendi','ok'); $('cpOld').value=$('cpNew').value=$('cpNew2').value=''; }catch(e){ toast(e.message,'err'); } };
     } else if(acctTab==='users'){
       const j=await api('users');
-      el.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
-        <input type="text" id="nuUser" placeholder="yeni kullanıcı" autocapitalize="none" style="flex:1;min-width:110px">
-        <input type="text" id="nuPass" placeholder="şifre" style="flex:1;min-width:90px">
-        <select id="nuRole" style="width:auto"><option value="user">kullanıcı</option><option value="admin">admin</option></select>
-        <button class="btn" id="nuAdd" style="width:auto;padding:10px 14px">Ekle</button></div>`+
-        (j.users||[]).map(u=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line)">
-          <div style="flex:1;min-width:0"><b>${u.u}</b> <span style="font-size:11px;color:var(--muted)">${u.role}${u.createdAt?' · '+new Date(u.createdAt).toLocaleDateString('tr-TR'):''}</span></div>
-          ${u.u!=='angim'?`<select data-sr="${u.u}" style="width:auto;font-size:11px;padding:5px"><option value="user"${u.role!=='admin'?' selected':''}>kullanıcı</option><option value="admin"${u.role==='admin'?' selected':''}>admin</option></select>
-          <button class="btn ghost" data-rp="${u.u}" style="width:auto;padding:6px 9px">🔑</button>
-          <button class="btn ghost" data-du="${u.u}" style="width:auto;padding:6px 9px;color:var(--danger)">Sil</button>`:'<span style="font-size:11px;color:var(--muted)">ana admin</span>'}</div>`).join('');
+      el.innerHTML=`<div class="fld" style="margin-bottom:16px"><label>Yeni kullanıcı ekle</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="text" id="nuUser" placeholder="kullanıcı adı" autocapitalize="none" style="flex:2;min-width:120px">
+          <input type="text" id="nuPass" placeholder="şifre" style="flex:1;min-width:88px">
+          <select id="nuRole" class="rolesel"><option value="user">kullanıcı</option><option value="admin">admin</option></select>
+        </div>
+        <button class="btn" id="nuAdd" style="margin-top:10px">＋ Kullanıcı Ekle</button></div>
+        <div class="lst">`+(j.users||[]).map(u=>`<div class="lrow">
+          <div class="lr-ic">👤</div>
+          <div class="lr-main"><div class="lr-title">${esc(u.u)}</div><div class="lr-sub">${u.createdAt?new Date(u.createdAt).toLocaleDateString('tr-TR'):'—'}</div></div>
+          ${u.u==='angim' ? '<span class="pill admin">ana admin</span>' : `<div class="lr-act">
+            <select class="rolesel" data-sr="${u.u}"><option value="user"${u.role!=='admin'?' selected':''}>kullanıcı</option><option value="admin"${u.role==='admin'?' selected':''}>admin</option></select>
+            <button class="iact" title="Şifre sıfırla" data-rp="${u.u}">${IC.key}</button>
+            <button class="iact danger" title="Sil" data-du="${u.u}">${IC.trash}</button></div>`}
+        </div>`).join('')+`</div>`;
       $('nuAdd').onclick=async()=>{ try{ await api('adduser',{u:$('nuUser').value,p:$('nuPass').value,role:$('nuRole').value}); toast('Kullanıcı eklendi','ok'); renderAcctTab(); }catch(e){ toast(e.message,'err'); } };
       el.querySelectorAll('[data-du]').forEach(b=>b.onclick=async()=>{ if(confirm(b.dataset.du+' silinsin mi?')){ try{ await api('deluser',{u:b.dataset.du}); renderAcctTab(); }catch(e){ toast(e.message,'err'); } } });
       el.querySelectorAll('[data-sr]').forEach(sel=>sel.onchange=async()=>{ try{ await api('setrole',{u:sel.dataset.sr,role:sel.value}); toast('Rol güncellendi','ok'); }catch(e){ toast(e.message,'err'); renderAcctTab(); } });
-      el.querySelectorAll('[data-rp]').forEach(b=>b.onclick=async()=>{ const np=prompt(b.dataset.rp+' için yeni şifre:'); if(np==null) return; if(np.length<3){ toast('En az 3 karakter','err'); return; } try{ await api('changepass',{u:b.dataset.rp,np}); toast('✓ Şifre sıfırlandı','ok'); }catch(e){ toast(e.message,'err'); } });
+      el.querySelectorAll('[data-rp]').forEach(b=>b.onclick=async()=>{ const np=prompt(b.dataset.rp+' için yeni şifre:'); if(np==null) return; if(np.length<4){ toast('En az 4 karakter','err'); return; } try{ await api('changepass',{u:b.dataset.rp,np}); toast('✓ Şifre sıfırlandı','ok'); }catch(e){ toast(e.message,'err'); } });
     } else if(acctTab==='logins'){
-      const j=await api('logins');
-      el.innerHTML=(j.logins||[]).map(l=>`<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:12.5px">
-        <span style="width:14px">${l.ok?'✅':'⛔'}</span><b style="flex:0 0 90px">${l.u||'?'}</b>
-        <span style="flex:1;color:var(--muted)">${new Date(l.ts).toLocaleString('tr-TR')} · ${l.ip||''}</span></div>`).join('')||'<div class="note">Kayıt yok.</div>';
+      const j=await api('logins'); const logs=j.logins||[];
+      el.innerHTML= logs.length? `<div class="lst">`+logs.map(l=>`<div class="lrow">
+        <div class="lr-ic" style="font-size:18px;${l.ok?'color:var(--brand)':'color:var(--danger)'}">${l.ok?'✓':'⛔'}</div>
+        <div class="lr-main"><div class="lr-title">${esc(l.u)||'?'}</div><div class="lr-sub">${new Date(l.ts).toLocaleString('tr-TR')} · ${esc(l.ip)||''}</div></div>
+        <span class="pill ${l.ok?'ok':'no'}">${l.ok?'başarılı':'başarısız'}</span></div>`).join('')+`</div>` : '<div class="note">Kayıt yok.</div>';
     }
   }catch(e){ el.innerHTML='<div class="note" style="color:var(--danger)">Hata: '+(e.message||'')+'</div>'; }
 }
