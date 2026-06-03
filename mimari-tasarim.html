@@ -310,6 +310,58 @@
     background:linear-gradient(90deg,var(--brand),var(--accent),var(--brand)); box-shadow:0 0 10px var(--brand);
     transition:width .35s ease, opacity .35s; pointer-events:none; }
   .btn:active,.icon-btn:active,.tab-btn:active,.seg button:active,.fab button:active{ transform:scale(.97); }
+
+  /* ============ Liquid Glass (Apple iOS 26 tarzı) ============ */
+  :root{
+    --glass: rgba(255,255,255,.55);
+    --glass-2: rgba(255,255,255,.40);
+    --glass-brd: rgba(255,255,255,.7);
+    --glass-hi: rgba(255,255,255,.95);
+    --glass-blur: blur(22px) saturate(180%);
+  }
+  [data-theme="dark"]{
+    --glass: rgba(30,42,37,.50);
+    --glass-2: rgba(20,30,27,.40);
+    --glass-brd: rgba(255,255,255,.14);
+    --glass-hi: rgba(255,255,255,.20);
+  }
+  /* arka planda yumuşak ışık lekeleri — camın derinlik kazanması için */
+  body::before{
+    content:""; position:fixed; inset:-12%; z-index:-1; pointer-events:none;
+    background:
+      radial-gradient(38% 34% at 12% 6%, rgba(31,111,92,.32), transparent 60%),
+      radial-gradient(36% 30% at 88% 2%, rgba(120,180,255,.22), transparent 60%),
+      radial-gradient(44% 40% at 84% 94%, rgba(232,197,116,.20), transparent 62%),
+      radial-gradient(40% 38% at 6% 90%, rgba(31,111,92,.18), transparent 60%);
+    filter: blur(26px); animation: glassDrift 26s ease-in-out infinite alternate;
+  }
+  [data-theme="dark"] body::before{ opacity:.62; }
+  @keyframes glassDrift{ from{ transform:translate3d(0,0,0) scale(1);} to{ transform:translate3d(0,-2.5%,0) scale(1.06);} }
+
+  /* cam yüzeyler */
+  .card, .modal, .login-card{
+    background: var(--glass) !important;
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-brd) !important;
+    box-shadow: 0 14px 38px -16px rgba(16,40,33,.40), inset 0 1px 0 var(--glass-hi) !important;
+  }
+  .card:hover{ box-shadow: 0 20px 48px -18px rgba(16,40,33,.46), inset 0 1px 0 var(--glass-hi) !important; }
+  header{
+    background: linear-gradient(135deg, rgba(31,111,92,.86), rgba(19,64,52,.80)) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(170%); backdrop-filter: blur(18px) saturate(170%);
+    box-shadow: 0 10px 34px -12px rgba(19,64,52,.55), inset 0 1px 0 rgba(255,255,255,.28) !important;
+  }
+  .seg{ background: var(--glass-2) !important; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border: 1px solid var(--glass-brd); }
+  .icon-btn{ -webkit-backdrop-filter: blur(12px) saturate(150%); backdrop-filter: blur(12px) saturate(150%); border: 1px solid rgba(255,255,255,.22); }
+  .metric{ background: var(--glass-2) !important; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border: 1px solid var(--glass-brd); box-shadow: inset 0 1px 0 var(--glass-hi); }
+  input[type=text], input[type=number], select, textarea{
+    background: var(--glass-2) !important; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  }
+  /* alt yüzen buton çubuğu: ikincil butonlar cam, ana CTA dolu kalsın */
+  .fab button{ -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); }
+  .fab button.ghost{ background: var(--glass) !important; border: 1px solid var(--glass-brd); box-shadow: 0 10px 26px -10px rgba(16,40,33,.45), inset 0 1px 0 var(--glass-hi); }
+  .btn{ box-shadow: 0 10px 24px -12px rgba(31,111,92,.6), inset 0 1px 0 rgba(255,255,255,.32); }
+  .modal-bg{ -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 </style>
 </head>
 <body>
