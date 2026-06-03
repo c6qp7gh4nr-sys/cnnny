@@ -3100,10 +3100,13 @@ const ANGIM_API='https://tgkm-angim.mzyfzmnddk.workers.dev';
 state.token=localStorage.getItem('angim-token')||'';
 state.user=localStorage.getItem('angim-user')||''; state.role=localStorage.getItem('angim-role')||'';
 async function api(name, body){
+  // CORS "preflight" tetiklememek için: token'ı ?t= ile, gövdeyi text/plain ile gönder
+  // (Authorization başlığı ve application/json preflight'a yol açar; WKWebView'de takılır).
   const opt={ method: body?'POST':'GET', headers:{} };
-  if(state.token) opt.headers['authorization']='Bearer '+state.token;
-  if(body){ opt.headers['content-type']='application/json'; opt.body=JSON.stringify(body); }
-  const r=await fetch(ANGIM_API+'?api='+name, opt);
+  let url=ANGIM_API+'?api='+name;
+  if(state.token) url+='&t='+encodeURIComponent(state.token);
+  if(body){ opt.headers['content-type']='text/plain;charset=utf-8'; opt.body=JSON.stringify(body); }
+  const r=await fetch(url, opt);
   let j={}; try{ j=await r.json(); }catch(e){}
   if(!r.ok) throw Object.assign(new Error(j.error||('HTTP '+r.status)),{status:r.status});
   return j;

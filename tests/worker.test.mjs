@@ -102,6 +102,20 @@ test('worker: adduser validates username and password strength', async () => {
   assert.equal((await call('?api=adduser', { method: 'POST', token: t, body: { u: 'mehmet', p: 'guclu123' } })).status, 200);
 });
 
+test('worker: accepts token via ?t= query + text/plain body (no-preflight path for WKWebView)', async () => {
+  const kv = fakeKV();
+  // login as a CORS "simple request": POST, content-type text/plain, no Authorization header
+  const loginReq = new Request('https://w.dev/?api=login', { method: 'POST', headers: { 'content-type': 'text/plain', 'cf-connecting-ip': '5.5.5.5' }, body: JSON.stringify({ u: 'angim', p: 'angim' }) });
+  const loginRes = await mod.default.fetch(loginReq, { ANGIM: kv }, ctx);
+  assert.equal(loginRes.status, 200);
+  const lj = await loginRes.json();
+  // authenticated call carrying the token in the query string instead of a header
+  const meReq = new Request('https://w.dev/?api=me&t=' + lj.token, { method: 'GET', headers: { 'cf-connecting-ip': '5.5.5.5' } });
+  const meRes = await mod.default.fetch(meReq, { ANGIM: kv }, ctx);
+  assert.equal(meRes.status, 200);
+  assert.equal((await meRes.json()).user, 'angim');
+});
+
 test('worker: source uses PBKDF2 + lockout + rate-limit + security headers', () => {
   const src = readFileSync(WORKER, 'utf8');
   for (const needle of ['PBKDF2', 'pbkdf2$', "'lock:'", "'rl:'", 'X-Content-Type-Options']) {
