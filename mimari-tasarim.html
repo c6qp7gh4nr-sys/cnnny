@@ -1889,8 +1889,14 @@ async function viewThree(C){
   try{ const sh=new THREE.Shape(par.map(p=>new THREE.Vector2(p[0],p[1]))); const pg=new THREE.ShapeGeometry(sh); const pm=new THREE.Mesh(pg, new THREE.MeshLambertMaterial({color:night?0x1b2b22:0xb7c8c0})); pm.position.set(0,0.06,0);
     if(egim>0){ if(eYon==='S'||eYon==='N') pm.rotation.set(-Math.PI/2 + sgn*slopeA,0,0); else pm.rotation.set(-Math.PI/2,0,sgn*slopeA); } else pm.rotation.x=-Math.PI/2;
     pm.receiveShadow=true; sc.add(pm); }catch(e){}
+  // cephe malzeme ön ayarı (Sıva / Cam / Taş / Beton)
+  const MATP={ siva:{wall:'#5a9a87',wallN:'#1e2e29',glass:'#bcdcf0',frame:'#2b5d4e',side:0x6f9f8e,sideN:0x24332e},
+    cam:{wall:'#41607a',wallN:'#162430',glass:'#9fcfe6',frame:'#2c4658',side:0x4f7186,sideN:0x1a2a36},
+    tas:{wall:'#9a8c70',wallN:'#2c2820',glass:'#cfe0ea',frame:'#6a5d44',side:0x9a8c70,sideN:0x2c2820},
+    beton:{wall:'#8f969b',wallN:'#262b2e',glass:'#c4d6df',frame:'#5c6469',side:0x8f969b,sideN:0x262b2e} };
+  const mp=MATP[state.matPreset]||MATP.siva;
   // çatı malzemeleri
-  const roofMat=new THREE.MeshLambertMaterial({color:night?0x2a3a32:0xcfe2da}); const wallMat=new THREE.MeshLambertMaterial({color:night?0x24332e:0x6f9f8e});
+  const roofMat=new THREE.MeshLambertMaterial({color:night?0x2a3a32:0xcfe2da}); const wallMat=new THREE.MeshLambertMaterial({color:night?mp.sideN:mp.side});
   const roofPitchMat=new THREE.MeshLambertMaterial({color:night?0x4a3322:0xa9714b});
   const fh=Hb/Math.max(1,C.katAdet);
   // cepheye gerçek pencere dokusu (gündüz cam, gece ışıklı/karanlık)
@@ -1900,14 +1906,14 @@ async function viewThree(C){
     const c=document.createElement('canvas'); c.width=W2; c.height=H2; const g=c.getContext('2d');
     const e=night?document.createElement('canvas'):null; let eg=null;
     if(e){ e.width=W2; e.height=H2; eg=e.getContext('2d'); eg.fillStyle='#000'; eg.fillRect(0,0,W2,H2); }
-    g.fillStyle=night?'#1e2e29':'#5a9a87'; g.fillRect(0,0,W2,H2);
+    g.fillStyle=night?mp.wallN:mp.wall; g.fillRect(0,0,W2,H2);
     const cwid=W2/cols, chei=H2/rows;
     for(let r=0;r<rows;r++)for(let col=0;col<cols;col++){
       const padx=cwid*0.24, pady=chei*0.20, wx=col*cwid+padx, wy=r*chei+pady, ww=cwid-padx*2, wh=chei-pady*2;
       const lit=Math.random()<0.5;
-      g.fillStyle=night?(lit?'#ffd98a':'#10201f'):'#bcdcf0';
+      g.fillStyle=night?(lit?'#ffd98a':'#10201f'):mp.glass;
       g.fillRect(wx,wy,ww,wh);
-      g.strokeStyle=night?'#0b1214':'#2b5d4e'; g.lineWidth=1; g.strokeRect(wx,wy,ww,wh);
+      g.strokeStyle=night?'#0b1214':mp.frame; g.lineWidth=1; g.strokeRect(wx,wy,ww,wh);
       g.beginPath(); g.moveTo(wx+ww/2,wy); g.lineTo(wx+ww/2,wy+wh); g.stroke();
       if(eg&&lit){ eg.fillStyle='#ffcf7a'; eg.fillRect(wx,wy,ww,wh); }
     }
@@ -1956,6 +1962,32 @@ async function viewThree(C){
   let cars=0;
   for(let i=0;i<40&&cars<4;i++){ const x=pbb[0]+2+Math.random()*(pbb[2]-pbb[0]-4), z=pbb[1]+2+Math.random()*Math.min(8,(pbb[3]-pbb[1])*0.3);
     if(pip(x,z,par) && !inBldg(x,z,3)){ sc.add(car(x,z,(Math.random()<0.5?0:Math.PI/2))); cars++; } }
+  // ---- canlı güneş/gölge zaman kaydırıcısı + malzeme seçimi ----
+  function lerpC(a,b,k){ const ar=(a>>16)&255,ag=(a>>8)&255,ab=a&255,br=(b>>16)&255,bg=(b>>8)&255,bb=b&255;
+    return (Math.round(ar+(br-ar)*k)<<16)|(Math.round(ag+(bg-ag)*k)<<8)|Math.round(ab+(bb-ab)*k); }
+  function placeSun(hr){
+    const sp=solarPos(C.inp.lat||41, C.inp.sunAy, hr), al=sp.alt, az=sp.az;
+    if(al>0.02){ const sX=Math.sin(az)*Math.cos(al), sZ=-Math.cos(az)*Math.cos(al), sY=Math.sin(al);
+      sun.position.set(cw/2+sX*D*2.2, Math.max(2, sY*D*2.6), cd/2+sZ*D*2.2); }
+    else { sun.position.set(cw/2-D*1.5, 2, cd/2-D*1.2); }
+    let sky, inten, col;
+    if(al>0.30){ sky=0xcfe6f3; inten=1.05; col=0xfff4e0; }
+    else if(al>0.04){ const k=(al-0.04)/0.26; sky=lerpC(0x14223c,0xcfe6f3,k); inten=0.35+0.7*k; col=lerpC(0xff7a3c,0xfff0d8,k); }
+    else { sky=0x0a1228; inten=0.12; col=0xaebfe8; }
+    sun.intensity=inten; sun.color.setHex(col); sc.background.setHex(sky); sc.fog.color.setHex(sky);
+  }
+  const ov=document.createElement('div');
+  ov.style.cssText='position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:10px;align-items:center;background:rgba(18,28,26,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:8px 12px;border-radius:12px;color:#fff;font-size:12px;z-index:5;flex-wrap:wrap';
+  const h0=night?20.5:(C.inp.sunSaat||13);
+  ov.innerHTML=`<span style="opacity:.9;white-space:nowrap">☀︎ <b id="t3hLbl">13:00</b></span>
+    <input id="t3h" type="range" min="5" max="21.5" step="0.25" value="${h0}" style="flex:1;min-width:120px;accent-color:#ffd27a">
+    <select id="t3mat" title="Cephe malzemesi" style="background:rgba(0,0,0,.3);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:4px 6px;font-size:12px;outline:none">
+      <option value="siva">Sıva</option><option value="cam">Cam cephe</option><option value="tas">Taş</option><option value="beton">Beton</option></select>`;
+  el.style.position='relative'; el.appendChild(ov);
+  const fmtH=v=>{ const h=Math.floor(v), mm=Math.round((v-h)*60); return String(h).padStart(2,'0')+':'+String(mm===60?0:mm).padStart(2,'0'); };
+  const sl=$('t3h'), lbl=$('t3hLbl'); lbl.textContent=fmtH(+sl.value); placeSun(+sl.value);
+  sl.oninput=()=>{ lbl.textContent=fmtH(+sl.value); placeSun(+sl.value); };
+  const ms=$('t3mat'); ms.value=state.matPreset||'siva'; ms.onchange=()=>{ state.matPreset=ms.value; haptic(6); viewThree(C); };
   // kamera
   cam.position.set(cw/2+D*1.6, Hb+D*1.4, cd/2+D*2.0); ctrl.target.set(cw/2,Hb*0.4,cd/2); ctrl.update();
   threeState={stop:false, ren};
