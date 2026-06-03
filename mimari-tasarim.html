@@ -859,38 +859,42 @@ function buildProxies(){
 }
 let TKGM_COMBO=null; // çalışan proxy adını hatırla
 
-// Tek bir mutlak URL'i proxy zinciri üzerinden çek
+// Tek bir mutlak URL'i proxy zinciri üzerinden çek — proxy'ler PARALEL yarışır (en hızlı çalışan kazanır)
 async function proxyFetch(url){
   const proxies=buildProxies();
   const order=[];
   if(TKGM_COMBO){ const px=proxies.find(p=>p.name===TKGM_COMBO); if(px) order.push(px); }
   for(const px of proxies) if(!order.includes(px)) order.push(px);
-  const errs=[];
-  for(const px of order){
-    try{
-      const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), 15000);
-      const r=await fetch(px.make(url), {headers:{'Accept':'application/json'}, signal:ctrl.signal});
-      clearTimeout(to);
-      if(!r.ok){ errs.push(`${px.name}:HTTP${r.status}`); continue; }
-      let t=await r.text();
-      if(px.wrap){ try{ t=JSON.parse(t).contents; }catch(e){} }
-      let j; try{ j=JSON.parse(t); }catch(e){ errs.push(`${px.name}:JSON?`); continue; }
-      if(j && !Array.isArray(j) && (j.Message||j.message||j.error) && !(j.features||j.data||j.result)){
-        const msg=String(j.Message||j.message||j.error);
-        // Proxy TKGM'ye ulaştı (gerçek uygulama yanıtı). Geçersiz-istek/teknik hata ise sıradakini dene;
-        // "bulunamadı" gibi kesin yanıtsa hemen bildir.
-        if(/bulunama|kayıt yok|not found/i.test(msg)){
-          TKGM_COMBO=px.name; state.lastProxy=px.name;
-          throw Object.assign(new Error(msg), {tkgm:true});
+  const attempt=async(px)=>{
+    const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(), 12000);
+    let r; try{ r=await fetch(px.make(url), {headers:{'Accept':'application/json'}, signal:ctrl.signal}); } finally { clearTimeout(to); }
+    if(!r.ok) throw new Error(`${px.name}:HTTP${r.status}`);
+    let t=await r.text();
+    if(px.wrap){ try{ t=JSON.parse(t).contents; }catch(e){} }
+    let j; try{ j=JSON.parse(t); }catch(e){ throw new Error(`${px.name}:JSON?`); }
+    if(j && !Array.isArray(j) && (j.Message||j.message||j.error) && !(j.features||j.data||j.result)){
+      const msg=String(j.Message||j.message||j.error);
+      // "bulunamadı" gibi kesin TKGM yanıtı: kesin sonuç; teknik hata: bu proxy başarısız say
+      if(/bulunama|kayıt yok|not found/i.test(msg)) throw Object.assign(new Error(msg), {tkgm:true, proxy:px.name});
+      throw new Error(`${px.name}:${msg.slice(0,40)}`);
+    }
+    return {j, px};
+  };
+  const errs=[]; let tkgmErr=null;
+  return await new Promise((resolve,reject)=>{
+    let pending=order.length;
+    if(!pending) return reject(new Error('proxy yok'));
+    order.forEach(px=>{
+      attempt(px).then(({j,px})=>{ TKGM_COMBO=px.name; state.lastProxy=px.name; resolve(j); })
+      .catch(e=>{
+        if(e.tkgm && !tkgmErr) tkgmErr=e; else errs.push(e.message||String(e));
+        if(--pending===0){
+          if(tkgmErr){ TKGM_COMBO=tkgmErr.proxy; state.lastProxy=tkgmErr.proxy; reject(tkgmErr); }
+          else { TKGM_COMBO=null; reject(new Error(errs.slice(0,6).join(' · '))); }
         }
-        errs.push(`${px.name}:${msg.slice(0,40)}`); continue;
-      }
-      TKGM_COMBO=px.name; state.lastProxy=px.name;
-      return j;
-    }catch(e){ if(e.tkgm) throw e; errs.push(`${px.name}:${(e.name==='AbortError'?'zaman aşımı':e.message||e)}`); }
-  }
-  TKGM_COMBO=null;
-  throw new Error(errs.slice(0,6).join(' · '));
+      });
+    });
+  });
 }
 // cbsapi tabanlı yol; birden çok base dener
 async function tkgmGet(path){
