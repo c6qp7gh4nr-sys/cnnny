@@ -458,6 +458,22 @@
   .pill.user{ background:rgba(120,140,135,.16); color:var(--muted); }
   .pill.ok{ background:rgba(31,111,92,.16); color:var(--brand-deep); } [data-theme="dark"] .pill.ok{ color:#6fd6ba; }
   .pill.no{ background:rgba(214,69,69,.14); color:var(--danger); }
+
+  /* ---- Başlık açılır menüsü (overflow) ---- */
+  .hmenu-wrap{ position:relative; flex:0 0 auto; }
+  .hmenu{ position:absolute; top:calc(100% + 10px); right:0; min-width:230px; padding:7px;
+    background:var(--card); border:1px solid var(--glass-brd); border-radius:18px;
+    box-shadow:0 24px 60px -18px rgba(0,0,0,.55), inset 0 1px 0 var(--glass-hi);
+    -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+    z-index:90; display:none; flex-direction:column; gap:2px; transform-origin:top right; }
+  .hmenu.show{ display:flex; animation:hmenuPop .16s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes hmenuPop{ from{ opacity:0; transform:translateY(-6px) scale(.96);} to{ opacity:1; transform:none; } }
+  .menu-item{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; border:none; background:transparent;
+    color:var(--fg); padding:12px 13px; border-radius:12px; font-size:15.5px; font-weight:500; letter-spacing:-.01em; cursor:pointer; }
+  .menu-item:hover{ background:rgba(120,140,135,.12); }
+  .menu-item:active{ background:rgba(120,140,135,.2); transform:scale(.98); }
+  .menu-item .mi-ic{ width:22px; height:22px; display:grid; place-items:center; flex:0 0 auto; color:var(--brand); }
+  [data-theme="dark"] .menu-item .mi-ic{ color:#6fd6ba; }
 </style>
 </head>
 <body>
@@ -468,11 +484,16 @@
         <div class="brand-title">⌖ Mimari Tasarım Üretici</div>
         <div class="brand-sub">Koordinat veya Ada/Parsel girin · otomatik vaziyet planı, kat planı ve kütle</div>
       </div>
-      <button class="icon-btn" id="acctBtn" title="Hesap / Yönetim" style="display:none"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.3"/><path d="M5.5 19.2a6.5 6.5 0 0 1 13 0"/></svg></button>
-      <button class="icon-btn" id="projBtn" title="Projelerim"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.6a2 2 0 0 1 2-2h3.1a2 2 0 0 1 1.5.7l.9 1a2 2 0 0 0 1.5.7H19a2 2 0 0 1 2 2v6.7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></button>
-      <button class="icon-btn" id="langBtn" title="Language / Dil" style="width:auto;padding:0 13px;font-size:14px;font-weight:700;letter-spacing:-.01em">EN</button>
-      <button class="icon-btn" id="helpBtn" title="Yardım"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.3a2.7 2.7 0 0 1 5.2 1c0 1.7-2.5 2.1-2.5 3.7"/><circle cx="12" cy="17" r=".7" fill="currentColor" stroke="none"/></svg></button>
-      <button class="icon-btn" id="themeBtn" title="Tema"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor" stroke="none"/></svg></button>
+      <div class="hmenu-wrap">
+        <button class="icon-btn" id="menuBtn" title="Menü" aria-label="Menü"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg></button>
+        <div class="hmenu" id="headerMenu">
+          <button class="menu-item" id="acctBtn" style="display:none"><span class="mi-ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.3"/><path d="M5.5 19.2a6.5 6.5 0 0 1 13 0"/></svg></span>Hesap / Yönetim</button>
+          <button class="menu-item" id="projBtn"><span class="mi-ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.6a2 2 0 0 1 2-2h3.1a2 2 0 0 1 1.5.7l.9 1a2 2 0 0 0 1.5.7H19a2 2 0 0 1 2 2v6.7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>Projelerim</button>
+          <button class="menu-item" id="langBtn"><span class="mi-ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 2.6 15.4 0 18M12 3c-2.6 2.6-2.6 15.4 0 18" stroke-linecap="round"/></svg></span><span id="langLbl">English</span></button>
+          <button class="menu-item" id="helpBtn"><span class="mi-ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.3a2.7 2.7 0 0 1 5.2 1c0 1.7-2.5 2.1-2.5 3.7"/><circle cx="12" cy="17" r=".7" fill="currentColor" stroke="none"/></svg></span>Nasıl çalışır?</button>
+          <button class="menu-item" id="themeBtn"><span class="mi-ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor" stroke="none"/></svg></span><span id="themeLbl">Koyu tema</span></button>
+        </div>
+      </div>
     </div>
   </div>
 </header>
@@ -926,9 +947,20 @@ $('themeBtn').onclick = () => {
   document.documentElement.setAttribute('data-theme', next);
   _cssCache={};
   try{ localStorage.setItem('mt-theme', next); }catch(e){}
+  const tl=$('themeLbl'); if(tl) tl.textContent = next==='dark' ? 'Açık tema' : 'Koyu tema';
   if(state.last){ render(state.activeView || 'vaziyet'); showMetrics(state.last); showFeasibility(state.last); }
 };
-try{ const t=localStorage.getItem('mt-theme'); if(t) document.documentElement.setAttribute('data-theme',t); }catch(e){}
+try{ const t=localStorage.getItem('mt-theme'); if(t){ document.documentElement.setAttribute('data-theme',t); const tl=$('themeLbl'); if(tl) tl.textContent = t==='dark'?'Açık tema':'Koyu tema'; } }catch(e){}
+
+/* ---------- Başlık açılır menüsü (overflow) ---------- */
+(function(){
+  const btn=$('menuBtn'), menu=$('headerMenu'); if(!btn||!menu) return;
+  const close=()=>menu.classList.remove('show');
+  btn.onclick=(e)=>{ e.stopPropagation(); haptic(6); menu.classList.toggle('show'); };
+  menu.addEventListener('click', e=>{ if(e.target.closest('.menu-item')) close(); });
+  document.addEventListener('click', e=>{ if(menu.classList.contains('show') && !menu.contains(e.target) && e.target!==btn) close(); });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape') close(); });
+})();
 
 /* ---------- Mod değiştirme ---------- */
 $('modeSeg').querySelectorAll('button').forEach(b => b.onclick = () => {
@@ -2602,7 +2634,7 @@ function applyLang(lang){
       if(el.dataset.tr0!==undefined){ el.textContent=el.dataset.tr0; }
     }
   });
-  $('langBtn').textContent = lang==='en' ? 'TR' : 'EN';
+  { const ll=$('langLbl'); if(ll) ll.textContent = lang==='en' ? 'Türkçe' : 'English'; }
   document.documentElement.lang = lang;
   try{ localStorage.setItem('mt-lang', lang); }catch(e){}
   state.lang=lang;
@@ -3316,7 +3348,7 @@ async function api(name, body){
 function setAuth(t,u,role){ state.token=t; state.user=u; state.role=role;
   localStorage.setItem('angim-token',t); localStorage.setItem('angim-user',u); localStorage.setItem('angim-role',role); }
 function showLogin(){ $('loginOverlay').style.display='flex'; $('acctBtn').style.display='none'; }
-function hideLogin(){ $('loginOverlay').style.display='none'; $('acctBtn').style.display='grid'; }
+function hideLogin(){ $('loginOverlay').style.display='none'; $('acctBtn').style.display='flex'; }
 async function doLogin(){
   const u=$('lgUser').value.trim(), p=$('lgPass').value;
   $('lgMsg').textContent='Giriş yapılıyor…'; $('lgMsg').style.color='var(--muted)';
