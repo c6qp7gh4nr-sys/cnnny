@@ -396,6 +396,39 @@
   .btn{ border-radius:14px; }
   .seg, .metric{ -webkit-backdrop-filter: blur(18px) saturate(180%); backdrop-filter: blur(18px) saturate(180%); }
   .icon-btn{ background: rgba(255,255,255,.18) !important; }
+
+  /* ============ Apple / iOS native cila (SF Pro + squircle + iOS bileşenleri) ============ */
+  :root{ --ios-tint:#1f6f5c; }
+  body{
+    font-family: -apple-system, "SF Pro Text", "SF Pro Display", BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; letter-spacing: -.01em;
+  }
+  .brand-title{ font-weight:700 !important; letter-spacing:-.022em !important; }
+  .card h2{ letter-spacing:-.012em; }
+  /* iOS dolu buton */
+  .btn{ border-radius:16px !important; font-weight:600; letter-spacing:-.01em; font-size:16px; padding:14px 18px;
+    transition: transform .12s ease, opacity .12s ease, filter .12s ease; }
+  .btn:not(.ghost){ background: var(--ios-tint); color:#fff; border:none; box-shadow:0 8px 20px -10px rgba(31,111,92,.7), inset 0 1px 0 rgba(255,255,255,.25); }
+  .btn:active{ transform: scale(.975); opacity:.86; }
+  /* iOS düz/ikincil buton */
+  .btn.ghost{ background: rgba(118,138,132,.14) !important; color: var(--ios-tint); border:1px solid transparent; font-weight:600; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; box-shadow:none; }
+  [data-theme="dark"] .btn.ghost{ background: rgba(255,255,255,.08) !important; color:#6fd6ba; }
+  /* iOS araç çubuğu yuvarlak ikon butonları */
+  .icon-btn{ width:36px; height:36px; border-radius:50%; display:grid; place-items:center; }
+  .icon-btn svg{ display:block; }
+  /* iOS segmented control */
+  .seg{ padding:3px; border-radius:13px; }
+  .seg button{ border-radius:10px; font-weight:600; letter-spacing:-.01em; }
+  .seg button.active{ box-shadow:0 1px 4px rgba(0,0,0,.14); }
+  /* görüntüleyici sekmeleri iOS tarzı */
+  .tab-btn{ border-radius:11px; font-weight:600; letter-spacing:-.01em; }
+  .tab-btn.active{ background: var(--ios-tint) !important; color:#fff !important; border-color: var(--ios-tint) !important; }
+  /* form alanları */
+  input[type=text], input[type=number], select, textarea{ border-radius:13px !important; letter-spacing:-.01em; }
+  /* alt yüzen aksiyon çubuğu */
+  .fab button{ border-radius:18px !important; font-weight:600; }
+  /* başlık alt yazı inceltme */
+  .brand-sub{ letter-spacing:-.006em; opacity:.9; }
 </style>
 </head>
 <body>
@@ -406,11 +439,11 @@
         <div class="brand-title">⌖ Mimari Tasarım Üretici</div>
         <div class="brand-sub">Koordinat veya Ada/Parsel girin · otomatik vaziyet planı, kat planı ve kütle</div>
       </div>
-      <button class="icon-btn" id="acctBtn" title="Hesap / Yönetim" style="display:none">👤</button>
-      <button class="icon-btn" id="projBtn" title="Projelerim">📁</button>
-      <button class="icon-btn" id="langBtn" title="Language / Dil" style="width:auto;padding:0 12px;font-size:13px;font-weight:700">EN</button>
-      <button class="icon-btn" id="helpBtn" title="Yardım">❔</button>
-      <button class="icon-btn" id="themeBtn" title="Tema">◐</button>
+      <button class="icon-btn" id="acctBtn" title="Hesap / Yönetim" style="display:none"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.3"/><path d="M5.5 19.2a6.5 6.5 0 0 1 13 0"/></svg></button>
+      <button class="icon-btn" id="projBtn" title="Projelerim"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.6a2 2 0 0 1 2-2h3.1a2 2 0 0 1 1.5.7l.9 1a2 2 0 0 0 1.5.7H19a2 2 0 0 1 2 2v6.7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></button>
+      <button class="icon-btn" id="langBtn" title="Language / Dil" style="width:auto;padding:0 13px;font-size:14px;font-weight:700;letter-spacing:-.01em">EN</button>
+      <button class="icon-btn" id="helpBtn" title="Yardım"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.3a2.7 2.7 0 0 1 5.2 1c0 1.7-2.5 2.1-2.5 3.7"/><circle cx="12" cy="17" r=".7" fill="currentColor" stroke="none"/></svg></button>
+      <button class="icon-btn" id="themeBtn" title="Tema"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor" stroke="none"/></svg></button>
     </div>
   </div>
 </header>
