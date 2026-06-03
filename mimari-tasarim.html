@@ -104,6 +104,8 @@
   /* grid/flex çocuklarının dar ekranda küçülebilmesi (sağ kesilmeyi önler) */
   input, select, textarea { min-width: 0; }
   .seg button, .row > *, .row3 > *, .grid2 > *, .metrics > *, .btn-row > * { min-width: 0; }
+  /* dokunması kolay büyük onay kutuları */
+  input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--brand); vertical-align: middle; flex: 0 0 auto; cursor: pointer; }
   input:focus, select:focus { border-color: var(--brand); }
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
@@ -133,8 +135,8 @@
   }
   .tab-btn.active { background: var(--brand); color: #fff; border-color: var(--brand); }
   .canvas-host { position: relative; background:
-    linear-gradient(var(--bg) 0 0); display: grid; place-items: center; min-height: 420px; padding: 14px; }
-  .canvas-host svg { width: 100%; height: auto; max-height: 70vh; display: block; }
+    linear-gradient(var(--bg) 0 0); display: grid; place-items: center; min-height: 420px; padding: 14px; overflow-x: hidden; }
+  .canvas-host svg { width: 100%; max-width: 100%; height: auto; max-height: 72vh; display: block; }
   .empty { color: var(--muted); text-align: center; padding: 80px 20px; font-size: 14px; }
   .empty .big { font-size: 42px; margin-bottom: 12px; }
 
@@ -451,7 +453,7 @@
         </label>
         <label class="field">
           <span class="lbl"><span>Kat adedi</span></span>
-          <div class="rng"><input type="range" id="katAdet" min="1" max="99" step="1" value="3"><span class="val" id="katAdetVal">3</span></div>
+          <div class="rng"><input type="range" id="katAdet" min="1" max="99" step="1" value="3"><input type="number" class="val" id="katAdetVal" min="1" max="99" step="1" value="3" inputmode="numeric" style="width:66px;text-align:center;padding:8px 6px;font-weight:700;color:var(--brand)"></div>
         </label>
         <div class="row3">
           <label class="field"><span class="lbl">Ön bahçe <span class="hint">m</span></span><input type="number" id="onCekme" value="5" min="0" step="0.5"></label>
@@ -800,12 +802,26 @@ $('lat').addEventListener('input', e => {
 /* ---------- Aralık göstergeleri ---------- */
 function bindRange(id, valId, hintId){
   const r=$(id), v=$(valId);
-  const upd=()=>{ const val=parseFloat(r.value); v.textContent = (id==='katAdet')? val : val.toFixed(2); if(hintId) $(hintId).textContent=(id==='katAdet')?val:val.toFixed(2); };
-  r.addEventListener('input', upd); upd();
+  const isInput = v && v.tagName==='INPUT';
+  const fmtv = (val)=> (id==='katAdet')? String(val) : val.toFixed(2);
+  const upd=()=>{ const val=parseFloat(r.value);
+    if(isInput){ if(document.activeElement!==v) v.value=val; } else v.textContent=fmtv(val);
+    if(hintId) $(hintId).textContent=fmtv(val); };
+  r.addEventListener('input', upd);
+  if(isInput){
+    const sync=()=>{ let val=parseFloat(v.value); if(isNaN(val)) return; const mn=+r.min, mx=+r.max; val=Math.max(mn,Math.min(mx,val)); r.value=val; r.dispatchEvent(new Event('input')); };
+    v.addEventListener('input', sync);
+    v.addEventListener('blur', ()=>{ let val=parseFloat(v.value); const mn=+r.min, mx=+r.max; if(isNaN(val)) val=+r.value; val=Math.max(mn,Math.min(mx,val)); r.value=val; v.value=val; r.dispatchEvent(new Event('input')); });
+  }
+  upd();
 }
 bindRange('taks','taksVal','taksHint');
 bindRange('kaks','kaksVal','kaksHint');
 bindRange('katAdet','katAdetVal');
+
+/* Mobilde sayı alanlarında tam klavye yerine rakam tuş takımı açılsın */
+document.querySelectorAll('input[type=number]').forEach(i=>{ if(!i.getAttribute('inputmode')) i.setAttribute('inputmode','decimal'); });
+['lat','lng','ada','parsel','adaT','parselT'].forEach(id=>{ const e=$(id); if(e) e.setAttribute('inputmode','decimal'); });
 
 /* ---------- Parsel alanı canlı ---------- */
 function updParselAlan(){ $('parselAlan').textContent = fmt(parseFloat($('cephe').value||0)*parseFloat($('derinlik').value||0)); }
@@ -2885,12 +2901,20 @@ $('geoBtn').onclick=geocode;
 $('geoQ').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); geocode(); } });
 
 /* ---------- Dışa aktarma: DXF / OBJ / KML / JSON ---------- */
-function downloadFile(name, content, mime){
+async function downloadFile(name, content, mime){
   const blob=new Blob([content],{type:mime||'text/plain;charset=utf-8'});
+  // iOS/native: paylaşım sayfasıyla kullanıcı NEREYE ve hangi adla kaydedeceğini seçsin (Dosyalar, AirDrop, Mail…)
+  try{
+    if(navigator.canShare){
+      const file=new File([blob], name, {type:blob.type});
+      if(navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:name}); toast('📤 '+name,'ok'); return; }
+    }
+  }catch(e){ if(e && e.name==='AbortError') return; /* kullanıcı iptal etti */ }
+  // masaüstü / yedek: doğrudan indir (İndirilenler klasörü)
   const url=URL.createObjectURL(blob), a=document.createElement('a');
   a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
-  toast('⬇︎ '+name, 'ok');
+  toast('⬇︎ '+name+' (İndirilenler)', 'ok');
 }
 function massRings(C){
   // metre cinsinden oturum poligon(lar)ı (x sağ, y üst)
