@@ -1,25 +1,62 @@
 // ANGiM backend: TKGM proxy + auth + arsiv (Cloudflare KV binding: ANGIM)
-const SALT='angim-2026-salt-x7k9';
-const H={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'content-type,authorization'};
+// Guvenlik: PBKDF2 sifre hash + brute-force kilidi + IP rate-limit + guvenlik basliklari.
+const SALT='angim-2026-salt-x7k9';          // yalnizca eski (legacy) hash dogrulamasi icin
+const PBKDF2_ITER=120000;
+const H={
+  'Access-Control-Allow-Origin':'*',
+  'Access-Control-Allow-Methods':'GET,POST,OPTIONS',
+  'Access-Control-Allow-Headers':'content-type,authorization',
+  'X-Content-Type-Options':'nosniff',
+  'Referrer-Policy':'no-referrer'
+};
 const J=(o,s)=>new Response(JSON.stringify(o),{status:s||200,headers:{...H,'Content-Type':'application/json; charset=utf-8'}});
-async function sha(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
-const tok=()=>{const a=new Uint8Array(24);crypto.getRandomValues(a);return [...a].map(x=>x.toString(16).padStart(2,'0')).join('');};
+const hex=(buf)=>[...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('');
+const randHex=(n)=>{const a=new Uint8Array(n);crypto.getRandomValues(a);return hex(a);};
+const tok=()=>randHex(24);
+async function sha(s){return hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)));}
+function timingEq(a,b){if(typeof a!=='string'||typeof b!=='string'||a.length!==b.length)return false;let r=0;for(let i=0;i<a.length;i++)r|=a.charCodeAt(i)^b.charCodeAt(i);return r===0;}
+async function pbkdf2(pass,saltHex,iter){
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),{name:'PBKDF2'},false,['deriveBits']);
+  const salt=Uint8Array.from(saltHex.match(/../g).map(b=>parseInt(b,16)));
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'},key,256);
+  return hex(bits);
+}
+async function hashPass(pass){const salt=randHex(16);return `pbkdf2$${PBKDF2_ITER}$${salt}$${await pbkdf2(pass,salt,PBKDF2_ITER)}`;}
+async function verifyPass(pass,stored){
+  if(!stored) return {ok:false,legacy:false};
+  if(stored.startsWith('pbkdf2$')){const p=stored.split('$');const calc=await pbkdf2(pass,p[2],parseInt(p[1]));return {ok:timingEq(calc,p[3]),legacy:false};}
+  return {ok:timingEq(await sha(pass+SALT),stored),legacy:true};   // eski SHA-256 kayitlari
+}
 export default {
-  async fetch(req,env){
+  async fetch(req,env,ctx){
     if(req.method==='OPTIONS') return new Response(null,{headers:H});
     const url=new URL(req.url), api=url.searchParams.get('api');
     if(api){
       const KV=env.ANGIM;
       if(!KV) return J({error:'KV bagli degil - Worker ayarlarinda ANGIM bindingini ekleyin.'},500);
-      if(!(await KV.get('user:angim'))) await KV.put('user:angim',JSON.stringify({u:'angim',role:'admin',h:await sha('angim'+SALT),createdAt:Date.now()}));
+      const ip=req.headers.get('cf-connecting-ip')||'0';
+      // --- IP rate-limit (dakikada ~200 istek) ---
+      const rlKey='rl:'+ip+':'+Math.floor(Date.now()/60000);
+      const rl=parseInt(await KV.get(rlKey)||'0');
+      if(rl>200) return J({error:'Hiz siniri asildi, biraz sonra tekrar deneyin.'},429);
+      if(ctx&&ctx.waitUntil) ctx.waitUntil(KV.put(rlKey,String(rl+1),{expirationTtl:120})); else await KV.put(rlKey,String(rl+1),{expirationTtl:120});
+      // ana admin tohumla (PBKDF2)
+      if(!(await KV.get('user:angim'))) await KV.put('user:angim',JSON.stringify({u:'angim',role:'admin',h:await hashPass('angim'),createdAt:Date.now()}));
       const body=req.method==='POST'?await req.json().catch(()=>({})):{};
       const token=(req.headers.get('authorization')||'').replace('Bearer ','').trim()||url.searchParams.get('t')||body.t||'';
       const sess=async()=>{if(!token)return null;const s=await KV.get('session:'+token);if(!s)return null;const o=JSON.parse(s);return o.exp>Date.now()?o:null;};
       if(api==='login'){
-        const u=(body.u||'').trim().toLowerCase(),p=body.p||'';
-        const rec=await KV.get('user:'+u), ok=rec&&JSON.parse(rec).h===await sha(p+SALT);
-        await KV.put('login:'+Date.now()+'-'+Math.random().toString(36).slice(2,7),JSON.stringify({u,ok:!!ok,ip:req.headers.get('cf-connecting-ip')||'',ts:Date.now()}),{expirationTtl:7776000});
-        if(!ok) return J({error:'Hatali kullanici adi veya sifre'},401);
+        const u=(body.u||'').trim().toLowerCase(), p=(body.p||'').slice(0,200);
+        // --- brute-force kilidi (kullanici+IP, 15 dk pencere) ---
+        const lkKey='lock:'+u+':'+ip, fails=parseInt(await KV.get(lkKey)||'0');
+        if(fails>=8) return J({error:'Cok fazla hatali deneme. ~15 dk sonra tekrar deneyin.'},429);
+        const rec=await KV.get('user:'+u);
+        let ok=false;
+        if(rec){const o=JSON.parse(rec);const v=await verifyPass(p,o.h);ok=v.ok;
+          if(ok&&v.legacy){o.h=await hashPass(p);await KV.put('user:'+u,JSON.stringify(o));}}   // transparan PBKDF2 yukseltme
+        if(ctx&&ctx.waitUntil) ctx.waitUntil(KV.put('login:'+Date.now()+'-'+randHex(3),JSON.stringify({u,ok,ip,ts:Date.now()}),{expirationTtl:7776000}));
+        if(!ok){await KV.put(lkKey,String(fails+1),{expirationTtl:900});return J({error:'Hatali kullanici adi veya sifre'},401);}
+        await KV.delete(lkKey);
         const t=tok(),role=JSON.parse(rec).role||'user';
         await KV.put('session:'+t,JSON.stringify({u,role,exp:Date.now()+604800000}),{expirationTtl:604800});
         return J({token:t,user:u,role});
@@ -27,20 +64,21 @@ export default {
       if(api==='me'){const s=await sess();return s?J({user:s.u,role:s.role}):J({error:'oturum yok'},401);}
       if(api==='logout'){if(token)await KV.delete('session:'+token);return J({ok:true});}
       if(api==='adduser'){const s=await sess();if(!s||s.role!=='admin')return J({error:'yetki yok'},403);
-        const u=(body.u||'').trim().toLowerCase(),p=body.p||'',role=body.role==='admin'?'admin':'user';
-        if(!u||!p) return J({error:'kullanici adi ve sifre gerekli'},400);
+        const u=(body.u||'').trim().toLowerCase(),p=(body.p||'').slice(0,200),role=body.role==='admin'?'admin':'user';
+        if(!/^[a-z0-9._-]{2,40}$/.test(u)) return J({error:'gecersiz kullanici adi (2-40, a-z 0-9 . _ -)'},400);
+        if(p.length<4) return J({error:'sifre en az 4 karakter olmali'},400);
         if(await KV.get('user:'+u)) return J({error:'bu kullanici zaten var'},409);
-        await KV.put('user:'+u,JSON.stringify({u,role,h:await sha(p+SALT),createdAt:Date.now()}));return J({ok:true});}
+        await KV.put('user:'+u,JSON.stringify({u,role,h:await hashPass(p),createdAt:Date.now()}));return J({ok:true});}
       if(api==='deluser'){const s=await sess();if(!s||s.role!=='admin')return J({error:'yetki yok'},403);
         const u=(body.u||'').trim().toLowerCase();if(u==='angim')return J({error:'ana admin silinemez'},400);
         await KV.delete('user:'+u);return J({ok:true});}
       if(api==='changepass'){const s=await sess();if(!s)return J({error:'oturum yok'},401);
-        const np=body.np||'';if(np.length<3)return J({error:'sifre en az 3 karakter'},400);
+        const np=(body.np||'').slice(0,200);if(np.length<4)return J({error:'sifre en az 4 karakter'},400);
         let tgt=s.u;
         if(body.u&&s.role==='admin'){tgt=(body.u||'').trim().toLowerCase();}
-        else{const rec0=await KV.get('user:'+s.u);if(!rec0||JSON.parse(rec0).h!==await sha((body.op||'')+SALT))return J({error:'mevcut sifre hatali'},403);}
+        else{const rec0=await KV.get('user:'+s.u);const v=rec0?await verifyPass((body.op||''),JSON.parse(rec0).h):{ok:false};if(!v.ok)return J({error:'mevcut sifre hatali'},403);}
         const rec=await KV.get('user:'+tgt);if(!rec)return J({error:'kullanici yok'},404);
-        const o=JSON.parse(rec);o.h=await sha(np+SALT);await KV.put('user:'+tgt,JSON.stringify(o));return J({ok:true});}
+        const o=JSON.parse(rec);o.h=await hashPass(np);await KV.put('user:'+tgt,JSON.stringify(o));return J({ok:true});}
       if(api==='setrole'){const s=await sess();if(!s||s.role!=='admin')return J({error:'yetki yok'},403);
         const u=(body.u||'').trim().toLowerCase(),role=body.role==='admin'?'admin':'user';
         if(u==='angim')return J({error:'ana admin rolu degistirilemez'},400);

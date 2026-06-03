@@ -11,6 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Mimari">
 <meta name="mobile-web-app-capable" content="yes">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; connect-src 'self' https:; worker-src 'self' blob:; child-src blob:; font-src 'self' https: data:; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none'">
 <link rel="manifest" href="mimari-manifest.json">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="icon" href="icon.svg">
@@ -689,7 +690,23 @@
     <div class="lg-field"><span class="lg-ic">🔒</span><input type="password" id="lgPass" placeholder="Şifre" autocomplete="current-password"><button type="button" class="lg-eye" id="lgEye" title="Göster/Gizle">👁</button></div>
     <button class="btn" id="lgBtn">Giriş Yap →</button>
     <div class="note" id="lgMsg" style="min-height:16px"></div>
-    <div class="note" style="margin-top:12px;opacity:.65">Powered By <b>Can Tosun</b> — ANGİM</div>
+    <div class="note" style="margin-top:10px;font-size:10.5px;opacity:.7">Giriş yaparak <a href="#" id="kvkkLink" style="color:var(--brand);font-weight:600">KVKK Aydınlatma Metni</a>'ni okuduğunuzu kabul edersiniz.</div>
+    <div class="note" style="margin-top:8px;opacity:.65">Powered By <b>Can Tosun</b> — ANGİM</div>
+  </div>
+</div>
+
+<div class="modal-bg" id="kvkkModal">
+  <div class="modal" style="max-width:640px">
+    <button class="x" id="kvkkClose">✕</button>
+    <h3>🔐 KVKK Aydınlatma Metni</h3>
+    <div style="font-size:12.5px;line-height:1.65;color:var(--fg)">
+      <p><b>Veri sorumlusu:</b> ANGİM (Can Tosun). Bu uygulama 6698 sayılı KVKK kapsamında aşağıdaki verileri işler.</p>
+      <p><b>İşlenen veriler:</b> kullanıcı adı, şifreniz (yalnızca geri döndürülemez <b>PBKDF2 özet</b> olarak; açık şifre saklanmaz), giriş kayıtları (zaman ve IP — güvenlik amaçlı) ve kaydettiğiniz tasarım/arşiv verileri.</p>
+      <p><b>Amaç:</b> hesap kimlik doğrulaması, yetkilendirme, güvenlik (brute-force/oran sınırı) ve tasarımlarınızın arşivlenmesi.</p>
+      <p><b>Saklama yeri:</b> veriler Cloudflare Workers KV altyapısında tutulur. İmar/tasarım hesapları tarayıcınızda yapılır; yalnızca <b>kaydet/arşivle</b> dediğinizde sunucuya gönderilir. Giriş kayıtları en çok 90 gün, oturumlar 7 gün sonra otomatik silinir.</p>
+      <p><b>Haklarınız:</b> arşiv kayıtlarınızı uygulama içinden silebilir, şifrenizi değiştirebilirsiniz. Hesabınızın tümüyle silinmesi için yöneticiye (admin) başvurun.</p>
+      <p style="opacity:.7">Bu metin bilgilendirme amaçlıdır; resmî/hukuki bir taahhüt teşkil etmez.</p>
+    </div>
   </div>
 </div>
 
@@ -3111,6 +3128,9 @@ $('lgBtn').onclick=doLogin;
 $('lgPass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
 $('lgUser').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('lgPass').focus(); } });
 $('lgEye').onclick=()=>{ const i=$('lgPass'); i.type = i.type==='password'?'text':'password'; $('lgEye').style.opacity = i.type==='text'?'1':'.55'; };
+$('kvkkLink').onclick=(e)=>{ e.preventDefault(); $('kvkkModal').classList.add('show'); };
+$('kvkkClose').onclick=()=>$('kvkkModal').classList.remove('show');
+$('kvkkModal').addEventListener('click',e=>{ if(e.target===$('kvkkModal')) $('kvkkModal').classList.remove('show'); });
 function logout(){ try{ if(!state.offline) api('logout'); }catch(e){} localStorage.removeItem('angim-token'); localStorage.removeItem('angim-user'); localStorage.removeItem('angim-role'); state.token=state.user=state.role=''; $('acctModal').classList.remove('show'); showLogin(); }
 $('logoutBtn').onclick=logout;
 
