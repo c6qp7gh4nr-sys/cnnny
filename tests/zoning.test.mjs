@@ -157,6 +157,24 @@ test('feasibility: parking uses the yönetmelik ratio (large flats ⇒ ≥1.5/fl
   assert.ok([1, 1.5, 2, null].includes(f.otoparkPer));
 });
 
+test('cekirdek: core grows with elevator count and includes a stair', () => {
+  const c0 = S.cekirdek({ katAdet: 3, asansorAdet: 0 });
+  const c1 = S.cekirdek({ katAdet: 5, asansorAdet: 1 });
+  const c2 = S.cekirdek({ katAdet: 10, asansorAdet: 2 });
+  assert.ok(c0.merdivenW > 0 && c0.merdivenD > 0, 'always has a stair');
+  assert.ok(c1.coreW > c0.coreW, 'one elevator widens the core');
+  assert.ok(c2.coreW > c1.coreW, 'two elevators wider still');
+  assert.ok(c2.saft, 'tall building has a light/vent shaft');
+  assert.ok(c2.alan > c0.alan);
+});
+
+test('genFloor: multi-storey konut produces a real core with spec', () => {
+  const C = S.compute(makeInp({ katAdet: 6, kullanim: 'konut' }), null);
+  const F = S.genFloor(C, null);
+  assert.ok(F.core && F.core.spec, 'core present for 6-storey konut');
+  assert.ok(F.core.spec.asansorAdet >= 1, 'elevator required at 6 storeys');
+});
+
 test('sunHours: a tall close neighbour reduces façade sun hours', () => {
   const open = S.sunHours(39.9, 12, 'S', { h: 0, yon: 'S', mes: 10 });
   const blocked = S.sunHours(39.9, 12, 'S', { h: 40, yon: 'S', mes: 4 });

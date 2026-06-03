@@ -1313,6 +1313,17 @@ function genApartment(W, H, beds, ku, shop){
   for(let i=0;i<beds;i++) R.push({name:i===0?'Ebeveyn Y.O.':'Yatak '+(i+1), x:i*bw, y:0, w:bw, h:backH, t:'bed', furn:'bed'});
   return R;
 }
+// Çekirdek (sirkülasyon) boyutlandırma — yönetmeliğe yaklaşık
+function cekirdek(p){
+  const kat=Math.max(1,p.katAdet||1), asansorAdet=p.asansorAdet||0;
+  const merdivenW=2.6, merdivenD=4.8;            // kaçış merdiveni (~1.2 m kol + sahanlık)
+  const asansorW=1.8, asansorD=2.1;               // asansör kuyusu (kabin ~1.1×1.4)
+  const saft = kat>=4 ? {w:1.2,d:1.5} : null;     // ışıklık/tesisat şaftı
+  const koridorW = p.ikinciKacis? 1.5 : 1.2;      // ortak koridor min genişlik
+  const coreW = merdivenW + asansorAdet*(asansorW+0.15) + (saft?saft.w+0.2:0) + 0.4;
+  const coreD = Math.max(merdivenD, asansorD + (saft?saft.d+0.4:0)) + 0.3;
+  return { merdivenW,merdivenD,asansorAdet,asansorW,asansorD,saft,koridorW,coreW,coreD, alan:coreW*coreD };
+}
 // Tip kat: bloğu daire(ler) + çekirdek olarak böl
 function genFloor(C, floorType){
   const W=C.planW||C.bw, H=C.planD||C.bd, ku=C.inp.kullanim;
@@ -1331,7 +1342,10 @@ function genFloor(C, floorType){
   for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
     units.push({x:c*cellW,y:r*cellH,w:cellW,h:cellH,beds,flip:(c%2===1)});
   }
-  return {W,H,units,core:(units.length>1?{x:W/2,y:H/2}:null),beds,nU:units.length};
+  const Y=yonetmelik({katAdet:C.katAdet, kullanim:ku, yukseklik:C.yukseklik, toplamDaire:C.toplamDaire});
+  const spec=cekirdek({katAdet:C.katAdet, asansorAdet:Y.asansorAdet, ikinciKacis:Y.ikinciKacis});
+  const needCore = units.length>1 || Y.asansorGerek;
+  return {W,H,units,core:(needCore?{x:W/2,y:H/2,spec}:null),beds,nU:units.length};
 }
 
 /* ---------- SVG yardımcı ---------- */
@@ -1596,11 +1610,24 @@ function viewKat(C){
     s+=`<path d="M ${X(dcx-0.5)} ${Y(dy)} A ${1*scale} ${1*scale} 0 0 1 ${X(dcx-0.5)} ${Y(dy-1)}" fill="none" stroke="${muted}" stroke-width="0.8"/>`;
   });
 
-  // çekirdek (merdiven/asansör)
-  if(F.core){ const cw=Math.min(F.W,F.H)*0.15, c=F.core, x0=c.x-cw/2, y0=c.y-cw/2;
-    s+=`<rect x="${X(x0)}" y="${Y(y0)}" width="${cw*scale}" height="${cw*scale}" fill="${colors.core}" stroke="${wall}" stroke-width="1.6"/>`;
-    for(let i=1;i<6;i++){ const yy=y0+cw*i/6; s+=`<line x1="${X(x0)}" y1="${Y(yy)}" x2="${X(x0+cw*0.55)}" y2="${Y(yy)}" stroke="${muted}" stroke-width="0.6"/>`; }
-    s+=`<rect x="${X(x0+cw*0.6)}" y="${Y(y0+cw*0.25)}" width="${cw*0.32*scale}" height="${cw*0.5*scale}" fill="none" stroke="${muted}" stroke-width="0.7"/>`;
+  // çekirdek (gerçek: kaçış merdiveni + asansör kuyuları + ışıklık)
+  if(F.core && F.core.spec){ const sp=F.core.spec, c=F.core; const cw=Math.min(sp.coreW,W*0.9), cd=Math.min(sp.coreD,H*0.9);
+    const x0=c.x-cw/2, y0=c.y-cd/2;
+    s+=`<rect x="${X(x0)}" y="${Y(y0)}" width="${cw*scale}" height="${cd*scale}" fill="${colors.core}" stroke="${wall}" stroke-width="1.8"/>`;
+    // merdiven (solda): basamaklar + sahanlık
+    const mw=Math.min(sp.merdivenW,cw*0.5), mh=Math.min(sp.merdivenD,cd-0.2), msx=x0+0.1, msy=y0+(cd-mh)/2;
+    s+=`<rect x="${X(msx)}" y="${Y(msy)}" width="${mw*scale}" height="${mh*scale}" fill="none" stroke="${wall}" stroke-width="1"/>`;
+    const nStep=9; for(let i=1;i<nStep;i++){ const yy=msy+mh*i/nStep; s+=`<line x1="${X(msx)}" y1="${Y(yy)}" x2="${X(msx+mw)}" y2="${Y(yy)}" stroke="${muted}" stroke-width="0.6"/>`; }
+    s+=`<line x1="${X(msx+mw*0.5)}" y1="${Y(msy+0.25)}" x2="${X(msx+mw*0.5)}" y2="${Y(msy+mh-0.25)}" stroke="${muted}" stroke-width="0.6" stroke-dasharray="2 2"/>`;
+    // asansör kuyuları
+    let ax2=x0+mw+0.3;
+    for(let k=0;k<(sp.asansorAdet||0);k++){ const ay2=y0+0.25;
+      s+=`<rect x="${X(ax2)}" y="${Y(ay2)}" width="${sp.asansorW*scale}" height="${sp.asansorD*scale}" fill="${card}" stroke="${wall}" stroke-width="1"/>`;
+      s+=`<line x1="${X(ax2)}" y1="${Y(ay2)}" x2="${X(ax2+sp.asansorW)}" y2="${Y(ay2+sp.asansorD)}" stroke="${muted}" stroke-width="0.6"/><line x1="${X(ax2+sp.asansorW)}" y1="${Y(ay2)}" x2="${X(ax2)}" y2="${Y(ay2+sp.asansorD)}" stroke="${muted}" stroke-width="0.6"/>`;
+      ax2+=sp.asansorW+0.15; }
+    // ışıklık/şaft
+    if(sp.saft && (x0+mw+0.3+sp.saft.w)<x0+cw){ const sy3=y0+sp.asansorD+0.55; s+=`<rect x="${X(x0+mw+0.3)}" y="${Y(sy3)}" width="${sp.saft.w*scale}" height="${Math.min(sp.saft.d,cd-sp.asansorD-0.7)*scale}" fill="none" stroke="${muted}" stroke-width="0.7" stroke-dasharray="2 2"/>`; }
+    s+=`<text x="${X(c.x)}" y="${Y(y0)-3}" text-anchor="middle" font-size="8" fill="${muted}">Çekirdek · ${sp.asansorAdet||0} asansör + merdiven</text>`;
   }
 
   // dış duvar (kalın)
