@@ -116,6 +116,47 @@ test('solarPos: night returns negative altitude', () => {
   assert.ok(sp.altDeg < 0, `midnight altitude ${sp.altDeg} should be below horizon`);
 });
 
+test('yonetmelik: yan setback grows after 4 floors (3 + 0.5/extra floor)', () => {
+  assert.equal(S.yonetmelik({ katAdet: 4, kullanim: 'konut' }).minYan, 3);
+  assert.equal(S.yonetmelik({ katAdet: 8, kullanim: 'konut' }).minYan, 5); // 3 + (8-4)*0.5
+  assert.ok(S.yonetmelik({ katAdet: 8 }).minArka >= S.yonetmelik({ katAdet: 8 }).minYan);
+});
+
+test('yonetmelik: elevator required at 4+ floors, two when tall/dense', () => {
+  assert.equal(S.yonetmelik({ katAdet: 3 }).asansorGerek, false);
+  assert.equal(S.yonetmelik({ katAdet: 4 }).asansorAdet, 1);
+  assert.equal(S.yonetmelik({ katAdet: 9 }).asansorAdet, 2);
+  assert.equal(S.yonetmelik({ katAdet: 5, toplamDaire: 40 }).asansorAdet, 2);
+});
+
+test('yonetmelik: high-rise (>21.5 m) needs a second fire escape', () => {
+  assert.equal(S.yonetmelik({ katAdet: 6, yukseklik: 25 }).yuksekYapi, true);
+  assert.equal(S.yonetmelik({ katAdet: 6, yukseklik: 25 }).ikinciKacis, true);
+  assert.equal(S.yonetmelik({ katAdet: 4, yukseklik: 15 }).yuksekYapi, false);
+});
+
+test('yonetmelik: parking ratio scales with avg dwelling size', () => {
+  assert.equal(S.yonetmelik({ kullanim: 'konut', toplamDaire: 10, ortDaireAlan: 70 }).otoparkPer, 1);
+  assert.equal(S.yonetmelik({ kullanim: 'konut', toplamDaire: 10, ortDaireAlan: 120 }).otoparkPer, 1.5);
+  assert.equal(S.yonetmelik({ kullanim: 'konut', toplamDaire: 10, ortDaireAlan: 200 }).otoparkPer, 2);
+  // office: ~1 space / 50 m²
+  assert.equal(S.yonetmelik({ kullanim: 'ofis', emsalAlan: 1000 }).otopark, 20);
+});
+
+test('yonetmelik: shelter required above 12 dwellings', () => {
+  assert.equal(S.yonetmelik({ toplamDaire: 12 }).siginakGerek, false);
+  assert.equal(S.yonetmelik({ toplamDaire: 13 }).siginakGerek, true);
+});
+
+test('feasibility: parking uses the yönetmelik ratio (large flats ⇒ ≥1.5/flat)', () => {
+  const C = S.compute(makeInp({ taks: 0.35, kaks: 1.6, katAdet: 5, daireTip: '3+1' }), null);
+  const f = S.feasibility(C, {});
+  if (f.toplamDaire > 0 && f.ortDaire > 150) {
+    assert.ok(f.otopark >= Math.ceil(f.toplamDaire * 1.5) - 1, `otopark ${f.otopark} should reflect ≥1.5/flat for ${f.ortDaire.toFixed(0)} m² flats`);
+  }
+  assert.ok([1, 1.5, 2, null].includes(f.otoparkPer));
+});
+
 test('sunHours: a tall close neighbour reduces façade sun hours', () => {
   const open = S.sunHours(39.9, 12, 'S', { h: 0, yon: 'S', mes: 10 });
   const blocked = S.sunHours(39.9, 12, 'S', { h: 40, yon: 'S', mes: 4 });

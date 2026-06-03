@@ -2051,11 +2051,20 @@ function metricRows(C){
    .concat((C.inp.egim>0)?[['Arazi Eğimi', '%'+fmt(C.inp.egim,0), `kot farkı ${fmt(C.kotFarki,1)} m`]]:[]);
 }
 function auditList(C){
-  // compute uyarıları (nesne) + fizibilite tabanlı denetimler
+  // compute uyarıları (nesne) + yönetmelik + fizibilite tabanlı denetimler
   const list=(C.uyarilar||[]).map(u=> typeof u==='string'?{sev:'warn',msg:u}:u).slice();
+  // Yönetmelik: çekme mesafeleri (kullanıcı girdisi < yönetmelik min ise ihlal)
+  const Y=yonetmelik({katAdet:C.katAdet, kullanim:C.inp.kullanim, yukseklik:C.yukseklik, toplamDaire:C.toplamDaire});
+  if(C.inp.nizam!=='bitisik'){
+    if(C.inp.on>0 && C.inp.on < Y.minOn-0.01) list.push({sev:'err',msg:`Ön çekme ${fmt(C.inp.on,1)} m, yönetmelik önerisi ≥ <b>${fmt(Y.minOn,1)} m</b>.`});
+    if(C.inp.yan>0 && C.inp.yan < Y.minYan-0.01) list.push({sev:'err',msg:`Yan çekme ${fmt(C.inp.yan,1)} m, ${C.katAdet} kat için ≥ <b>${fmt(Y.minYan,1)} m</b> olmalı (yan ≥ 3 + her kat>4 için +0.5).`});
+    if(C.inp.arka>0 && C.inp.arka < Y.minArka-0.01) list.push({sev:'err',msg:`Arka çekme ${fmt(C.inp.arka,1)} m, ≥ <b>${fmt(Y.minArka,1)} m</b> olmalı.`});
+  }
+  if(Y.asansorGerek) list.push({sev:'ok',msg:`Asansör zorunlu: <b>${Y.asansorAdet} adet</b> (zemin üstü ${C.katAdet-1}+ kat).`});
+  if(Y.ikinciKacis) list.push({sev:'warn',msg:`${Y.yuksekYapi?'Yüksek yapı (≥21,50 m)':'Çok katlı'}: <b>2. yangın kaçışı</b> + kaçış merdiveni basınçlandırması gerekir.`});
   try{ const f=feasibility(C);
     if(f && f.otopark!=null){
-      if(f.bodrumOto>=3) list.push({sev:'warn',msg:`Otopark için ~<b>${f.bodrumOto} bodrum katı</b> gerekiyor (${f.otopark} araç). Maliyet/iksa açısından kritik — oturum/program gözden geçirin.`});
+      if(f.bodrumOto>=3) list.push({sev:'warn',msg:`Otopark için ~<b>${f.bodrumOto} bodrum katı</b> gerekiyor (${f.otopark} araç${f.otoparkPer?` · ${f.otoparkPer}/daire`:''}). Maliyet/iksa açısından kritik — oturum/program gözden geçirin.`});
       if(f.siginakGerek) list.push({sev:'ok',msg:`Sığınak gerekli (~${fmt(f.siginakAlan)} m², ${f.toplamDaire} b.b. > 12).`});
     }
   }catch(e){}
@@ -2081,6 +2090,29 @@ function showMetrics(C){
 
 /* ---------- Fizibilite & Maliyet ---------- */
 function trMoney(n){ if(!isFinite(n)) return '—'; const a=Math.abs(n); if(a>=1e9) return (n/1e9).toLocaleString('tr-TR',{maximumFractionDigits:2})+' Mr₺'; if(a>=1e6) return (n/1e6).toLocaleString('tr-TR',{maximumFractionDigits:2})+' M₺'; if(a>=1e3) return (n/1e3).toLocaleString('tr-TR',{maximumFractionDigits:0})+' B₺'; return fmt(n)+' ₺'; }
+/* ---------- Yönetmelik motoru (Planlı Alanlar İmar Yön. + Otopark/Sığınak/Yangın — yaklaşık) ---------- */
+function yonetmelik(p){
+  const kat=Math.max(1, p.katAdet||1), ku=p.kullanim||'konut';
+  const yuk = p.yukseklik!=null ? p.yukseklik : (3*kat+3.5);
+  // Çekme mesafeleri (m): ön genelde ≥5; yan ≥3 ve 4 kattan sonra +0.5/kat; arka ≥ yan, ≥3.5
+  const minOn=5, minYan=3+Math.max(0,kat-4)*0.5, minArka=Math.max(3.5,minYan);
+  // Asansör (PAİY): zemin üstü ≥3 kat (≈4 katlı bina) asansör zorunlu; çok katlı/çok daireli 2
+  const asansorGerek = kat>=4;
+  const asansorAdet = !asansorGerek?0:(kat>=9||(p.toplamDaire||0)>30?2:1);
+  // Yüksek yapı (≥21.50 m): 2 yangın merdiveni + basınçlandırma
+  const yuksekYapi = yuk>21.5;
+  const ikinciKacis = yuksekYapi || kat>=8;
+  // Otopark — daire ortalama alanına göre (İBB benzeri, yaklaşık)
+  let otoparkPer=null;
+  if(ku!=='ofis'&&ku!=='ticari'){ const a=p.ortDaireAlan||90; otoparkPer = a<=80?1 : a<=150?1.5 : 2; }
+  const otopark = (ku==='ofis'||ku==='ticari')
+    ? Math.ceil((p.emsalAlan||0)/50)                 // ~1 araç / 50 m² işyeri
+    : Math.ceil((p.toplamDaire||0)*otoparkPer);
+  // Sığınak (Sığınak Yön.): 12 b.b. üstü; alan ~ kişi başı (≈3 m²/daire, min 20)
+  const siginakGerek = (p.toplamDaire||0)>12;
+  const siginakAlan = siginakGerek? Math.max((p.toplamDaire||0)*3,20):0;
+  return { minOn,minYan,minArka, asansorGerek,asansorAdet, yuksekYapi,ikinciKacis, otoparkPer,otopark, siginakGerek,siginakAlan };
+}
 function feasibility(C, ov){
   const rv=(id,def)=>{ const raw = (ov && ov[id]!=null) ? ov[id] : $(id).value; const n=imarNum(raw); return (raw!=='' && raw!=null && isFinite(n)) ? n : (def!=null?def:0); };
   const insBirim=rv('costBuild',0), satFiyat=rv('costSale',0), arsa=rv('costLand',0);
@@ -2091,10 +2123,12 @@ function feasibility(C, ov){
   // bağımsız bölüm: compute ile aynı kaynaktan (tutarlı)
   const toplamDaire = C.inp.kullanim==='ofis' ? 0 : (C.toplamDaire||0);
   const ortDaire=toplamDaire? satilabilir/toplamDaire : 0;
-  const otopark=C.inp.kullanim==='ofis'? Math.ceil(emsalAlan/100) : Math.ceil(toplamDaire);
+  // yönetmelik motoru: otopark/sığınak/asansör/yangın
+  const Y=yonetmelik({katAdet:C.katAdet, kullanim:C.inp.kullanim, yukseklik:C.yukseklik, ortDaireAlan:ortDaire, toplamDaire, emsalAlan});
+  const otopark=Y.otopark;
   const otoparkAlan=otopark*25;
-  const siginakGerek=toplamDaire>12;
-  const siginakAlan=siginakGerek? Math.max(toplamDaire*3,20):0;
+  const siginakGerek=Y.siginakGerek;
+  const siginakAlan=Y.siginakAlan;
   // otopark yerleşim tahmini: yer üstü kapasite + gereken bodrum kat
   const bahceAlan=Math.max(0, C.parselAlan - C.tabanAlan);
   const yerUstuOto=Math.floor(bahceAlan*0.40/20);
@@ -2109,7 +2143,7 @@ function feasibility(C, ov){
   const m2Maliyet=satilabilir? toplamYatirim/satilabilir : 0;
   // kaba inşaat maliyet dağılımı (bilgilendirme)
   const kalemler=[['Kaba yapı',insMaliyet*0.45],['İnce işler',insMaliyet*0.35],['Mekanik/Elektrik',insMaliyet*0.14],['Çevre/Altyapı',insMaliyet*0.06]];
-  return {insBirim,satFiyat,arsa,emsalAlan,toplamYapi,satilabilir,toplamDaire,ortDaire,otopark,otoparkAlan,yerUstuOto,bodrumOto,siginakGerek,siginakAlan,insMaliyet,ruhsatProje,toplamYatirim,gelir,kar,karlilik,karMarji,m2Maliyet,kalemler};
+  return {insBirim,satFiyat,arsa,emsalAlan,toplamYapi,satilabilir,toplamDaire,ortDaire,otopark,otoparkAlan,otoparkPer:Y.otoparkPer,yerUstuOto,bodrumOto,siginakGerek,siginakAlan,asansorGerek:Y.asansorGerek,asansorAdet:Y.asansorAdet,yuksekYapi:Y.yuksekYapi,ikinciKacis:Y.ikinciKacis,insMaliyet,ruhsatProje,toplamYatirim,gelir,kar,karlilik,karMarji,m2Maliyet,kalemler};
 }
 function showFeasibility(C){
   if(!C){ $('feasCard').style.display='none'; return; }
