@@ -99,8 +99,13 @@
   label.field .lbl .hint { font-weight: 400; opacity: .8; }
   input[type=text], input[type=number], select {
     width: 100%; min-width: 0; padding: 11px 12px; border: 1px solid var(--line); border-radius: 11px;
-    background: var(--bg); color: var(--fg); font-size: 15px; font-family: inherit; outline: none;
+    background: var(--bg); color: var(--fg); font-size: 16px; font-family: inherit; outline: none;
   }
+  /* iOS, 16px altı alanlara odaklanınca otomatik zoom yapar → sağa-sola kayma. 16px ile engellenir. */
+  input, select, textarea { font-size: 16px; }
+  /* okunabilir bağlantı renkleri (özellikle koyu tema) */
+  a { color: var(--brand-deep); text-underline-offset: 2px; }
+  [data-theme="dark"] a { color: #6fd6ba; }
   /* grid/flex çocuklarının dar ekranda küçülebilmesi (sağ kesilmeyi önler) */
   input, select, textarea { min-width: 0; }
   .seg button, .row > *, .row3 > *, .grid2 > *, .metrics > *, .btn-row > * { min-width: 0; }
@@ -554,7 +559,7 @@
         <label class="btn ghost" for="imarFoto" style="display:block;text-align:center;margin-bottom:10px;cursor:pointer">📷 İmar belgesi fotoğrafı yükle (OCR)</label>
         <input type="file" id="imarFoto" accept="image/*" style="display:none">
         <img id="imarPreview" style="display:none;max-width:100%;border-radius:10px;margin-bottom:10px;border:1px solid var(--line)">
-        <textarea id="imarNot" rows="5" placeholder="Örn: Ayrık nizam, TAKS: 0.30, KAKS (Emsal): 1.05, Yençok: 4 kat, ön bahçe 5 m, yan bahçe 3 m, konut alanı..." style="width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:var(--bg);color:var(--fg);font-size:14px;font-family:inherit;outline:none;resize:vertical;"></textarea>
+        <textarea id="imarNot" rows="5" placeholder="Örn: Ayrık nizam, TAKS: 0.30, KAKS (Emsal): 1.05, Yençok: 4 kat, ön bahçe 5 m, yan bahçe 3 m, konut alanı..." style="width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:var(--bg);color:var(--fg);font-size:14px;font-family:inherit;outline:none;resize:vertical;font-size:16px;"></textarea>
         <button class="btn" id="imarParseBtn" style="margin-top:10px">🧠 Yorumla ve Otomatik Doldur</button>
         <div class="note" id="imarParseOut" style="margin-top:8px"></div>
         <div class="note" style="margin-top:8px">Resmî kaynaklar:
@@ -3215,6 +3220,14 @@ $('shareBtn').onclick=async ()=>{
   if(!o){ try{ o=JSON.parse(localStorage.getItem('mt-state')||'null'); }catch(e){} }
   if(o){ try{ applyState(o); }catch(e){} }
 })();
+// Native (iOS/Android): üstteki durum çubuğunu (saat/şarj) gizle — tam ekran görünüm
+try{
+  const Cap=window.Capacitor;
+  if(Cap && Cap.Plugins && Cap.Plugins.StatusBar && (!Cap.isNativePlatform || Cap.isNativePlatform())){
+    Cap.Plugins.StatusBar.hide();
+    if(Cap.Plugins.StatusBar.setOverlaysWebView) Cap.Plugins.StatusBar.setOverlaysWebView({overlay:false});
+  }
+}catch(e){}
 // Yatay taşma teşhisi: ekrandan geniş öğe kalırsa kullanıcıya bildir (geçici)
 setTimeout(()=>{ try{ const vw=document.documentElement.clientWidth;
   const bad=[...document.querySelectorAll('body *')].filter(e=>{ const r=e.getBoundingClientRect(); return r.width>0 && r.right>vw+2 && getComputedStyle(e).position!=='fixed'; })

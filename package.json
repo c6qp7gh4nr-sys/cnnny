@@ -16,7 +16,8 @@
   "dependencies": {
     "@capacitor/core": "^6.2.0",
     "@capacitor/android": "^6.2.0",
-    "@capacitor/ios": "^6.2.0"
+    "@capacitor/ios": "^6.2.0",
+    "@capacitor/status-bar": "^6.0.2"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.2.0",
